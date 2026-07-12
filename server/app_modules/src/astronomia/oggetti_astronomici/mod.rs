@@ -24,7 +24,7 @@ impl BaseModule for OggettiAstronomiciModule {
     }
 
     fn module_version() -> i32 {
-        1
+        2
     }
 
     fn module_permissions() -> &'static [&'static str] {
@@ -47,10 +47,39 @@ impl MongoBaseModule for OggettiAstronomiciModule {
 
         log::info!("Create {} indexes...", collection_name);
 
+        // Indice per ricerca su cataloghi.extended (regex prefix)
         if !indexes.contains(&"cataloghi_extended_idx".to_string()) {
             let keys = doc! { "cataloghi.extended": 1 };
             let options = IndexOptions::builder()
                 .name(Some("cataloghi_extended_idx".to_string()))
+                .build();
+            let index = IndexModel::builder()
+                .keys(keys)
+                .options(Some(options))
+                .build();
+
+            collection.create_index(index).await?;
+        }
+
+        // Indice per ricerca diretta su cataloghi.catalog_nr
+        if !indexes.contains(&"cataloghi_catalog_nr_idx".to_string()) {
+            let keys = doc! { "cataloghi.catalog_nr": 1 };
+            let options = IndexOptions::builder()
+                .name(Some("cataloghi_catalog_nr_idx".to_string()))
+                .build();
+            let index = IndexModel::builder()
+                .keys(keys)
+                .options(Some(options))
+                .build();
+
+            collection.create_index(index).await?;
+        }
+
+        // Indice per ricerca su nome_comune
+        if !indexes.contains(&"nome_comune_idx".to_string()) {
+            let keys = doc! { "nome_comune": 1 };
+            let options = IndexOptions::builder()
+                .name(Some("nome_comune_idx".to_string()))
                 .build();
             let index = IndexModel::builder()
                 .keys(keys)

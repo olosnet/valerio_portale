@@ -111,7 +111,7 @@ impl<'a> OggettiAstronomiciImageService<'a> {
         }
 
         self.repository
-            .set_image_fields(oggetto_id, &main_file.filename, caption.as_deref())
+            .set_image_fields(oggetto_id, &main_file.filename, caption.as_deref(), None)
             .await
     }
 }

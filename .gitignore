@@ -25,3 +25,4 @@ client/dist
 
 Cargo.lock
 setenv.sh
+*.pyc
