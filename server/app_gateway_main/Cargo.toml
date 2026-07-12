@@ -1,0 +1,23 @@
+[package]
+name = "app_gateway_main"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+chrono = { version ="0.4", features = ["serde"] }
+mongodb = { version = "3" }
+bson = { version = "2", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
+cornetti = { path = "../cornetti-rust/cornetti", features = ["mongo", "auth", "actix", "actix-auth", "redisdb", "filemanager" ] }
+app_modules = { path = "../app_modules"}
+utoipa = { version ="5", features = ["actix_extras", "chrono"]}
+utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
+actix-web = "4.11.0"
+log = "0.4.27"
+env_logger = "0.11.8"
+actix-multipart = "0.7.2"
+
+[build-dependencies]
+chrono = { version = "0.4", features = ["serde"] }

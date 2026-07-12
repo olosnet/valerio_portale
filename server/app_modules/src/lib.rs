@@ -1,0 +1,12 @@
+pub mod auth;
+pub mod common;
+pub mod enums;
+pub mod filemanager;
+pub mod filemanager_images;
+pub mod groups;
+pub mod oggetti_astronomici;
+pub mod permissions;
+pub mod sessioni_osservative;
+pub mod siti_osservativi;
+pub mod tests;
+pub mod users;
