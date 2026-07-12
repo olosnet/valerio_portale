@@ -12,7 +12,7 @@ use crate::resources::siti_osservativi::siti_osservativi_api;
 use crate::resources::tests::tests_api;
 use crate::resources::users::users_api;
 use actix_web::{App, HttpServer, web};
-use app_modules::users::services::UserAuthorizationService;
+use app_modules::base::users::services::UserAuthorizationService;
 use cornetti::actix::auth::middlewares::authentication::JWTMiddleware;
 use cornetti::actix::helpers::default_404_json;
 use cornetti::auth::helpers::utoipa::get_jwt_auth_security_schemes;

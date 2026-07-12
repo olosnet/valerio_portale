@@ -3,7 +3,7 @@ mod oggetti_astronomici_view {
     use crate::AppState;
     use actix_multipart::form::MultipartForm;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::oggetti_astronomici::{
+    use app_modules::astronomia::oggetti_astronomici::{
         models::{
             OggettoAstronomico, OggettoAstronomicoCreate, OggettoAstronomicoImageUploadBody,
             OggettoAstronomicoUpdate,
@@ -175,10 +175,39 @@ mod oggetti_astronomici_view {
     }
 }
 
+mod osservazioni_per_oggetto_view {
+
+    use crate::AppState;
+    use actix_web::{HttpResponse, Responder, get, web};
+    use app_modules::astronomia::sessioni_osservative::{
+        models::Osservazione,
+        osservazioni::services::OsservazioneService,
+    };
+    use cornetti::core::models::CornettiError;
+
+    #[utoipa::path(
+        summary = "Observations for an astronomical object",
+        tags = ["OggettiAstronomici"],
+        responses(
+            (status = 200, description = "Observations list", body = [Osservazione]),
+            (status = 500, description = "Internal server error", body = CornettiError)
+        )
+    )]
+    #[get("/{oggetto_id}/osservazioni")]
+    async fn list(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+        let service = OsservazioneService::new(state.mongo.clone());
+
+        match service.list_osservazioni_by_oggetto(&path.into_inner()).await {
+            Ok(items) => HttpResponse::Ok().json(items),
+            Err(err) => err.into(),
+        }
+    }
+}
+
 pub mod oggetti_astronomici_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{oggetti_astronomici::OggettiAstronomiciModule, users::services::UserAuthorizationService};
+    use app_modules::{astronomia::oggetti_astronomici::OggettiAstronomiciModule, base::users::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},
@@ -199,7 +228,8 @@ pub mod oggetti_astronomici_api {
         super::oggetti_astronomici_view::post,
         super::oggetti_astronomici_view::put,
         super::oggetti_astronomici_view::delete,
-        super::oggetti_astronomici_view::upload_image
+        super::oggetti_astronomici_view::upload_image,
+        super::osservazioni_per_oggetto_view::list
     ),
     tags((name = "OggettiAstronomici", description = "Astronomical objects management"))
     )]
@@ -247,6 +277,7 @@ pub mod oggetti_astronomici_api {
             .service(super::oggetti_astronomici_view::put)
             .service(super::oggetti_astronomici_view::delete)
             .service(super::oggetti_astronomici_view::upload_image)
+            .service(super::osservazioni_per_oggetto_view::list)
             .wrap(oggetti_astronomici_authorization_middleware)
     }
 }

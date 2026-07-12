@@ -2,7 +2,7 @@ mod filemanager_view {
 
     use crate::AppState;
     use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
-    use app_modules::filemanager::services::FileManagerService;
+    use app_modules::base::filemanager::services::FileManagerService;
     use cornetti::actix::filemanager::models::FileManagerUploadForm;
     use cornetti::filemanager::models::{FileManager, FileManagerInfo};
 

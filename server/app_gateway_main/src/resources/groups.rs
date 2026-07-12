@@ -2,8 +2,8 @@ mod groups_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::groups::models::{Group, GroupCreate, GroupUpdate};
-    use app_modules::groups::services::GroupService;
+    use app_modules::base::groups::models::{Group, GroupCreate, GroupUpdate};
+    use app_modules::base::groups::services::GroupService;
     use cornetti::core::models::CornettiError;
 
     #[utoipa::path(
@@ -135,7 +135,7 @@ mod groups_view {
 pub mod groups_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{groups::GroupsModule, users::services::UserAuthorizationService};
+    use app_modules::{base::groups::GroupsModule, base::users::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

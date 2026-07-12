@@ -2,7 +2,7 @@ mod osservazioni_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::sessioni_osservative::{
+    use app_modules::astronomia::sessioni_osservative::{
         models::{Osservazione, OsservazioneInput},
         osservazioni::services::OsservazioneService,
     };
@@ -128,7 +128,7 @@ mod sessioni_osservative_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::sessioni_osservative::{
+    use app_modules::astronomia::sessioni_osservative::{
         models::{SessioneOsservativa, SessioneOsservativaCreate, SessioneOsservativaUpdate},
         services::SessioniOsservativeService,
     };
@@ -245,7 +245,7 @@ mod sessioni_osservative_view {
 pub mod sessioni_osservative_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{sessioni_osservative::SessioniOsservativeModule, users::services::UserAuthorizationService};
+    use app_modules::{astronomia::sessioni_osservative::SessioniOsservativeModule, base::users::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

@@ -2,7 +2,7 @@ mod filemanager_images_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, web};
-    use app_modules::filemanager_images::services::ImageFileManagerService;
+    use app_modules::base::filemanager_images::services::ImageFileManagerService;
     use cornetti::actix::filemanager::models::FileManagerUploadForm;
     use cornetti::filemanager::models::images::ImagesFileManagerResizedRel;
     use cornetti::filemanager::models::{FileManager, FileManagerInfo};

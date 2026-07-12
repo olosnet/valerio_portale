@@ -2,8 +2,8 @@ mod users_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::users::models::{SetPasswordBody, User, UserCreate, UserUpdate};
-    use app_modules::users::services::UsersService;
+    use app_modules::base::users::models::{SetPasswordBody, User, UserCreate, UserUpdate};
+    use app_modules::base::users::services::UsersService;
     use cornetti::core::models::CornettiError;
 
     #[utoipa::path(
@@ -156,7 +156,7 @@ mod users_view {
 
 pub mod users_api {
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::users::{UsersModule, services::UserAuthorizationService};
+    use app_modules::base::users::{UsersModule, services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

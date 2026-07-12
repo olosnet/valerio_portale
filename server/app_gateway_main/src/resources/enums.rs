@@ -2,7 +2,7 @@ mod enums_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::enums::{
+    use app_modules::base::enums::{
         models::{EnumCreate, EnumItem, EnumListQuery, EnumUpdate},
         services::EnumsService,
     };
@@ -116,7 +116,7 @@ mod enums_view {
 
 pub mod enums_api {
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{enums::EnumsModule, users::services::UserAuthorizationService};
+    use app_modules::{base::enums::EnumsModule, base::users::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

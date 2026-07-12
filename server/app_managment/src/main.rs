@@ -1,8 +1,13 @@
 use app_modules::{
-    enums::EnumsModule, filemanager::FileManagerModule,
-    filemanager_images::FileManagerImagesModule, groups::GroupsModule,
-    oggetti_astronomici::OggettiAstronomiciModule, sessioni_osservative::SessioniOsservativeModule,
-    siti_osservativi::SitiOsservativiModule, users::UsersModule,
+    astronomia::{
+        oggetti_astronomici::OggettiAstronomiciModule,
+        sessioni_osservative::SessioniOsservativeModule,
+        siti_osservativi::SitiOsservativiModule,
+    },
+    base::{
+        enums::EnumsModule, filemanager::FileManagerModule,
+        filemanager_images::FileManagerImagesModule, groups::GroupsModule, users::UsersModule,
+    },
 };
 use clap::{Arg, Command};
 use cornetti::mongo::{

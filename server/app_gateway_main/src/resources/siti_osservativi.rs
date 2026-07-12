@@ -2,7 +2,7 @@ mod siti_osservativi_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
-    use app_modules::siti_osservativi::{
+    use app_modules::astronomia::siti_osservativi::{
         models::{SitoOsservativo, SitoOsservativoCreate, SitoOsservativoUpdate},
         services::SitiOsservativiService,
     };
@@ -117,8 +117,8 @@ pub mod siti_osservativi_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
     use app_modules::{
-        siti_osservativi::SitiOsservativiModule,
-        users::services::UserAuthorizationService,
+        astronomia::siti_osservativi::SitiOsservativiModule,
+        base::users::services::UserAuthorizationService,
     };
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,

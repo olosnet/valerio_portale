@@ -2,7 +2,7 @@ mod permissions_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, get, web};
-    use app_modules::permissions::{repos::PermissionsRepository, services::PermissionsService};
+    use app_modules::base::permissions::{repos::PermissionsRepository, services::PermissionsService};
     use cornetti::core::models::CornettiError;
 
     #[utoipa::path(

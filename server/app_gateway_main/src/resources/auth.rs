@@ -2,8 +2,8 @@ mod auth_view {
 
     use crate::AppState;
     use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
-    use app_modules::auth::services::AuthenticationService;
-    use app_modules::users::models::User;
+    use app_modules::base::auth::services::AuthenticationService;
+    use app_modules::base::users::models::User;
     use cornetti::auth::models::{
         DefaultLoginBody, DefaultLoginResponse, JwtDefaultClaims, RefreshAuthResponseDto,
     };

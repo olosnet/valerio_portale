@@ -2,7 +2,7 @@ mod tests_view {
 
     use crate::AppState;
     use actix_web::{HttpResponse, Responder, post, web};
-    use app_modules::tests::{models::TestMailSendBody, services::TestsService};
+    use app_modules::base::tests::{models::TestMailSendBody, services::TestsService};
     use cornetti::core::models::{CornettiError, CornettiGenericResponse};
 
     #[utoipa::path(
