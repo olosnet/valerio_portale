@@ -1,44 +1,45 @@
 # AGENTS.md
 
 ## Workspace shape
-- Repo root is split into `server/` and `client/` workspaces.
-- Server workspace root is `server/Cargo.toml` with `default-members = ["app_gateway_main"]`. Plain `cargo run` from `server/` starts HTTP server in `app_gateway_main`.
-- Client workspace root is `client/Cargo.toml` with `default-members = ["app_gateway_client"]`.
-- `server/app_managment` is separate CLI crate used for setup tasks, not server.
-- `server/app_modules` is path dependency but not workspace member. From `server/`, target it with `--manifest-path app_modules/Cargo.toml` instead of `-p app_modules`.
+- Server workspace in `server/Cargo.toml`, members = `["app_gateway_main", "app_managment"]`, default = `app_gateway_main`.
+- `server/app_managment` — CLI setup crate, **not** the server.
+- `server/app_modules` — path dependency, **not** a workspace member. Target with `--manifest-path app_modules/Cargo.toml`.
+- `server/cornetti-rust/` — separate framework dependency (not workspace member) with its own `AGENTS.md`. Two crates: `cornetti` + `cornetti_macros` (proc-macro).
+- No client workspace or `client/` directory exists.
+- All crates use Rust edition 2024 → requires rustc >= 1.85.
+- No `rustfmt.toml`, `clippy.toml`, or `rust-toolchain.toml` — toolchain defaults apply.
+- `Cargo.lock` gitignored (`.gitignore:26`).
 
-## Run and setup
-- Main API server: run from `server/` with `cargo run` or `cargo run -p app_gateway_main`.
-- Module registration/setup: run from `server/` with `cargo run -p app_managment -- --register-modules`.
-- Frontend client crate lives in `client/app_gateway_client/` and is Leptos CSR app.
-- Client workspace defaults to `wasm32-unknown-unknown` via `.cargo/config.toml`; use `trunk serve` or `trunk build` from `client/app_gateway_client/`.
-- Run module registration before first use, and after changing module registration logic in `server/app_modules`.
+## Run & setup
+- API server: `cargo run` from `server/`.
+- Module registration (required before first use, and after changing `app_modules`): `cargo run -p app_managment -- --register-modules`.
+- Default bind `localhost:8080`; Swagger UI at `/swagger/ui/` when `APP_ENABLE_SWAGGER=true`.
+- Logging: set `RUST_LOG=info` (or `debug`, `warn`).
 
-## Required services and env
-- `server/app_gateway_main` initializes MongoDB and Redis on startup (`MongoDBConfig::from_env()`, `RedisDBConfig::from_env()`); both services must be available even though README may emphasize MongoDB.
-- Server also loads JWT, filemanager, templates, and SMTP config from environment at startup. Check `server/README.MD` for full env var list before assuming defaults.
-- Default server bind is `localhost:8080`; Swagger UI is mounted at `/swagger/ui/` when `APP_ENABLE_SWAGGER=true`.
-- Client API base/prefix is compiled into wasm. When working on client/server integration, keep client env in sync with server `APP_API_PREFIX` and related auth settings.
+## Required services & env
+- MongoDB and Redis must be available at startup (read from env via `MongoDBConfig::from_env()`, `RedisDBConfig::from_env()`).
+- Server also loads JWT, filemanager, templates, and SMTP config from env. Full table in `server/README.MD`.
+- API prefix is configurable via `BaseConf` env `APP_API_PREFIX`.
+
+## Domain modules (in `server/app_modules/src/`)
+`auth/`, `common/`, `enums/`, `filemanager/`, `filemanager_images/`, `groups/`, `oggetti_astronomici/`, `permissions/`, `sessioni_osservative/`, `siti_osservativi/`, `tests/` (email test), `users/`.
 
 ## Code layout
-- `server/app_gateway_main/src/main.rs` wires Actix app, middleware, and Swagger docs. API routes live under `server/app_gateway_main/src/resources/`.
-- Domain logic and module registration live in `server/app_modules/`.
-- `server/app_managment/src/main.rs` is source of truth for which modules are registered into Mongo.
-- `client/app_gateway_client/src/main.rs` mounts Leptos CSR app; app UI and API client logic live under `client/app_gateway_client/src/`.
-- Client static entry files live in `client/app_gateway_client/index.html`, `client/app_gateway_client/styles/`, and `client/app_gateway_client/Trunk.toml`.
+- `server/app_gateway_main/src/main.rs` — wires Actix app, middleware, Swagger. API routes in `resources/`.
+- `server/app_gateway_main/src/resources/` — one file per domain (`auth.rs`, `users.rs`, etc.). Each exports `routes()` and `api_doc()`.
+- `tests` endpoint module loaded only when `base_conf.test_features` is true.
+- `server/app_managment/src/main.rs` — source of truth for which modules register into Mongo.
+- `server/templates/` — Jinja templates for email etc.
+- Comments and commit messages in the codebase are in Italian.
 
 ## Verification
-- Fast server verification: run from `server/` with `cargo check`.
-- Verify setup CLI: run from `server/` with `cargo check -p app_managment`.
-- Verify `app_modules` directly: run from `server/` with `cargo check --manifest-path app_modules/Cargo.toml`.
-- Fast client verification: run from `client/` with `cargo check`.
-- There are no repo-local Rust test definitions (`#[test]`, `#[tokio::test]`) in `server/` or `client/`; do not assume `cargo test` gives meaningful coverage.
-- If client change touches browser-only behavior, prefer `trunk build` or `trunk serve` verification from `client/app_gateway_client/` when toolchain is available.
+- Server: `cargo check` from `server/`.
+- Setup CLI: `cargo check -p app_managment` from `server/`.
+- `app_modules`: `cargo check --manifest-path app_modules/Cargo.toml` from `server/`.
+- No `#[test]` / `#[tokio::test]` in repo — `cargo test` gives no meaningful coverage.
+- Build.rs injects `BUILD_TIMESTAMP`, `BUILD_DATE`, `BUILD_TIME`, `BUILD_DATETIME`, `GIT_HASH`, `GIT_BRANCH` env vars — metadata changes on each rebuild.
 
-## Build quirks
-- `server/app_gateway_main/build.rs` injects build date/time plus `git` hash/branch into env vars used by server binary. Build metadata changes on each rebuild.
-- Client workspace is configured for `wasm32-unknown-unknown` in both `client/.cargo/config.toml` and `client/app_gateway_client/.cargo/config.toml`.
-- Release automation is tag-driven: `.github/workflows/docker-image.yml` builds and pushes container only on tag pushes.
-
-## Communication rule
-- Use caveman skill for agent responses in this repository unless user explicitly asks to stop or switch back to normal mode.
+## OpenCode config
+- `opencode.json` only enables plugin `opencode-md-table-formatter`.
+- Skill `caveman` loaded via `.agents/skills/`.
+- Use caveman skill for agent responses unless user asks otherwise.

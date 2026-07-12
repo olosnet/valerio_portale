@@ -18,26 +18,13 @@ use uuid::Uuid;
 use crate::sessioni_osservative::{
     SessioniOsservativeModule,
     models::{
-        MisurazioneSqm, MisurazioneSqmInput, Osservazione, OsservazioneInput, SessioneOsservativa,
-        SessioneOsservativaCreate, SessioneOsservativaUpdate, StrumentazioneSessione,
-        StrumentazioneSessioneInput,
+        MisurazioneSqm, MisurazioneSqmInput, SessioneOsservativa, SessioneOsservativaCreate,
+        SessioneOsservativaUpdate, StrumentazioneSessione, StrumentazioneSessioneInput,
     },
 };
 
 fn generate_uuid() -> String {
     Uuid::new_v4().to_string()
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MongoOsservazioneModel {
-    #[serde(default = "generate_uuid")]
-    pub uuid: String,
-    pub note_osservazione: String,
-    pub miglior_ingrandimento: i32,
-    #[serde(default)]
-    pub oggetti_id: Vec<CornettiObjectId>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub oggetto_id_ref: Option<CornettiObjectId>,
 }
 
 #[serde_as]
@@ -80,8 +67,6 @@ pub struct MongoSessioneOsservativaModel {
     #[serde(default)]
     pub strumentazione: Vec<MongoStrumentazioneSessioneModel>,
     #[serde(default)]
-    pub oggetti_osservati: Vec<MongoOsservazioneModel>,
-    #[serde(default)]
     pub misurazioni_sqm: Vec<MongoMisurazioneSqmModel>,
 }
 
@@ -118,50 +103,8 @@ impl BaseModel for MongoSessioneOsservativaModel {
             outro: String::new(),
             sito_osservativo_id: CornettiObjectId::default(),
             strumentazione: Vec::new(),
-            oggetti_osservati: Vec::new(),
             misurazioni_sqm: Vec::new(),
         }
-    }
-}
-
-impl From<MongoOsservazioneModel> for Osservazione {
-    fn from(model: MongoOsservazioneModel) -> Self {
-        Self {
-            uuid: model.uuid,
-            note_osservazione: model.note_osservazione,
-            miglior_ingrandimento: model.miglior_ingrandimento,
-            oggetti_id: model
-                .oggetti_id
-                .into_iter()
-                .map(|id| id.to_string())
-                .collect(),
-            oggetto_id_ref: model.oggetto_id_ref.map(|id| id.to_string()),
-        }
-    }
-}
-
-impl TryFrom<OsservazioneInput> for MongoOsservazioneModel {
-    type Error = CornettiError;
-
-    fn try_from(value: OsservazioneInput) -> Result<Self, Self::Error> {
-        let oggetti_id = value
-            .oggetti_id
-            .iter()
-            .map(|oggetto_id| CornettiObjectId::parse_str(oggetto_id))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let oggetto_id_ref = match value.oggetto_id_ref {
-            Some(oggetto_id_ref) => Some(CornettiObjectId::parse_str(&oggetto_id_ref)?),
-            None => None,
-        };
-
-        Ok(Self {
-            uuid: generate_uuid(),
-            note_osservazione: value.note_osservazione,
-            miglior_ingrandimento: value.miglior_ingrandimento,
-            oggetti_id,
-            oggetto_id_ref,
-        })
     }
 }
 
@@ -224,11 +167,6 @@ impl From<MongoSessioneOsservativaModel> for SessioneOsservativa {
             outro: model.outro,
             sito_osservativo_id: model.sito_osservativo_id.to_string(),
             strumentazione: model.strumentazione.into_iter().map(Into::into).collect(),
-            oggetti_osservati: model
-                .oggetti_osservati
-                .into_iter()
-                .map(Into::into)
-                .collect(),
             misurazioni_sqm: model.misurazioni_sqm.into_iter().map(Into::into).collect(),
         }
     }
@@ -248,11 +186,6 @@ impl TryFrom<SessioneOsservativaCreate> for MongoSessioneOsservativaModel {
             sito_osservativo_id: CornettiObjectId::parse_str(&value.sito_osservativo_id)?,
             strumentazione: value
                 .strumentazione
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?,
-            oggetti_osservati: value
-                .oggetti_osservati
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?,
@@ -276,11 +209,6 @@ impl TryFrom<SessioneOsservativaUpdate> for MongoSessioneOsservativaModel {
         model.sito_osservativo_id = CornettiObjectId::parse_str(&value.sito_osservativo_id)?;
         model.strumentazione = value
             .strumentazione
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-        model.oggetti_osservati = value
-            .oggetti_osservati
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
@@ -399,3 +327,5 @@ impl SessioniOsservativeRepository {
         }
     }
 }
+
+

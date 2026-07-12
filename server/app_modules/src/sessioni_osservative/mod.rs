@@ -4,6 +4,7 @@ use cornetti::{
 };
 
 pub mod models;
+pub mod osservazioni;
 pub mod repos;
 pub mod services;
 

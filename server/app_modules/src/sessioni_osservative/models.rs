@@ -5,6 +5,7 @@ use validator::Validate;
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 pub struct Osservazione {
     pub uuid: String,
+    pub osservato_il: chrono::DateTime<chrono::Utc>,
     pub note_osservazione: String,
     pub miglior_ingrandimento: i32,
     pub oggetti_id: Vec<String>,
@@ -13,6 +14,7 @@ pub struct Osservazione {
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct OsservazioneInput {
+    pub osservato_il: chrono::DateTime<chrono::Utc>,
     pub note_osservazione: String,
     pub miglior_ingrandimento: i32,
     #[serde(default)]
@@ -60,7 +62,6 @@ pub struct SessioneOsservativa {
     pub outro: String,
     pub sito_osservativo_id: String,
     pub strumentazione: Vec<StrumentazioneSessione>,
-    pub oggetti_osservati: Vec<Osservazione>,
     pub misurazioni_sqm: Vec<MisurazioneSqm>,
 }
 
@@ -75,9 +76,6 @@ pub struct SessioneOsservativaCreate {
     pub strumentazione: Vec<StrumentazioneSessioneInput>,
     #[serde(default)]
     #[validate(nested)]
-    pub oggetti_osservati: Vec<OsservazioneInput>,
-    #[serde(default)]
-    #[validate(nested)]
     pub misurazioni_sqm: Vec<MisurazioneSqmInput>,
 }
 
@@ -90,9 +88,6 @@ pub struct SessioneOsservativaUpdate {
     #[serde(default)]
     #[validate(nested)]
     pub strumentazione: Vec<StrumentazioneSessioneInput>,
-    #[serde(default)]
-    #[validate(nested)]
-    pub oggetti_osservati: Vec<OsservazioneInput>,
     #[serde(default)]
     #[validate(nested)]
     pub misurazioni_sqm: Vec<MisurazioneSqmInput>,

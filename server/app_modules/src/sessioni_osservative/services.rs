@@ -4,7 +4,9 @@ use cornetti::{core::models::CornettiError, mongo::services::MongoDBService};
 use validator::Validate;
 
 use crate::sessioni_osservative::{
-    models::{SessioneOsservativa, SessioneOsservativaCreate, SessioneOsservativaUpdate},
+    models::{
+        SessioneOsservativa, SessioneOsservativaCreate, SessioneOsservativaUpdate,
+    },
     repos::SessioniOsservativeRepository,
 };
 
