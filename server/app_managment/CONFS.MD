@@ -33,7 +33,7 @@ Configurazioni di ambiente usate dalla CLI di gestione.
 
 | EnvVar | Descrizione | Default |
 |--------|-------------|---------|
-| `APP_NAMESPACE` | Namespace applicativo per filemanager | `app_managment` |
+| `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
 | `APP_TENANT_ID` | Tenant ID per filemanager | `default` |
 | `APP_IMPORT_IDENTITY` | Email dell'utente uploader (l'_id viene risolto automaticamente sul DB) | `import@system` |
 

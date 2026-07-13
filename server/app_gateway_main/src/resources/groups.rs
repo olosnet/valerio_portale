@@ -19,7 +19,7 @@ mod groups_view {
         let groups_service = GroupService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match groups_service.list_groups().await {
             Ok(groups) => HttpResponse::Ok().json(groups),
@@ -43,7 +43,7 @@ mod groups_view {
         let groups_service = GroupService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
 
         match groups_service.get_group(&group_id).await {
@@ -67,7 +67,7 @@ mod groups_view {
         let groups_service = GroupService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
 
         match groups_service.create_group(group).await {
@@ -98,7 +98,7 @@ mod groups_view {
         let groups_service = GroupService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
 
         match groups_service.update_group(&group_id, group).await {
@@ -122,7 +122,7 @@ mod groups_view {
         let groups_service = GroupService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
 
         match groups_service.delete_group(&path.into_inner()).await {

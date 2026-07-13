@@ -19,7 +19,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service.list_users().await {
             Ok(users) => HttpResponse::Ok().json(users),
@@ -42,7 +42,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service.get_user(&path.into_inner()).await {
             Ok(user) => HttpResponse::Ok().json(user),
@@ -64,7 +64,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service.create_user(user.into_inner()).await {
             Ok(user) => HttpResponse::Created().json(user),
@@ -91,7 +91,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service
             .update_user(&path.into_inner(), user.into_inner())
@@ -117,7 +117,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service.delete_user(&path.into_inner()).await {
             Ok(_) => HttpResponse::NoContent().finish(),
@@ -142,7 +142,7 @@ mod users_view {
         let users_service = UsersService::new(
             state.mongo.clone(),
             state.redis.clone(),
-            &state.app_info.name,
+            &state.base_conf.app_id,
         );
         match users_service
             .set_password(&path.into_inner(), body.into_inner())

@@ -162,7 +162,7 @@ mod oggetti_astronomici_view {
         let service = OggettiAstronomiciImageService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
         );
 
         match service

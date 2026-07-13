@@ -17,6 +17,8 @@ Configurazioni di ambiente usate dal server API.
 | `APP_ENABLE_SWAGGER` | Abilita Swagger UI | `true` |
 | `APP_TMP_DIRECTORY` | Directory temporanea | `/tmp` |
 | `APP_API_PREFIX` | Prefisso path API | (vuoto) |
+| `APP_ID` | Identificativo applicazione | `app_default` |
+| `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
 
 ### MongoDBConfig
 

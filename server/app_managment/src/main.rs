@@ -236,7 +236,7 @@ async fn cmd_catalog_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::
             .map_err(|e| format!("query imported images: {e}"))?;
 
         let fm_conf = FileManagerConf::from_env();
-        let ns = std::env::var("APP_NAMESPACE").unwrap_or_else(|_| "app_managment".into());
+        let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
         let tenant = std::env::var("APP_TENANT_ID").unwrap_or_else(|_| "default".into());
 
         for obj in &with_images {
@@ -441,7 +441,7 @@ async fn cmd_images_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::e
     println!("Oggetti da processare: {}", objects.len());
 
     let fm_conf = FileManagerConf::from_env();
-    let ns = std::env::var("APP_NAMESPACE").unwrap_or_else(|_| "app_managment".into());
+        let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
     let tenant = std::env::var("APP_TENANT_ID").unwrap_or_else(|_| "default".into());
     let identity_email = std::env::var("APP_IMPORT_IDENTITY").unwrap_or_else(|_| "import@system".into());
 

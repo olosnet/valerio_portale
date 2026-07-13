@@ -193,7 +193,7 @@ async fn main() -> std::io::Result<()> {
         let user_authorization_service = Arc::new(UserAuthorizationService::new(
             app_state.mongo.clone(),
             app_state.redis.clone(),
-            app_state.app_info.name.clone(),
+            app_state.base_conf.app_id.clone(),
         ));
 
         let mut api_service_configs: Vec<Box<dyn Fn(&mut web::ServiceConfig) + Send + Sync>> =

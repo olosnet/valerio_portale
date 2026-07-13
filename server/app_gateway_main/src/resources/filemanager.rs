@@ -19,7 +19,7 @@ mod filemanager_view {
         let filemanager_service = FileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
 
@@ -45,7 +45,7 @@ mod filemanager_view {
         let filemanager_service = FileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
         match filemanager_service.upload(claims, form).await {
@@ -71,7 +71,7 @@ mod filemanager_view {
         let filemanager_service = FileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
 
@@ -100,7 +100,7 @@ mod filemanager_view {
         let filemanager_service = FileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
 
@@ -125,7 +125,7 @@ mod filemanager_view {
         let filemanager_service = FileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.app_info.name,
+            &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
 
