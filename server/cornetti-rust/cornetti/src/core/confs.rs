@@ -17,8 +17,10 @@ pub struct BaseConf {
     pub tmp_directory: String,
     /// Prefix prepended to all API routes.
     pub api_prefix: String,
-    /// Application identifier.
+    /// Application identifier (default: `"app_default"`).
     pub app_id: String,
+    /// Shared resources identifier (default: `"shared_res_app_default"`).
+    pub shared_resources_id: String,
     /// Whether test-specific features are active.
     pub test_features: bool,
 }
@@ -27,7 +29,8 @@ impl BaseConf {
     /// Reads configuration from environment variables, falling back to defaults.
     ///
     /// Environment variables: `APP_HOST`, `APP_PORT`, `APP_ENABLE_SWAGGER`,
-    /// `APP_TMP_DIRECTORY`, `APP_API_PREFIX`, `APP_TEST_FEATURES`, `APP_ID`.
+    /// `APP_TMP_DIRECTORY`, `APP_API_PREFIX`, `APP_TEST_FEATURES`, `APP_ID`,
+    /// `APP_SHARED_RESOURCES_ID`.
     ///
     /// # Panics
     ///
@@ -57,7 +60,12 @@ impl BaseConf {
             .parse()
             .unwrap_or(false);
 
-        let app_id: String = std::env::var("APP_ID").unwrap_or_default();
+        let app_id: String =
+            std::env::var("APP_ID").unwrap_or_else(|_| "app_default".to_string());
+
+        let shared_resources_id: String =
+            std::env::var("APP_SHARED_RESOURCES_ID")
+                .unwrap_or_else(|_| "shared_res_app_default".to_string());
 
         BaseConf {
             host,
@@ -66,6 +74,7 @@ impl BaseConf {
             tmp_directory,
             api_prefix,
             app_id,
+            shared_resources_id,
             test_features,
         }
     }

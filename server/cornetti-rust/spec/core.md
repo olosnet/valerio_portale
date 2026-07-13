@@ -96,12 +96,17 @@ See `BaseModule` in `src/core/traits.rs`.
 with sensible defaults. `BaseConf` SHALL panic on invalid `u16` parsing of `APP_PORT`.
 `TenantConf` SHALL fall back to `DEFAULT_TENANT_ID` when `APP_TENANT_ID` is empty.
 
+`BaseConf` SHALL read the optional `APP_SHARED_RESOURCES_ID` variable and store its
+value in the `shared_resources_id` field, defaulting to `"shared_res_app_default"` when unset.
+`APP_ID` defaults to `"app_default"`.
+
 See `src/core/confs.rs`.
 
 #### Scenario: Default configuration
 - WHEN no environment variables are set
 - THEN `BaseConf::from_env()` SHALL return a config with host `"localhost"`, port `8080`,
-  enable_swagger `true`, tmp_directory `"/tmp"`, empty api_prefix
+  enable_swagger `true`, tmp_directory `"/tmp"`, empty api_prefix, app_id `"app_default"`,
+  shared_resources_id `"shared_res_app_default"`
 
 #### Scenario: Tenant fallback
 - WHEN `APP_TENANT_ID` is not set or empty
