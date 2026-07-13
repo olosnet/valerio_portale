@@ -89,7 +89,6 @@ impl From<MongoFileManagerModel> for FileManager {
     fn from(model: MongoFileManagerModel) -> Self {
         FileManager {
             _id: model._id.map(|id| id.to_string()).unwrap_or_default(),
-            tenant_id: model.tenant_id.unwrap_or_default(),
             created: model.created.unwrap(),
             modified: model.modified,
             app_source: model.app_source,
@@ -111,7 +110,7 @@ impl From<FileManagerCreate> for MongoFileManagerModel {
     fn from(create: FileManagerCreate) -> Self {
         MongoFileManagerModel {
             _id: None,
-            tenant_id: Some(create.tenant_id),
+            tenant_id: None,
             created: chrono::Utc::now().into(),
             modified: chrono::Utc::now(),
             app_source: Some(create.app_source),
@@ -144,15 +143,18 @@ impl FileManagerRepository {
 impl FileManagerRepositoryTrait for FileManagerRepository {
     fn create(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         file: FileManagerCreate,
     ) -> Pin<Box<dyn Future<Output = Result<FileManager, CornettiError>> + Send>> {
         let mongo = self.mongo.clone();
+        let tenant_id = tenant_id.to_string();
         Box::pin(async move {
             let collection_name: &'static str = MongoFileManagerModel::collection_name();
             let collection: Collection<MongoFileManagerModel> =
                 mongo.db().collection(collection_name);
             let mut filemanager_model = MongoFileManagerModel::from(file);
+
+            filemanager_model.tenant_id = Some(tenant_id);
 
             let result = collection.insert_one(&filemanager_model).await?;
             filemanager_model._id = Some(CornettiObjectId::from(
