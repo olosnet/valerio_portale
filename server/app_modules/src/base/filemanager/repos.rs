@@ -23,6 +23,7 @@ use std::pin::Pin;
 pub struct MongoFileManagerModel {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<CornettiObjectId>,
+    pub tenant_id: Option<String>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
     #[serde_as(as = "bson::serde_helpers::datetime::FromChrono04DateTime")]
@@ -66,6 +67,7 @@ impl BaseModel for MongoFileManagerModel {
     fn new() -> Self {
         MongoFileManagerModel {
             _id: None,
+            tenant_id: None,
             created: chrono::Utc::now().into(),
             modified: chrono::Utc::now(),
             app_source: None,
@@ -87,6 +89,7 @@ impl From<MongoFileManagerModel> for FileManager {
     fn from(model: MongoFileManagerModel) -> Self {
         FileManager {
             _id: model._id.map(|id| id.to_string()).unwrap_or_default(),
+            tenant_id: model.tenant_id.unwrap_or_default(),
             created: model.created.unwrap(),
             modified: model.modified,
             app_source: model.app_source,
@@ -108,6 +111,7 @@ impl From<FileManagerCreate> for MongoFileManagerModel {
     fn from(create: FileManagerCreate) -> Self {
         MongoFileManagerModel {
             _id: None,
+            tenant_id: Some(create.tenant_id),
             created: chrono::Utc::now().into(),
             modified: chrono::Utc::now(),
             app_source: Some(create.app_source),
@@ -160,11 +164,12 @@ impl FileManagerRepositoryTrait for FileManagerRepository {
 
     fn get(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         filename: String,
         app_source: String,
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<FileManager, CornettiError>> + Send>> {
         let mongo = self.mongo.clone();
+        let tenant_id = tenant_id.to_string();
 
         Box::pin(async move {
             let collection_name: &'static str = MongoFileManagerModel::collection_name();
@@ -172,7 +177,7 @@ impl FileManagerRepositoryTrait for FileManagerRepository {
                 mongo.db().collection(collection_name);
 
             match collection
-                .find_one(doc! { "filename": &filename, "app_source": &app_source })
+                .find_one(doc! { "tenant_id": &tenant_id, "filename": &filename, "app_source": &app_source })
                 .await?
             {
                 Some(file_entry) => Ok(file_entry.into()),

@@ -20,7 +20,7 @@ impl BaseModule for FileManagerImagesModule {
     }
 
     fn module_version() -> i32 {
-        1
+        2
     }
 
     fn module_permissions() -> &'static [&'static str] {
@@ -43,16 +43,15 @@ impl MongoBaseModule for FileManagerImagesModule {
 
         log::info!("Create {} indexes...", collection_name);
 
-        if !indexes.contains(&"default_idx".to_string()) {
+        if !indexes.contains(&"tenant_default_idx".to_string()) {
 
-            let keys = doc! { "parent_filename": 1, "resize_slug": 1 };
+            let keys = doc! { "tenant_id": 1, "parent_filename": 1, "resize_slug": 1 };
 
             let options = IndexOptions::builder()
                 .unique(true)
-                .name(Some("default_idx".to_string()))
+                .name(Some("tenant_default_idx".to_string()))
                 .build();
 
-            // Create the index
             let index = IndexModel::builder()
                 .keys(keys)
                 .options(Some(options))

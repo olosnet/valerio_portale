@@ -14,7 +14,7 @@ use app_modules::{
 };
 use clap::{Arg, ArgAction, Command};
 use cornetti::{
-    core::traits::BaseModel,
+    core::{confs::TenantConf, traits::BaseModel},
     filemanager::{
         confs::FileManagerConf, helpers::upload_file_from_path,
         traits::FileManagerRepositoryTrait,
@@ -237,7 +237,7 @@ async fn cmd_catalog_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::
 
         let fm_conf = FileManagerConf::from_env();
         let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
-        let tenant = std::env::var("APP_TENANT_ID").unwrap_or_else(|_| "default".into());
+        let tenant = TenantConf::from_env().tenant_id;
 
         for obj in &with_images {
             if let Some(ref img) = obj.image_filename {
@@ -441,8 +441,8 @@ async fn cmd_images_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::e
     println!("Oggetti da processare: {}", objects.len());
 
     let fm_conf = FileManagerConf::from_env();
-        let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
-    let tenant = std::env::var("APP_TENANT_ID").unwrap_or_else(|_| "default".into());
+    let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
+    let tenant = TenantConf::from_env().tenant_id;
     let identity_email = std::env::var("APP_IMPORT_IDENTITY").unwrap_or_else(|_| "import@system".into());
 
     // Risolvi identity_id (ObjectId) cercando l'utente per email

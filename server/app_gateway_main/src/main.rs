@@ -54,6 +54,7 @@ pub struct AppState {
     pub templates: Arc<TemplatesService>,
     pub auth_conf: Arc<cornetti::auth::confs::JwtAuthConf>,
     pub base_conf: Arc<cornetti::core::confs::BaseConf>,
+    pub tenant_conf: Arc<cornetti::core::confs::TenantConf>,
     pub filemanager_conf: Arc<cornetti::filemanager::confs::FileManagerConf>,
     pub templates_conf: Arc<cornetti::templates::confs::TemplatesConf>,
     pub mail_conf: Arc<cornetti::mail::smtp::confs::SmtpMailConf>,
@@ -88,13 +89,12 @@ async fn main() -> std::io::Result<()> {
     let sessions_store_conf = cornetti::auth::confs::JWTStoreConf::from_env(&app_info.name);
 
     // Session store for JWT
-    let session_store: Arc<cornetti::redis::auth::RedisSessionStore> = Arc::new(
-        cornetti::redis::auth::RedisSessionStore::new(
+    let session_store: Arc<cornetti::redis::auth::RedisSessionStore> =
+        Arc::new(cornetti::redis::auth::RedisSessionStore::new(
             sessions_store_conf,
             redis_service.clone(),
             &app_info.name,
-        ),
-    );
+        ));
 
     let app_state: Arc<AppState> = Arc::new(AppState {
         mongo: mongo_service,
@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
         )),
         auth_conf: Arc::new(cornetti::auth::confs::JwtAuthConf::from_env()),
         base_conf: Arc::new(cornetti::core::confs::BaseConf::from_env()),
+        tenant_conf: Arc::new(cornetti::core::confs::TenantConf::from_env()),
         filemanager_conf: Arc::new(cornetti::filemanager::confs::FileManagerConf::from_env()),
         templates_conf: Arc::new(cornetti::templates::confs::TemplatesConf::from_env()),
         mail_conf: Arc::new(cornetti::mail::smtp::confs::SmtpMailConf::from_env()),
@@ -206,7 +207,9 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(auth_api::routes());
                     cfg.service(enums_api::routes(user_authorization_service.clone()));
                     cfg.service(groups_api::routes(user_authorization_service.clone()));
-                    cfg.service(filemanager_images_api::routes(app_state.base_conf.test_features));
+                    cfg.service(filemanager_images_api::routes(
+                        app_state.base_conf.test_features,
+                    ));
                     cfg.service(filemanager_api::routes(app_state.base_conf.test_features));
                     cfg.service(oggetti_astronomici_api::routes(
                         user_authorization_service.clone(),

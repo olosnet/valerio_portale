@@ -21,6 +21,7 @@ use crate::base::filemanager_images::FileManagerImagesModule;
 pub struct MongoImageFileManagerResize {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub _id: Option<CornettiObjectId>,
+    pub tenant_id: Option<String>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -77,6 +78,7 @@ impl From<ImagesFileManagerResizedRel> for MongoImageFileManagerResize {
     fn from(model: ImagesFileManagerResizedRel) -> Self {
         MongoImageFileManagerResize {
             _id: None,
+            tenant_id: None,
             created: Some(chrono::Utc::now()),
             modified: chrono::Utc::now(),
             width: model.width,
@@ -98,11 +100,12 @@ pub struct FileManagerImagesRepository {
 impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
     fn create(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         rel: ImagesFileManagerResizedRel,
     ) -> Pin<Box<dyn Future<Output = Result<ImagesFileManagerResizedRel, CornettiError>> + Send>>
     {
         let mut model: MongoImageFileManagerResize = rel.into();
+        model.tenant_id = Some(tenant_id.to_string());
         let collection_name: &'static str = MongoImageFileManagerResize::collection_name();
         let collection: Collection<MongoImageFileManagerResize> =
             self.mongo.db().collection(collection_name);
@@ -122,7 +125,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
 
     fn list(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         parent_filename: &str,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<ImagesFileManagerResizedRel>, CornettiError>> + Send>>
     {
@@ -130,6 +133,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
         let collection: Collection<MongoImageFileManagerResize> =
             self.mongo.db().collection(collection_name);
         let doc = doc! {
+            "tenant_id": tenant_id,
             "parent_filename": parent_filename,
         };
 
@@ -149,7 +153,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
 
     fn get(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         parent_filename: &str,
         slug: &str,
     ) -> Pin<Box<dyn Future<Output = Result<ImagesFileManagerResizedRel, CornettiError>> + Send>>
@@ -159,6 +163,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
             self.mongo.db().collection(collection_name);
 
         let filter: bson::Document = doc! {
+            "tenant_id": tenant_id,
             "parent_filename": parent_filename,
             "resize_slug": slug,
         };
@@ -173,7 +178,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
 
     fn delete(
         &self,
-        _tenant_id: &str,
+        tenant_id: &str,
         parent_filename: &str,
     ) -> Pin<Box<dyn Future<Output = Result<(), CornettiError>> + Send>> {
         let collection_name: &'static str = MongoImageFileManagerResize::collection_name();
@@ -181,6 +186,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
             self.mongo.db().collection(collection_name);
 
         let filter: bson::Document = doc! {
+            "tenant_id": tenant_id,
             "parent_filename": parent_filename,
         };
 
