@@ -285,11 +285,9 @@ pub mod authentication {
                 Box::pin(async move {
                     let mut status = status;
 
-                    if store.is_some() {
+                    if let Some(ref store) = store {
                         if claims.refresh {
                             status = match store
-                                .as_ref()
-                                .unwrap()
                                 .get_refresh_token(&tid, &claims.jti)
                                 .await
                             {
@@ -298,7 +296,7 @@ pub mod authentication {
                                 Err(_) => AuthenticationStatus::StoreError,
                             };
                         } else {
-                            status = match store.as_ref().unwrap().get_auth_token(&tid, &claims.jti).await
+                            status = match store.get_auth_token(&tid, &claims.jti).await
                             {
                                 Ok(Some(_)) => AuthenticationStatus::Valid,
                                 Ok(None) => AuthenticationStatus::InvalidToken,

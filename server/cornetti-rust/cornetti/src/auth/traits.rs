@@ -43,25 +43,25 @@ pub trait SessionStore {
     fn remove_auth_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> impl std::future::Future<Output = CornettiResult<usize>> + Send;
     /// Removes a specific refresh token by JTI. Returns the number of keys removed.
     fn remove_refresh_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> impl std::future::Future<Output = CornettiResult<usize>> + Send;
     /// Retrieves an auth token by JTI.
     fn get_auth_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> impl std::future::Future<Output = CornettiResult<Option<SessionStoreData>>> + Send;
     /// Retrieves a refresh token by JTI.
     fn get_refresh_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> impl std::future::Future<Output = CornettiResult<Option<SessionStoreData>>> + Send;
 
     /// Removes an entire session (auth + refresh tokens) for the given subject
@@ -69,20 +69,20 @@ pub trait SessionStore {
     fn remove_session(
         &self,
         tenant_id: &str,
-        sub: &String,
-        session_id: &String,
+        sub: &str,
+        session_id: &str,
     ) -> impl std::future::Future<Output = CornettiResult<usize>> + Send;
     /// Lists all active (non-expired) sessions for a subject.
     fn subject_sessions(
         &self,
         tenant_id: &str,
-        sub: &String,
+        sub: &str,
     ) -> impl std::future::Future<Output = CornettiResult<Vec<SessionStoreData>>> + Send;
     /// Clears all sessions for a subject. Returns the number of sessions cleared.
     fn clear_subject_sessions(
         &self,
         tenant_id: &str,
-        sub: &String,
+        sub: &str,
     ) -> impl std::future::Future<Output = CornettiResult<usize>> + Send;
 }
 
@@ -92,7 +92,7 @@ pub trait IdentityAuthorization {
     fn get_identity_permissions(
         &self,
         tenant_id: &str,
-        sub: &String,
+        sub: &str,
     ) -> impl std::future::Future<
         Output = CornettiResult<std::collections::HashMap<String, AuthorizationPermission>>,
     > + Send;

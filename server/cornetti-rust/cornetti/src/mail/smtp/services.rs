@@ -29,6 +29,7 @@ impl SendSmtpMailService {
     ///
     /// `AsyncSmtpTransport::relay()` and `starttls_relay()` call `.unwrap()` internally,
     /// panicking on invalid hostname/port.
+    #[allow(clippy::too_many_arguments)]
     pub async fn send_email(
         &self,
         from: Option<&str>,

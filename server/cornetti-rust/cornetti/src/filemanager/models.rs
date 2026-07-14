@@ -8,7 +8,7 @@ pub const RESOURCE_TYPE_GENERIC: usize = 0;
 #[derive(Serialize, Clone, Debug, ToSchema)]
 pub struct FileManager {
     /// Database identifier.
-    pub _id: String,
+    pub id: String,
     /// Creation timestamp.
     pub created: chrono::DateTime<chrono::Utc>,
     /// Last modification timestamp.
@@ -178,5 +178,87 @@ pub mod images {
         pub parent_filename: String,
         /// Resize slug identifier.
         pub resize_slug: String,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::filemanager::models::FileManagerInfo;
+
+    #[test]
+    fn file_manager_info() {
+        let allowed = vec!["jpg".into(), "png".into()];
+        let info = FileManagerInfo {
+            max_file_size: 10_485_760,
+            allowed_file_types: &allowed,
+        };
+        assert_eq!(info.max_file_size, 10_485_760);
+        assert_eq!(info.allowed_file_types.len(), 2);
+    }
+
+    #[test]
+    fn resource_type_generic() {
+        assert_eq!(super::RESOURCE_TYPE_GENERIC, 0);
+    }
+}
+
+#[cfg(all(test, feature = "filemanager-images"))]
+mod images_tests {
+    use crate::filemanager::models::images::{
+        ImageFileManagerResizeMode, ImageFormat, ImagesFileManagerResizedRel,
+    };
+
+    #[test]
+    fn image_format_from_str_png() {
+        assert_eq!(ImageFormat::from("png"), ImageFormat::Png);
+        assert_eq!(ImageFormat::from("image/png"), ImageFormat::Png);
+    }
+
+    #[test]
+    fn image_format_from_str_jpeg() {
+        assert_eq!(ImageFormat::from("jpeg"), ImageFormat::Jpeg);
+        assert_eq!(ImageFormat::from("jpg"), ImageFormat::Jpeg);
+        assert_eq!(ImageFormat::from("image/jpeg"), ImageFormat::Jpeg);
+    }
+
+    #[test]
+    fn image_format_from_str_webp() {
+        assert_eq!(ImageFormat::from("webp"), ImageFormat::Webp);
+        assert_eq!(ImageFormat::from("image/webp"), ImageFormat::Webp);
+    }
+
+    #[test]
+    fn image_format_from_str_unknown() {
+        assert_eq!(ImageFormat::from("gif"), ImageFormat::Unknown);
+        assert_eq!(ImageFormat::from("bmp"), ImageFormat::Unknown);
+    }
+
+    #[test]
+    fn image_format_from_string() {
+        let s = "png".to_string();
+        assert_eq!(ImageFormat::from(s), ImageFormat::Png);
+    }
+
+    #[test]
+    fn image_format_from_string_unknown() {
+        let s = "tiff".to_string();
+        assert_eq!(ImageFormat::from(s), ImageFormat::Unknown);
+    }
+
+    #[test]
+    fn image_file_manager_resized_rel_construction() {
+        let rel = ImagesFileManagerResizedRel {
+            width: 100,
+            height: 200,
+            quality: Some(80),
+            mode: ImageFileManagerResizeMode::Fit,
+            format: ImageFormat::Jpeg,
+            filename: "file_thumb.jpg".into(),
+            parent_filename: "file.jpg".into(),
+            resize_slug: "thumb".into(),
+        };
+        assert_eq!(rel.width, 100);
+        assert_eq!(rel.height, 200);
+        assert_eq!(rel.quality, Some(80));
     }
 }

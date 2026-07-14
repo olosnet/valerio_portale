@@ -64,6 +64,7 @@ impl MailService {
     ///
     /// Returns a `CornettiError` if sending fails (network error, authentication
     /// failure, etc.).
+    #[allow(clippy::too_many_arguments)]
     pub async fn send_mail(
         &self,
         from: Option<&str>,

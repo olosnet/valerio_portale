@@ -126,3 +126,36 @@ See `images` submodule in `src/actix/filemanager.rs`.
 - THEN the main entry SHALL be created
 - AND resized variants SHALL be generated for each configured resize spec
 - AND resize relationship records SHALL be persisted
+
+### Requirement: DevExtreme pagination query params
+
+The system SHALL provide `DevExtremePaginationQueryParams` and
+`DevExtremeJsonPaginationQueryParams` as `serde::Deserialize` structs for use
+with `actix_web::web::Query<T>`. Both types SHALL implement `to_raw_input()`
+converting the deserialized HTTP query parameters into a `RawPaginationInput`.
+
+`DevExtremePaginationQueryParams` SHALL support the comma-delimited format with
+repeatable `sort` and `filter` query parameters. It SHALL default `skip` to 0,
+`take` to 20, and `require_total_count` to `false` when not provided. It SHALL
+set `filter_json` and `sort_json` to `None` in the output, using only the
+comma-delimited inputs.
+
+`DevExtremeJsonPaginationQueryParams` SHALL support JSON-serialized `sort` and
+`filter` parameters. `to_raw_input()` SHALL parse the JSON strings into
+`serde_json::Value` for `filter_json` and `sort_json`. For `search_expr`, it
+SHALL attempt JSON-array parsing and fall back to a single-element vector with
+quotes stripped.
+
+See `src/actix/pagination.rs`.
+
+#### Scenario: Comma-delimited query params
+- WHEN an HTTP request carries `?skip=10&take=50&requireTotalCount=true&sort=name,asc&filter=name,contains,Mario`
+- AND `web::Query<DevExtremePaginationQueryParams>` deserializes it
+- THEN `to_raw_input()` SHALL produce a `RawPaginationInput` with `skip=10`, `take=50`,
+  `require_total_count=true`, `sort_input=Some(["name,asc"])`, `filter_input=Some(["name,contains,Mario"])`
+
+#### Scenario: JSON query params
+- WHEN an HTTP request carries `?sort=[{"selector":"name","desc":false}]&filter=["name","contains","Mario"]`
+- AND `web::Query<DevExtremeJsonPaginationQueryParams>` deserializes it
+- THEN `to_raw_input()` SHALL produce a `RawPaginationInput` with `sort_json` and `filter_json` set
+  to the parsed JSON values

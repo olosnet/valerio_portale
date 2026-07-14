@@ -83,7 +83,7 @@ async fn add_to_store<S: SessionStore>(
     req: HttpRequest,
     session_store: Option<Arc<S>>,
 ) -> CornettiResult<()> {
-    if session_store.is_some() {
+    if let Some(store) = session_store {
         let ip_addr: String = req
             .peer_addr()
             .map(|addr| addr.ip().to_string())
@@ -96,11 +96,9 @@ async fn add_to_store<S: SessionStore>(
             .map(|s| s.to_string())
             .unwrap_or_default();
 
-        let store = session_store.unwrap();
-
-        if refresh_token.is_some() {
+        if let Some(refresh_token) = refresh_token {
             let refresh_session_store_data = SessionStoreData::new(
-                refresh_token.as_ref().unwrap().claims.clone(),
+                refresh_token.claims.clone(),
                 ip_addr.clone(),
                 user_agent.clone(),
             );
@@ -157,11 +155,9 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         None
     };
 
-    let refresh_token_encoded: Option<String> = if refresh_token.is_some() {
+    let refresh_token_encoded: Option<String> = if let Some(refresh_token) = refresh_token.as_ref() {
         Some(
             refresh_token
-                .as_ref()
-                .unwrap()
                 .encode(conf)
                 .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?,
         )
@@ -193,11 +189,11 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         };
 
     let csrf_refresh_cookie: Option<Cookie> =
-        if conf.jwt_csrf_cookie_enable && refresh_token.is_some() {
+        if let (true, Some(token)) = (conf.jwt_csrf_cookie_enable, refresh_token.as_ref()) {
             Some(
                 Cookie::build(
                     &conf.jwt_csrf_refresh_cookie_name,
-                    refresh_token.as_ref().unwrap().claims.csrf.clone().unwrap(),
+                    token.claims.csrf.clone().unwrap(),
                 )
                 .path(&conf.jwt_csrf_refresh_cookie_path)
                 .http_only(false)

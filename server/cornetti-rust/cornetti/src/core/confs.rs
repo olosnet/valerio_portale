@@ -106,3 +106,27 @@ impl TenantConf {
         TenantConf { tenant_id }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base_conf_defaults() {
+        let conf = BaseConf::from_env();
+        assert_eq!(conf.host, "localhost");
+        assert_eq!(conf.port, 8080);
+        assert!(conf.enable_swagger);
+        assert_eq!(conf.tmp_directory, "/tmp");
+        assert_eq!(conf.api_prefix, "");
+        assert_eq!(conf.app_id, "app_default");
+        assert_eq!(conf.shared_resources_id, "shared_res_app_default");
+        assert!(!conf.test_features);
+    }
+
+    #[test]
+    fn tenant_conf_defaults() {
+        let conf = TenantConf::from_env();
+        assert_eq!(conf.tenant_id, "DEFAULT");
+    }
+}

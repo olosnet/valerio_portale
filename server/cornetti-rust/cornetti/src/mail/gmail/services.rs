@@ -57,6 +57,7 @@ impl SendGmailMailService {
     ///
     /// Returns a `CornettiError` if address parsing, token acquisition,
     /// or the Gmail API request fails.
+    #[allow(clippy::too_many_arguments)]
     pub async fn send_email(
         &self,
         from: Option<&str>,
@@ -134,11 +135,10 @@ impl SendGmailMailService {
     async fn get_access_token(&self, impersonate: &str) -> CornettiResult<String> {
         let mut cached = self.token.lock().await;
 
-        if let Some(ref cached_token) = *cached {
-            if Instant::now() < cached_token.expires_at {
+        if let Some(ref cached_token) = *cached
+            && Instant::now() < cached_token.expires_at {
                 return Ok(cached_token.access_token.clone());
             }
-        }
 
         let now = chrono::Utc::now().timestamp() as u64;
 

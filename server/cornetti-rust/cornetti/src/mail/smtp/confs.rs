@@ -14,6 +14,7 @@ pub enum SmtpMailTransport {
 }
 
 /// Error for unrecognized SMTP transport strings.
+#[derive(Debug)]
 pub struct SmtpMailTransportParseError;
 
 impl FromStr for SmtpMailTransport {
@@ -79,5 +80,59 @@ impl SmtpMailConf {
             transport,
             email_from,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn smtp_mail_transport_from_str_smtp_tls() {
+        assert!(matches!(
+            SmtpMailTransport::from_str("smtp_tls").unwrap(),
+            SmtpMailTransport::SmtpTls
+        ));
+    }
+
+    #[test]
+    fn smtp_mail_transport_from_str_smtp_starttls() {
+        assert!(matches!(
+            SmtpMailTransport::from_str("smtp_starttls").unwrap(),
+            SmtpMailTransport::SmtpStarttls
+        ));
+    }
+
+    #[test]
+    fn smtp_mail_transport_from_str_unencrypted_localhost() {
+        assert!(matches!(
+            SmtpMailTransport::from_str("unencrypted_localhost").unwrap(),
+            SmtpMailTransport::UnencryptedLocalhost
+        ));
+    }
+
+    #[test]
+    fn smtp_mail_transport_from_str_case_insensitive() {
+        assert!(matches!(
+            SmtpMailTransport::from_str("SMTP_TLS").unwrap(),
+            SmtpMailTransport::SmtpTls
+        ));
+        assert!(matches!(
+            SmtpMailTransport::from_str("Smtp_Starttls").unwrap(),
+            SmtpMailTransport::SmtpStarttls
+        ));
+    }
+
+    #[test]
+    fn smtp_mail_transport_from_str_unknown_errors() {
+        let result = SmtpMailTransport::from_str("invalid");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn smtp_mail_transport_from_str_empty_errors() {
+        let result = SmtpMailTransport::from_str("");
+        assert!(result.is_err());
     }
 }

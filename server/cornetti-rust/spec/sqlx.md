@@ -75,3 +75,64 @@ See `src/sqlx/errors.rs`.
 #### Scenario: Row not found
 - WHEN the error is `sqlx::Error::RowNotFound`
 - THEN `From<sqlx::Error>` SHALL return a 404 `CornettiError`
+
+### Requirement: SQL pagination query builder
+
+`SqlxPagination` SHALL generate SQL strings for paginated queries that embed
+values directly (properly escaped), with cross-database compatibility for
+PostgreSQL, MySQL, and SQLite.
+
+The builder SHALL provide the following composable methods:
+
+- `build_where(filter, table, join_dict)` — generates a WHERE clause (without the
+  `WHERE` keyword) from a `FilterNode`. Empty filters SHALL produce `"1=1"`.
+  `Not` nodes SHALL produce `NOT (...)`. String values SHALL be escaped by
+  doubling single quotes.
+
+- `build_order_by(sort, table, join_dict)` — generates `" ORDER BY col ASC, ..."`
+  from `SortDescriptor` slices. Returns an empty string for empty sort.
+
+- `build_joins(filter, sort, table, join_dict)` — generates JOIN clauses and
+  returns `(join_sql, has_join_filter)`. `has_join_filter` is `true` when filter
+  expressions reference joined tables, requiring `DISTINCT` in the SELECT.
+
+- `build_count_sql(table, pk_column, where_clause, join_clause, distinct)` —
+  generates a `SELECT COUNT(*) FROM ...` or `SELECT COUNT(DISTINCT table.pk) FROM ...`
+  query.
+
+- `build_data_sql(table, where_clause, join_clause, order_clause, skip, take,
+  distinct)` — generates `SELECT table.* FROM ... LIMIT take OFFSET skip`. When
+  `distinct` is true, uses `SELECT DISTINCT table.*`.
+
+Operator-specific SQL generation:
+
+- `Eq`: `col = literal`, with special cases for `Boolean(true)` → `IS TRUE`,
+  `Boolean(false)` → `IS FALSE`, `Null` → `IS NULL`.
+- `NotEq`: `col <> literal`, with `IS NOT TRUE`, `IS NOT FALSE`, `IS NOT NULL`.
+- `Contains`/`NotContains`: `LIKE '%value%'` / `NOT LIKE '%value%'`.
+- `StartsWith`: `LIKE 'value%'`.
+- `EndsWith`: `LIKE '%value'`.
+- `Gt`, `Gte`, `Lt`, `Lte`: standard comparison operators.
+
+The caller SHALL be responsible for wrapping the generated SQL string with
+`AssertSqlSafe` (or using `QueryBuilder`) and for executing it via
+`sqlx::query_as` / `sqlx::query_scalar`.
+
+See `src/sqlx/pagination.rs`.
+
+#### Scenario: WHERE clause from filter
+- WHEN `SqlxPagination::build_where` is called with a `FilterNode::Leaf { field: "name", operator: Contains, value: String("John") }`
+- THEN the generated SQL SHALL be `table.name LIKE '%John%'`
+
+#### Scenario: NOT filter
+- WHEN `SqlxPagination::build_where` is called with a `FilterNode::Not(...)`
+- THEN the generated SQL SHALL be `NOT (...)`
+
+#### Scenario: Boolean equality uses IS TRUE
+- WHEN a filter leaf has `operator: Eq` and `value: Boolean(true)`
+- THEN the generated SQL SHALL be `col IS TRUE`
+
+#### Scenario: JOIN with DISTINCT
+- WHEN `SqlxPagination::build_joins` returns `has_join_filter = true`
+- THEN `build_data_sql` SHALL use `SELECT DISTINCT table.*`
+- AND `build_count_sql` SHALL use `COUNT(DISTINCT table.pk)`

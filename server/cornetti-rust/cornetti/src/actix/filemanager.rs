@@ -114,7 +114,7 @@ pub mod services {
                 &file_entry.app_source.unwrap_or("unknown".to_owned()),
                 &file_entry.uploader_id.unwrap_or("unknown".to_owned()),
                 &file_entry.filename,
-                &self.conf,
+                self.conf,
             )
             .await?;
 
@@ -181,13 +181,13 @@ pub mod services {
                 &file_entry.app_source.unwrap_or("unknown".to_owned()),
                 &file_entry.uploader_id.unwrap_or("unknown".to_owned()),
                 &file_entry.filename,
-                &self.conf,
+                self.conf,
             )
             .await?;
 
             std::fs::remove_file(file_entry_path)?;
 
-            self.repository.delete(tenant_id, file_entry._id).await
+            self.repository.delete(tenant_id, file_entry.id).await
         }
     }
 
@@ -305,18 +305,13 @@ pub mod services {
                 let image_format: ImageFormat = main_entry
                     .filetype
                     .clone()
-                    .unwrap()
-                    .try_into()
-                    .map_err(|_| {
-                        crate::core::errors::internal_server_error::generic_error(
-                            "Can't recognize image format".to_owned(),
-                        )
-                    })?;
+                    .map(ImageFormat::from)
+                    .unwrap_or(ImageFormat::Unknown);
 
                 let mut uploaded: Vec<FileManager> = vec![main_entry.clone()];
 
                 let uploaded_source_file_path =
-                    retrieve_file_entry_path(tenant_id, &app_source, &identity_id, &main_filename, &self.conf)
+                    retrieve_file_entry_path(tenant_id, app_source, identity_id, &main_filename, &self.conf)
                         .await?;
 
                 let (image_data, image_format) =
@@ -353,7 +348,7 @@ pub mod services {
                         &self.conf.upload_directory,
                         tenant_id,
                         app_source,
-                        &identity_id,
+                        identity_id,
                     ))
                     .join(&filename);
 
@@ -361,7 +356,7 @@ pub mod services {
                         &image_data,
                         &image_format,
                         &resize_destination_path,
-                        &resize,
+                        resize,
                     )
                     .map_err(|e| {
                         crate::core::errors::internal_server_error::generic_error(format!(
@@ -466,7 +461,7 @@ pub mod services {
 
                     std::fs::remove_file(file_entry_path)?;
 
-                    self.repository.delete(tenant_id, file_entry._id).await?;
+                    self.repository.delete(tenant_id, file_entry.id).await?;
                 }
 
                 self.repository_rel.delete(tenant_id, parent_filename).await?;

@@ -27,10 +27,10 @@ pub fn get_filestem_extension(path: &Path) -> CornettiResult<(String, String)> {
     Ok((file_stem, extension))
 }
 
-pub fn is_allowed_file_type(extension: &String, allowed_types: &[String]) -> bool {
+pub fn is_allowed_file_type(extension: &str, allowed_types: &[String]) -> bool {
     allowed_types
         .iter()
-        .any(|t| t.eq_ignore_ascii_case(extension.as_str()))
+        .any(|t| t.eq_ignore_ascii_case(extension))
 }
 
 pub fn gen_fs_directory(upload_directory: &str, tenant_id: &str, app_source: &str, user_id: &str) -> String {
@@ -101,11 +101,12 @@ pub async fn retrieve_file_entry_path(
     Ok(file_path)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn upload_file_from_path(
     file_path: &std::path::Path,
     filename: &str,
     filesize: usize,
-    allowed_types: &Vec<String>,
+    allowed_types: &[String],
     upload_directory: &str,
     tenant_id: &str,
     app_source: &str,
@@ -157,6 +158,86 @@ pub fn upload_file_from_path(
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_filestem_extension_str_basic() {
+        let (stem, ext) = get_filestem_extension_str("myfile.txt").unwrap();
+        assert_eq!(stem, "myfile");
+        assert_eq!(ext, "txt");
+    }
+
+    #[test]
+    fn get_filestem_extension_str_jpeg() {
+        let (stem, ext) = get_filestem_extension_str("photo.JPEG").unwrap();
+        assert_eq!(stem, "photo");
+        assert_eq!(ext, "jpeg");
+    }
+
+    #[test]
+    fn get_filestem_extension_str_png() {
+        let (stem, ext) = get_filestem_extension_str("image.PNG").unwrap();
+        assert_eq!(stem, "image");
+        assert_eq!(ext, "png");
+    }
+
+    #[test]
+    fn get_filestem_extension_str_no_extension() {
+        let (stem, ext) = get_filestem_extension_str("noext").unwrap();
+        assert_eq!(stem, "noext");
+        assert_eq!(ext, "");
+    }
+
+    #[test]
+    fn get_filestem_extension_str_multiple_dots() {
+        let (stem, ext) = get_filestem_extension_str("archive.tar.gz").unwrap();
+        assert_eq!(stem, "archive.tar");
+        assert_eq!(ext, "gz");
+    }
+
+    #[test]
+    fn get_filestem_extension_str_invalid() {
+        let result = get_filestem_extension_str("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().status, 400);
+    }
+
+    #[test]
+    fn is_allowed_file_type_match() {
+        let allowed = vec!["jpg".into(), "png".into(), "gif".into()];
+        assert!(is_allowed_file_type("jpg", &allowed));
+        assert!(is_allowed_file_type("PNG", &allowed));
+        assert!(is_allowed_file_type("GIF", &allowed));
+    }
+
+    #[test]
+    fn is_allowed_file_type_no_match() {
+        let allowed = vec!["jpg".into(), "png".into()];
+        assert!(!is_allowed_file_type("exe", &allowed));
+        assert!(!is_allowed_file_type("pdf", &allowed));
+    }
+
+    #[test]
+    fn is_allowed_file_type_empty_list() {
+        let allowed: Vec<String> = vec![];
+        assert!(!is_allowed_file_type("jpg", &allowed));
+    }
+
+    #[test]
+    fn gen_fs_directory_basic() {
+        let dir = gen_fs_directory("/uploads", "tenant1", "app1", "user1");
+        assert_eq!(dir, "/uploads/tenant1/app1/user1");
+    }
+
+    #[test]
+    fn gen_fs_directory_different_params() {
+        let dir = gen_fs_directory("/tmp/files", "TENANT", "myapp", "user_42");
+        assert_eq!(dir, "/tmp/files/TENANT/myapp/user_42");
+    }
+}
+
 #[cfg(feature = "filemanager-images")]
 pub mod images {
     use crate::filemanager::{
@@ -193,7 +274,7 @@ pub mod images {
         ];
 
         let mut curr_format = start_image_format.clone();
-        let mut image_data = read_image(src, &start_image_format);
+        let mut image_data = read_image(src, start_image_format);
 
         if image_data.is_err() {
             log::debug!(
@@ -245,22 +326,22 @@ pub mod images {
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Fill => gray8::resize_gray8_fill(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Stretch => gray8::resize_gray8_stretch(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
             },
             ImageReadTypeMode::GRAYA16 => match resize.mode {
@@ -268,22 +349,22 @@ pub mod images {
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Fill => gray16::resize_gray16_fill(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Stretch => gray16::resize_gray16_stretch(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
             },
             ImageReadTypeMode::RGB24 => match resize.mode {
@@ -291,22 +372,22 @@ pub mod images {
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Fill => rgb24::resize_rgb_fill(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Stretch => rgb24::resize_rgb_stretch(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
             },
             ImageReadTypeMode::RGBA32 => match resize.mode {
@@ -314,22 +395,22 @@ pub mod images {
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Fill => rgba32::resize_rgba_fill(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
                 ImageFileManagerResizeMode::Stretch => rgba32::resize_rgba_stretch(
                     &image_data.data,
                     image_data.width,
                     image_data.height,
-                    resize.width as usize,
-                    resize.height as usize,
+                    resize.width,
+                    resize.height,
                 ),
             },
         }?;
@@ -497,8 +578,8 @@ pub mod images {
             Ok(ImageReadResult {
                 width: info.width as usize,
                 height: info.height as usize,
-                data: data,
-                mode: mode,
+                data,
+                mode,
             })
         }
     }
@@ -618,8 +699,8 @@ pub mod images {
             let resized = binding.as_rgb_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 RGB8,
@@ -660,8 +741,8 @@ pub mod images {
             let resized = binding.as_rgb_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 target_width,
                 target_height,
                 RGB8,
@@ -693,8 +774,8 @@ pub mod images {
             let resized = binding.as_rgb_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 RGB8,
@@ -765,8 +846,8 @@ pub mod images {
             let resized = binding.as_rgba_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 RGBA8,
@@ -808,8 +889,8 @@ pub mod images {
             let resized = binding.as_rgba_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 target_width,
                 target_height,
                 RGBA8,
@@ -841,8 +922,8 @@ pub mod images {
             let resized = binding.as_rgba_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 RGBA8,
@@ -913,8 +994,8 @@ pub mod images {
             let resized = binding.as_gray_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 resize::Pixel::Gray8,
@@ -955,8 +1036,8 @@ pub mod images {
             let resized = binding.as_gray_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 target_width,
                 target_height,
                 resize::Pixel::Gray8,
@@ -988,8 +1069,8 @@ pub mod images {
             let resized = binding.as_gray_mut();
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 resize::Pixel::Gray8,
@@ -1065,8 +1146,8 @@ pub mod images {
             let mut resized_gray16 = vec![rgb::Gray::<u16>::new(0); new_width * new_height];
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 resize::Pixel::Gray16,
@@ -1126,8 +1207,8 @@ pub mod images {
             let mut resized_gray16 = vec![rgb::Gray::<u16>::new(0); target_width * target_height];
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 target_width,
                 target_height,
                 resize::Pixel::Gray16,
@@ -1171,8 +1252,8 @@ pub mod images {
             let mut resized_gray16 = vec![rgb::Gray::<u16>::new(0); new_width * new_height];
 
             let mut resizer = resize::new(
-                src_width as usize,
-                src_height as usize,
+                src_width,
+                src_height,
                 new_width,
                 new_height,
                 resize::Pixel::Gray16,

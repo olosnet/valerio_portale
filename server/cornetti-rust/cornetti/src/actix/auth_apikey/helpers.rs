@@ -67,11 +67,11 @@ pub mod utoipa {
                 None
             };
 
-            path.get.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::GET)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::GET)
+            let apply = |op: &mut utoipa::openapi::path::Operation, method: &CornettiHttpMethod| {
+                let insert = if let Some(rule) = &exclude_rule {
+                    !rule.method_match(method.clone())
+                } else if let Some(rule) = &only_rule {
+                    rule.method_match(method.clone())
                 } else {
                     default
                 };
@@ -81,103 +81,29 @@ pub mod utoipa {
                         .get_or_insert_with(Vec::new)
                         .extend(sec_requirements.clone());
                 }
-            });
+            };
 
-            path.post.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::POST)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::POST)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
-
-            path.put.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::PUT)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::PUT)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
-
-            path.patch.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::PATCH)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::PATCH)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
-
-            path.delete.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::DELETE)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::DELETE)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
-
-            path.head.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::HEAD)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::HEAD)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
-
-            path.options.as_mut().map(|op| {
-                let insert = if let Some(rule) = exclude_rule {
-                    !rule.method_match(CornettiHttpMethod::OPTIONS)
-                } else if let Some(rule) = only_rule {
-                    rule.method_match(CornettiHttpMethod::OPTIONS)
-                } else {
-                    default
-                };
-
-                if insert {
-                    op.security
-                        .get_or_insert_with(Vec::new)
-                        .extend(sec_requirements.clone());
-                }
-            });
+            if let Some(op) = path.get.as_mut() {
+                apply(op, &CornettiHttpMethod::GET);
+            }
+            if let Some(op) = path.post.as_mut() {
+                apply(op, &CornettiHttpMethod::POST);
+            }
+            if let Some(op) = path.put.as_mut() {
+                apply(op, &CornettiHttpMethod::PUT);
+            }
+            if let Some(op) = path.patch.as_mut() {
+                apply(op, &CornettiHttpMethod::PATCH);
+            }
+            if let Some(op) = path.delete.as_mut() {
+                apply(op, &CornettiHttpMethod::DELETE);
+            }
+            if let Some(op) = path.head.as_mut() {
+                apply(op, &CornettiHttpMethod::HEAD);
+            }
+            if let Some(op) = path.options.as_mut() {
+                apply(op, &CornettiHttpMethod::OPTIONS);
+            }
         });
     }
 }

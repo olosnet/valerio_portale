@@ -253,3 +253,128 @@ pub mod utoipa {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    mod common_tests {
+        use crate::core::helpers::common::apply_api_prefix;
+
+        #[test]
+        fn apply_api_prefix_empty_prefix_keeps_path() {
+            assert_eq!(apply_api_prefix("", "/api/users"), "/api/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_empty_prefix_normalizes_no_slash() {
+            assert_eq!(apply_api_prefix("", "api/users"), "/api/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_empty_prefix_root() {
+            assert_eq!(apply_api_prefix("", "/"), "/");
+        }
+
+        #[test]
+        fn apply_api_prefix_empty_prefix_empty_path() {
+            assert_eq!(apply_api_prefix("", ""), "/");
+        }
+
+        #[test]
+        fn apply_api_prefix_with_prefix() {
+            assert_eq!(apply_api_prefix("v1", "/users"), "/v1/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_with_prefix_no_leading_slash() {
+            assert_eq!(apply_api_prefix("v1", "users"), "/v1/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_root_path() {
+            assert_eq!(apply_api_prefix("api", "/"), "api/");
+        }
+
+        #[test]
+        fn apply_api_prefix_empty_path_with_prefix() {
+            assert_eq!(apply_api_prefix("v2", ""), "v2/");
+        }
+
+        #[test]
+        fn apply_api_prefix_trailing_slash_on_prefix() {
+            assert_eq!(apply_api_prefix("/v1/", "/users"), "/v1/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_trailing_slash_on_path() {
+            assert_eq!(apply_api_prefix("v1", "/users/"), "/v1/users/");
+        }
+
+        #[test]
+        fn apply_api_prefix_double_slash_cleanup() {
+            assert_eq!(apply_api_prefix("/v1/", "/users"), "/v1/users");
+        }
+
+        #[test]
+        fn apply_api_prefix_nested_path() {
+            assert_eq!(apply_api_prefix("api", "/users/123/details"), "/api/users/123/details");
+        }
+    }
+
+    mod sec_tests {
+        use crate::core::helpers::sec::{hash_password, random_pass, verify_password};
+
+        #[test]
+        fn hash_and_verify_password() {
+            let password = "my-secret-password".to_string();
+            let hash = hash_password(&password);
+            assert!(verify_password(&hash, "my-secret-password"));
+            assert!(!verify_password(&hash, "wrong-password"));
+        }
+
+        #[test]
+        fn hash_and_verify_empty_password() {
+            let password = "".to_string();
+            let hash = hash_password(&password);
+            assert!(verify_password(&hash, ""));
+        }
+
+        #[test]
+        fn hash_is_stable() {
+            let password = "test".to_string();
+            let hash = hash_password(&password);
+            assert!(hash.starts_with("$argon2"));
+        }
+
+        #[test]
+        fn random_pass_default_all_types() {
+            let result = random_pass(32, None);
+            assert_eq!(result.len(), 32);
+        }
+
+        #[test]
+        fn random_pass_chars_only() {
+            let result = random_pass(20, Some(&["chars"]));
+            assert_eq!(result.len(), 20);
+            assert!(result.chars().all(|c| c.is_alphabetic()));
+        }
+
+        #[test]
+        fn random_pass_digits_only() {
+            let result = random_pass(10, Some(&["digits"]));
+            assert_eq!(result.len(), 10);
+            assert!(result.chars().all(|c| c.is_ascii_digit()));
+        }
+
+        #[test]
+        fn random_pass_chars_and_digits() {
+            let result = random_pass(24, Some(&["chars", "digits"]));
+            assert_eq!(result.len(), 24);
+        }
+
+        #[test]
+        fn random_pass_zero_length() {
+            let result = random_pass(0, None);
+            assert_eq!(result.len(), 0);
+        }
+    }
+}

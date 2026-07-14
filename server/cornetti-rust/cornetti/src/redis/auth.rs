@@ -40,19 +40,19 @@ impl RedisSessionStore {
         }
     }
 
-    fn auth_key(&self, tenant_id: &str, jti: &String) -> String {
+    fn auth_key(&self, tenant_id: &str, jti: &str) -> String {
         format!("{}:{}{}:auth:{}", self.store_conf.store_name, tenant_id, self.app_segment(), jti)
     }
 
-    fn refresh_key(&self, tenant_id: &str, jti: &String) -> String {
+    fn refresh_key(&self, tenant_id: &str, jti: &str) -> String {
         format!("{}:{}{}:refresh:{}", self.store_conf.store_name, tenant_id, self.app_segment(), jti)
     }
 
-    fn session_key(&self, tenant_id: &str, session_id: &String) -> String {
+    fn session_key(&self, tenant_id: &str, session_id: &str) -> String {
         format!("{}:{}{}:sessions:{}", self.store_conf.store_name, tenant_id, self.app_segment(), session_id)
     }
 
-    fn users_sessions_key(&self, tenant_id: &str, subject: &String) -> String {
+    fn users_sessions_key(&self, tenant_id: &str, subject: &str) -> String {
         format!("{}:{}{}:users:{}:sessions", self.store_conf.store_name, tenant_id, self.app_segment(), subject)
     }
 }
@@ -95,7 +95,7 @@ impl SessionStore for RedisSessionStore {
         Ok(())
     }
 
-    async fn remove_auth_token(&self, tenant_id: &str, jti: &String) -> CornettiResult<usize> {
+    async fn remove_auth_token(&self, tenant_id: &str, jti: &str) -> CornettiResult<usize> {
         let mut connection = self
             .redis_conn
             .client()
@@ -104,7 +104,7 @@ impl SessionStore for RedisSessionStore {
         Ok(connection.del(self.auth_key(tenant_id, jti)).await?)
     }
 
-    async fn remove_refresh_token(&self, tenant_id: &str, jti: &String) -> CornettiResult<usize> {
+    async fn remove_refresh_token(&self, tenant_id: &str, jti: &str) -> CornettiResult<usize> {
         let mut connection = self
             .redis_conn
             .client()
@@ -116,7 +116,7 @@ impl SessionStore for RedisSessionStore {
     async fn get_auth_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> CornettiResult<Option<SessionStoreData>> {
         let mut connection = self
             .redis_conn
@@ -137,7 +137,7 @@ impl SessionStore for RedisSessionStore {
     async fn get_refresh_token(
         &self,
         tenant_id: &str,
-        jti: &String,
+        jti: &str,
     ) -> CornettiResult<Option<SessionStoreData>> {
         let mut connection = self
             .redis_conn
@@ -159,8 +159,8 @@ impl SessionStore for RedisSessionStore {
     async fn remove_session(
         &self,
         tenant_id: &str,
-        sub: &String,
-        session_id: &String,
+        sub: &str,
+        session_id: &str,
     ) -> CornettiResult<usize> {
         let mut connection = self
             .redis_conn
@@ -170,8 +170,8 @@ impl SessionStore for RedisSessionStore {
 
         let session_key = self.session_key(tenant_id, session_id);
 
-        let auth_tkn = connection.hget(&session_key, "auth").await?;
-        let refresh_tkn = connection.hget(&session_key, "refresh").await?;
+        let auth_tkn: Option<String> = connection.hget(&session_key, "auth").await?;
+        let refresh_tkn: Option<String> = connection.hget(&session_key, "refresh").await?;
 
         let mut removed: usize = 0;
 
@@ -191,7 +191,7 @@ impl SessionStore for RedisSessionStore {
         Ok(removed)
     }
 
-    async fn subject_sessions(&self, tenant_id: &str, sub: &String) -> CornettiResult<Vec<SessionStoreData>> {
+    async fn subject_sessions(&self, tenant_id: &str, sub: &str) -> CornettiResult<Vec<SessionStoreData>> {
         let mut connection = self
             .redis_conn
             .client()
@@ -214,7 +214,7 @@ impl SessionStore for RedisSessionStore {
         Ok(sessions)
     }
 
-    async fn clear_subject_sessions(&self, tenant_id: &str, sub: &String) -> CornettiResult<usize> {
+    async fn clear_subject_sessions(&self, tenant_id: &str, sub: &str) -> CornettiResult<usize> {
         let mut connection = self
             .redis_conn
             .client()

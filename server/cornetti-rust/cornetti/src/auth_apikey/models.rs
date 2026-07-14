@@ -132,6 +132,12 @@ impl AuthApiKeyStored {
     }
 }
 
+impl Default for AuthApiKeyStored {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<AuthApiKeyStored> for AuthApiKey {
     /// Converts a stored representation to the public-facing representation,
     /// omitting the hashed key value.
@@ -159,5 +165,93 @@ impl From<AuthApiKeyUpdate> for AuthApiKeyUpdateData {
             enabled: value.enabled,
             modified: chrono::Utc::now(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auth_api_key_stored_new_has_id() {
+        let stored = AuthApiKeyStored::new();
+        assert!(!stored.id.is_empty());
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_default_false() {
+        let stored = AuthApiKeyStored::new();
+        assert!(!stored.default);
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_enabled_true() {
+        let stored = AuthApiKeyStored::new();
+        assert!(stored.enabled);
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_has_created() {
+        let stored = AuthApiKeyStored::new();
+        assert!(stored.created.is_some());
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_unique_id() {
+        let s1 = AuthApiKeyStored::new();
+        let s2 = AuthApiKeyStored::new();
+        assert_ne!(s1.id, s2.id);
+    }
+
+    #[test]
+    fn auth_api_key_create_response_new() {
+        let stored = AuthApiKeyStored::new();
+        let api_key = AuthApiKey::from(stored.clone());
+        let resp = AuthApiKeyCreateResponse::new(api_key, "generated_key".into());
+        assert_eq!(resp.generated_api_key, "generated_key");
+        assert_eq!(resp.item.id, stored.id);
+    }
+
+    #[test]
+    fn from_auth_api_key_stored_to_auth_api_key() {
+        let stored = AuthApiKeyStored {
+            id: "id1".into(), app_id: "app1".into(), name: "test".into(),
+            resource_id: Some("res1".into()), key: "hashed".into(),
+            note: Some("note1".into()), enabled: true, default: false,
+            created: Some(chrono::Utc::now()), modified: chrono::Utc::now(),
+        };
+        let api_key = AuthApiKey::from(stored);
+        assert_eq!(api_key.id, "id1");
+        assert_eq!(api_key.app_id, "app1");
+        assert_eq!(api_key.name, "test");
+        assert_eq!(api_key.resource_id, Some("res1".into()));
+        assert_eq!(api_key.note, Some("note1".into()));
+    }
+
+    #[test]
+    fn from_auth_api_key_update_to_update_data() {
+        let update = AuthApiKeyUpdate {
+            name: "updated".into(),
+            resource_id: Some("r2".into()),
+            note: Some("note".into()),
+            enabled: false,
+        };
+        let data = AuthApiKeyUpdateData::from(update);
+        assert_eq!(data.name, "updated");
+        assert_eq!(data.resource_id, Some("r2".into()));
+        assert_eq!(data.note, Some("note".into()));
+        assert!(!data.enabled);
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_app_id_empty() {
+        let stored = AuthApiKeyStored::new();
+        assert_eq!(stored.app_id, "");
+    }
+
+    #[test]
+    fn auth_api_key_stored_new_key_empty() {
+        let stored = AuthApiKeyStored::new();
+        assert_eq!(stored.key, "");
     }
 }

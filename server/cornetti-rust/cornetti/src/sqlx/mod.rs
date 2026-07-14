@@ -9,4 +9,5 @@ compile_error!(
 
 pub mod confs;
 pub mod errors;
+pub mod pagination;
 pub mod services;

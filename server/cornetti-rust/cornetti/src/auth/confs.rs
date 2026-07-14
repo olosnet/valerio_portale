@@ -262,3 +262,53 @@ impl JWTStoreConf {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn conf_same_site_from_str_strict() {
+        let v: ConfSameSite = "strict".into();
+        assert!(matches!(v, ConfSameSite::Strict));
+    }
+
+    #[test]
+    fn conf_same_site_from_str_lax() {
+        let v: ConfSameSite = "lax".into();
+        assert!(matches!(v, ConfSameSite::Lax));
+    }
+
+    #[test]
+    fn conf_same_site_from_str_none() {
+        let v: ConfSameSite = "none".into();
+        assert!(matches!(v, ConfSameSite::None));
+    }
+
+    #[test]
+    fn conf_same_site_from_str_case_insensitive() {
+        let v: ConfSameSite = "LAX".into();
+        assert!(matches!(v, ConfSameSite::Lax));
+        let v: ConfSameSite = "None".into();
+        assert!(matches!(v, ConfSameSite::None));
+    }
+
+    #[test]
+    fn conf_same_site_from_str_unknown_defaults_strict() {
+        let v: ConfSameSite = "unknown_value".into();
+        assert!(matches!(v, ConfSameSite::Strict));
+    }
+
+    #[test]
+    fn conf_same_site_from_str_empty_defaults_strict() {
+        let v: ConfSameSite = "".into();
+        assert!(matches!(v, ConfSameSite::Strict));
+    }
+
+    #[test]
+    fn jwt_store_conf_from_env_default() {
+        let conf = JWTStoreConf::from_env("test_app");
+        assert_eq!(conf.store_name, "test_app");
+        assert_eq!(conf.session_expire_mins, 10081);
+    }
+}

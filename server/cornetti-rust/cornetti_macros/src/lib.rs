@@ -56,7 +56,7 @@ pub fn derive_auto_from(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-#[proc_macro_derive(AutoToFull, attributes(to_full, default_values))]
+#[proc_macro_derive(AutoToFull, attributes(to_full, default_values, new))]
 pub fn derive_auto_to_full(input: TokenStream) -> TokenStream {
     // Parse dell'input come DeriveInput
     let input = parse_macro_input!(input as DeriveInput);

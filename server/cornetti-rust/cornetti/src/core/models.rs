@@ -195,3 +195,253 @@ impl CornettiHttpFilter {
 
 /// Result type alias used by all fallible APIs in the framework.
 pub type CornettiResult<T> = std::result::Result<T, CornettiError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+    use std::sync::Arc;
+
+    #[test]
+    fn default_tenant_id() {
+        assert_eq!(DEFAULT_TENANT_ID, "DEFAULT");
+    }
+
+    #[test]
+    fn cornetti_error_display() {
+        let err = CornettiError {
+            status: 400,
+            detail: "errore".into(),
+        };
+        assert_eq!(format!("{}", err), "CornettiError with status: 400");
+    }
+
+    #[test]
+    fn cornetti_error_display_404() {
+        let err = CornettiError {
+            status: 404,
+            detail: "non trovato".into(),
+        };
+        assert_eq!(format!("{}", err), "CornettiError with status: 404");
+    }
+
+    #[test]
+    fn cornetti_generic_response_new() {
+        let resp = CornettiGenericResponse::new("Operazione completata".into());
+        assert_eq!(resp.message, "Operazione completata");
+    }
+
+    #[test]
+    fn cornetti_generic_response_clone() {
+        let resp = CornettiGenericResponse::new("test".into());
+        let cloned = resp.clone();
+        assert_eq!(cloned.message, "test");
+    }
+
+    #[test]
+    fn app_info_all_fields() {
+        let info = AppInfo {
+            name: "test_app".into(),
+            version: "1.0.0".into(),
+            build_timestamp: "1234567890".into(),
+            build_date: "2024-01-01".into(),
+            build_time: "12:00:00".into(),
+            build_datetime: "2024-01-01 12:00:00".into(),
+            git_hash: "abc1234".into(),
+            git_branch: "main".into(),
+        };
+        assert_eq!(info.name, "test_app");
+        assert_eq!(info.version, "1.0.0");
+    }
+
+    // CornettiHttpMethod From<&str>
+    #[test]
+    fn http_method_from_str_get() {
+        assert_eq!(CornettiHttpMethod::from("GET"), CornettiHttpMethod::GET);
+    }
+
+    #[test]
+    fn http_method_from_str_get_lowercase() {
+        assert_eq!(CornettiHttpMethod::from("get"), CornettiHttpMethod::GET);
+    }
+
+    #[test]
+    fn http_method_from_str_post() {
+        assert_eq!(CornettiHttpMethod::from("POST"), CornettiHttpMethod::POST);
+    }
+
+    #[test]
+    fn http_method_from_str_put() {
+        assert_eq!(CornettiHttpMethod::from("PUT"), CornettiHttpMethod::PUT);
+    }
+
+    #[test]
+    fn http_method_from_str_patch() {
+        assert_eq!(CornettiHttpMethod::from("PATCH"), CornettiHttpMethod::PATCH);
+    }
+
+    #[test]
+    fn http_method_from_str_delete() {
+        assert_eq!(CornettiHttpMethod::from("DELETE"), CornettiHttpMethod::DELETE);
+    }
+
+    #[test]
+    fn http_method_from_str_head() {
+        assert_eq!(CornettiHttpMethod::from("HEAD"), CornettiHttpMethod::HEAD);
+    }
+
+    #[test]
+    fn http_method_from_str_options() {
+        assert_eq!(CornettiHttpMethod::from("OPTIONS"), CornettiHttpMethod::OPTIONS);
+    }
+
+    #[test]
+    #[should_panic]
+    fn http_method_from_str_unknown_panics() {
+        let _ = CornettiHttpMethod::from("UNKNOWN");
+    }
+
+    // CornettiHttpMethod From<&String>
+    #[test]
+    fn http_method_from_string_get() {
+        let s = "GET".to_string();
+        assert_eq!(CornettiHttpMethod::from(&s), CornettiHttpMethod::GET);
+    }
+
+    #[test]
+    #[should_panic]
+    fn http_method_from_string_unknown_panics() {
+        let s = "UNKNOWN".to_string();
+        let _ = CornettiHttpMethod::from(&s);
+    }
+
+    // CornettiHttpFilter::Match
+    #[test]
+    fn filter_match_path_match_exact() {
+        let filter = CornettiHttpFilter::Match(
+            "/api/test".to_string(),
+            Arc::new([CornettiHttpMethod::GET]),
+        );
+        assert!(filter.path_match("/api/test".to_string()));
+        assert!(!filter.path_match("/api/other".to_string()));
+    }
+
+    #[test]
+    fn filter_match_method_match() {
+        let filter = CornettiHttpFilter::Match(
+            "/api/test".to_string(),
+            Arc::new([CornettiHttpMethod::GET, CornettiHttpMethod::POST]),
+        );
+        assert!(filter.method_match(CornettiHttpMethod::GET));
+        assert!(filter.method_match(CornettiHttpMethod::POST));
+        assert!(!filter.method_match(CornettiHttpMethod::DELETE));
+    }
+
+    #[test]
+    fn filter_match_rule_match() {
+        let filter = CornettiHttpFilter::Match(
+            "/api/health".to_string(),
+            Arc::new([CornettiHttpMethod::GET]),
+        );
+        assert!(filter.rule_match("/api/health".to_string(), CornettiHttpMethod::GET));
+        assert!(!filter.rule_match("/api/health".to_string(), CornettiHttpMethod::POST));
+        assert!(!filter.rule_match("/api/other".to_string(), CornettiHttpMethod::GET));
+    }
+
+    #[test]
+    fn filter_startswith_path_match() {
+        let filter = CornettiHttpFilter::StartsWith(
+            "/api/v1".to_string(),
+            Arc::new([CornettiHttpMethod::GET]),
+        );
+        assert!(filter.path_match("/api/v1/users".to_string()));
+        assert!(filter.path_match("/api/v1".to_string()));
+        assert!(!filter.path_match("/api/v2/users".to_string()));
+        assert!(!filter.path_match("/app/v1".to_string()));
+    }
+
+    #[test]
+    fn filter_startswith_method_match() {
+        let filter = CornettiHttpFilter::StartsWith(
+            "/api".to_string(),
+            Arc::new([CornettiHttpMethod::POST]),
+        );
+        assert!(filter.method_match(CornettiHttpMethod::POST));
+        assert!(!filter.method_match(CornettiHttpMethod::GET));
+    }
+
+    #[test]
+    fn filter_startswith_rule_match() {
+        let filter = CornettiHttpFilter::StartsWith(
+            "/admin".to_string(),
+            Arc::new([CornettiHttpMethod::DELETE]),
+        );
+        assert!(filter.rule_match("/admin/users".to_string(), CornettiHttpMethod::DELETE));
+        assert!(!filter.rule_match("/admin/users".to_string(), CornettiHttpMethod::GET));
+        assert!(!filter.rule_match("/public".to_string(), CornettiHttpMethod::DELETE));
+    }
+
+    #[test]
+    fn filter_regex_path_match() {
+        let filter = CornettiHttpFilter::Regex(
+            Regex::new(r"^/api/v[0-9]+/users$").unwrap(),
+            Arc::new([CornettiHttpMethod::GET]),
+        );
+        assert!(filter.path_match("/api/v1/users".to_string()));
+        assert!(filter.path_match("/api/v42/users".to_string()));
+        assert!(!filter.path_match("/api/v1/posts".to_string()));
+    }
+
+    #[test]
+    fn filter_regex_method_match() {
+        let filter = CornettiHttpFilter::Regex(
+            Regex::new(".*").unwrap(),
+            Arc::new([CornettiHttpMethod::PUT, CornettiHttpMethod::PATCH]),
+        );
+        assert!(filter.method_match(CornettiHttpMethod::PUT));
+        assert!(filter.method_match(CornettiHttpMethod::PATCH));
+        assert!(!filter.method_match(CornettiHttpMethod::GET));
+    }
+
+    #[test]
+    fn filter_regex_rule_match() {
+        let filter = CornettiHttpFilter::Regex(
+            Regex::new(r"^/files/.*\.pdf$").unwrap(),
+            Arc::new([CornettiHttpMethod::GET]),
+        );
+        assert!(filter.rule_match("/files/report.pdf".to_string(), CornettiHttpMethod::GET));
+        assert!(!filter.rule_match("/files/report.jpg".to_string(), CornettiHttpMethod::GET));
+        assert!(!filter.rule_match("/files/report.pdf".to_string(), CornettiHttpMethod::DELETE));
+    }
+
+    #[test]
+    fn filter_starts_with_empty_arc() {
+        let filter = CornettiHttpFilter::StartsWith(
+            "/api".to_string(),
+            Arc::new([]),
+        );
+        assert!(!filter.method_match(CornettiHttpMethod::GET));
+        assert!(!filter.rule_match("/api/test".to_string(), CornettiHttpMethod::GET));
+    }
+
+    #[test]
+    fn filter_match_multiple_methods() {
+        let filter = CornettiHttpFilter::Match(
+            "/api/data".to_string(),
+            Arc::new([
+                CornettiHttpMethod::GET,
+                CornettiHttpMethod::POST,
+                CornettiHttpMethod::PUT,
+                CornettiHttpMethod::PATCH,
+                CornettiHttpMethod::DELETE,
+            ]),
+        );
+        assert!(filter.method_match(CornettiHttpMethod::GET));
+        assert!(filter.method_match(CornettiHttpMethod::POST));
+        assert!(filter.method_match(CornettiHttpMethod::PUT));
+        assert!(filter.method_match(CornettiHttpMethod::PATCH));
+        assert!(filter.method_match(CornettiHttpMethod::DELETE));
+        assert!(!filter.method_match(CornettiHttpMethod::HEAD));
+        assert!(!filter.method_match(CornettiHttpMethod::OPTIONS));
+    }
+}

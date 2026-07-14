@@ -2,6 +2,7 @@
 
 pub mod errors;
 pub mod models;
+pub mod pagination;
 
 #[cfg(feature = "actix-filemanager")]
 pub mod filemanager;

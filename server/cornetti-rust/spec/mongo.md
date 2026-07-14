@@ -103,3 +103,52 @@ The system SHALL provide `decimal128_to_decimal` and `decimal_to_decimal128` con
 between BSON `Decimal128` and `rust_decimal::Decimal`.
 
 See `src/mongo/helpers.rs`.
+
+### Requirement: MongoDB pagination query builder
+
+`MongoPagination` SHALL provide a two-path pagination strategy:
+
+- **Simple path**: when no fields referenced in `LoadOptions` are present in the
+  `join_dict`, `paginate()` SHALL use `find()` + `count_documents()` with the built
+  sort, skip, and limit. The count SHALL be skipped (set to -1) when
+  `require_total_count` is false.
+- **JOIN path**: when any field requires a JOIN, `paginate()` SHALL use an
+  aggregation pipeline with `$lookup` stages. For inner joins, `$unwind` without
+  `preserveNullAndEmptyArrays`. For outer/LEFT joins, `$unwind` with
+  `preserveNullAndEmptyArrays: true`. The pipeline SHALL include a `$group` +
+  `$replaceRoot` stage to deduplicate rows from one-to-many relationships.
+
+The count pipeline SHALL use `$lookup` without `$unwind`, applying filter
+conditions on the joined array and checking `$ne: []` for inner joins, to
+avoid inflating the count.
+
+`build_filter()` SHALL convert a `FilterNode` into a BSON `Document` suitable for
+`$match`. String operators (`Contains`, `NotContains`, `StartsWith`, `EndsWith`)
+SHALL use `$regex`. `Not` nodes SHALL use `$nor`.
+
+`build_sort()` SHALL convert a slice of `SortDescriptor` into a BSON sort document,
+resolving field names through the join dictionary (`virtual_field.target_field` for
+joined fields).
+
+See `src/mongo/pagination.rs`.
+
+#### Scenario: Simple pagination without JOINs
+- WHEN `MongoPagination::paginate` is called with a `LoadOptions` containing
+  only fields not present in the `join_dict`
+- THEN `find()` + `count_documents()` SHALL be used
+- AND the cursor SHALL be configured with the built sort, skip, and limit
+
+#### Scenario: Pagination with JOINs uses aggregation pipeline
+- WHEN a sort or filter field is present in the `join_dict`
+- THEN the aggregation pipeline SHALL be used
+- AND `$lookup` stages SHALL be generated for each unique `target_entity`
+- AND the count SHALL use a separate pipeline without `$unwind`
+
+#### Scenario: Filter build for Contains operator
+- WHEN `MongoPagination::build_filter` is called with
+  `FilterNode::Leaf { field: "name", operator: Contains, value: String("Mario") }`
+- THEN the resulting BSON document SHALL be `{ "name": { "$regex": "Mario" } }`
+
+#### Scenario: NOT filter uses $nor
+- WHEN `MongoPagination::build_filter` is called with a `FilterNode::Not`
+- THEN the resulting BSON document SHALL use `{ "$nor": [...] }`

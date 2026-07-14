@@ -207,3 +207,151 @@ impl From<std::io::Error> for CornettiError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::models::CornettiError;
+
+    #[test]
+    fn bad_request_invalid_object_id() {
+        let err = super::bad_request::invalid_object_id();
+        assert_eq!(err.status, 400);
+        assert_eq!(err.detail, "Invalid ObjectId");
+    }
+
+    #[test]
+    fn bad_request_invalid_email() {
+        let err = super::bad_request::invalid_email();
+        assert_eq!(err.status, 400);
+        assert_eq!(err.detail, "Invalid email format");
+    }
+
+    #[test]
+    fn bad_request_validation_error() {
+        let err = super::bad_request::validation_error("campo mancante".into());
+        assert_eq!(err.status, 400);
+        assert_eq!(err.detail, "Validation error: campo mancante");
+    }
+
+    #[test]
+    fn bad_request_file_too_large() {
+        let err = super::bad_request::file_too_large();
+        assert_eq!(err.status, 400);
+        assert_eq!(err.detail, "The uploaded file is too large");
+    }
+
+    #[test]
+    fn not_found_item_not_found() {
+        let err = super::not_found::item_not_found();
+        assert_eq!(err.status, 404);
+        assert_eq!(err.detail, "Item not found");
+    }
+
+    #[test]
+    fn not_found_resource_not_found() {
+        let err = super::not_found::resource_not_found();
+        assert_eq!(err.status, 404);
+        assert_eq!(err.detail, "Resource not found");
+    }
+
+    #[test]
+    fn internal_server_error_db_error() {
+        let err = super::internal_server_error::db_error("connection refused".into());
+        assert_eq!(err.status, 500);
+        assert_eq!(err.detail, "DB error: connection refused");
+    }
+
+    #[test]
+    fn internal_server_error_generic_error() {
+        let err = super::internal_server_error::generic_error("out of memory".into());
+        assert_eq!(err.status, 500);
+        assert_eq!(err.detail, "Internal server error: out of memory");
+    }
+
+    #[test]
+    fn authentication_invalid_credentials() {
+        let err = super::authentication::invalid_credentials();
+        assert_eq!(err.status, 401);
+        assert_eq!(err.detail, "Invalid credentials");
+    }
+
+    #[test]
+    fn authentication_custom_error_message() {
+        let err = super::authentication::custom_error_message("token scaduto".into());
+        assert_eq!(err.status, 401);
+        assert_eq!(err.detail, "token scaduto");
+    }
+
+    #[test]
+    fn authentication_unauthorized() {
+        let err = super::authentication::unauthorized();
+        assert_eq!(err.status, 401);
+        assert_eq!(err.detail, "Unauthorized");
+    }
+
+    #[test]
+    fn authorization_forbidden() {
+        let err = super::authorization::forbidden();
+        assert_eq!(err.status, 403);
+        assert_eq!(err.detail, "Forbidden");
+    }
+
+    #[test]
+    fn authorization_insufficient_permissions() {
+        let err = super::authorization::insufficient_permissions();
+        assert_eq!(err.status, 403);
+        assert_eq!(err.detail, "Insufficient permissions");
+    }
+
+    #[test]
+    fn conflict_item_exists() {
+        let err = super::conflict::item_exists();
+        assert_eq!(err.status, 409);
+        assert_eq!(err.detail, "Item already exists");
+    }
+
+    #[test]
+    fn not_allowed_not_allowed() {
+        let err = super::not_allowed::not_allowed();
+        assert_eq!(err.status, 405);
+        assert_eq!(err.detail, "Method not allowed");
+    }
+
+    #[test]
+    fn not_allowed_resource_deletion_not_allowed() {
+        let err = super::not_allowed::resource_deletion_not_allowed();
+        assert_eq!(err.status, 405);
+        assert_eq!(err.detail, "Resource deletion not allowed");
+    }
+
+    #[test]
+    fn not_allowed_resource_update_not_allowed() {
+        let err = super::not_allowed::resource_update_not_allowed();
+        assert_eq!(err.status, 405);
+        assert_eq!(err.detail, "Resource update not allowed");
+    }
+
+    #[test]
+    fn from_serde_json_error() {
+        let json_err = serde_json::from_str::<i32>("non un numero").unwrap_err();
+        let err: CornettiError = json_err.into();
+        assert_eq!(err.status, 500);
+        assert!(err.detail.starts_with("Serde error:"));
+    }
+
+    #[test]
+    fn from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file non trovato");
+        let err: CornettiError = io_err.into();
+        assert_eq!(err.status, 500);
+        assert!(err.detail.starts_with("IO error:"));
+    }
+
+    #[test]
+    fn from_io_error_permission_denied() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "accesso negato");
+        let err: CornettiError = CornettiError::from(io_err);
+        assert_eq!(err.status, 500);
+        assert!(err.detail.contains("accesso negato"));
+    }
+}
