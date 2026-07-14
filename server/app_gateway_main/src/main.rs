@@ -9,7 +9,6 @@ use crate::resources::oggetti_astronomici::oggetti_astronomici_api;
 use crate::resources::permissions::permissions_api;
 use crate::resources::sessioni_osservative::sessioni_osservative_api;
 use crate::resources::siti_osservativi::siti_osservativi_api;
-use crate::resources::tests::tests_api;
 use crate::resources::users::users_api;
 use actix_web::{App, HttpServer, web};
 use app_modules::base::users::services::UserAuthorizationService;
@@ -142,13 +141,6 @@ async fn main() -> std::io::Result<()> {
             users_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
         ]);
 
-        if app_state.base_conf.test_features {
-            apidocs = combine_api_docs::<BaseApiDoc>(vec![
-                apidocs,
-                tests_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
-            ]);
-        }
-
         if let Some(components) = apidocs.components.as_mut() {
             get_jwt_auth_security_schemes(components, &app_state.auth_conf);
         }
@@ -197,7 +189,7 @@ async fn main() -> std::io::Result<()> {
             app_state.base_conf.app_id.clone(),
         ));
 
-        let mut api_service_configs: Vec<Box<dyn Fn(&mut web::ServiceConfig) + Send + Sync>> =
+        let api_service_configs: Vec<Box<dyn Fn(&mut web::ServiceConfig) + Send + Sync>> =
             vec![Box::new({
                 let app_state = app_state.clone();
                 let user_authorization_service = user_authorization_service.clone();
@@ -224,12 +216,6 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(users_api::routes(user_authorization_service.clone()));
                 }
             })];
-
-        if app_state.base_conf.test_features {
-            api_service_configs.push(Box::new(|cfg: &mut web::ServiceConfig| {
-                cfg.service(tests_api::routes());
-            }));
-        }
 
         let api_service = {
             let mut scope = web::scope(&api_prefix)

@@ -1,5 +1,6 @@
 mod import_catalogs;
 mod import_images;
+mod tests;
 
 use app_modules::{
     astronomia::{
@@ -683,6 +684,8 @@ fn build_cli() -> Command {
             .about("Gestione amministratori")
             .subcommand_required(true)
             .subcommand(admin_create_cmd()))
+
+        .subcommand(tests::tests_cmd())
 }
 
 // ===========================================================================
@@ -719,6 +722,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(("create", _)) => cmd_admin_create().await,
             _ => { let _ = cli.print_help(); Ok(()) }
         },
+        Some(("test", sub)) => tests::dispatch(sub).await,
         _ => { let _ = cli.print_help(); Ok(()) }
     }
 }
