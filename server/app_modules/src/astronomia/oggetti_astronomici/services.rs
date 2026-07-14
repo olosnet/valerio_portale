@@ -4,7 +4,7 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::{errors, models::CornettiError},
+    core::models::CornettiError,
     filemanager::confs::FileManagerConf,
     mongo::services::MongoDBService,
 };
@@ -12,11 +12,11 @@ use validator::Validate;
 
 use crate::{
     astronomia::common::TYPE_ASTRO_OBJECT_IMAGE,
-    base::filemanager_images::services::ImageFileManagerService,
     astronomia::oggetti_astronomici::{
         models::{OggettoAstronomico, OggettoAstronomicoCreate, OggettoAstronomicoUpdate},
         repos::OggettiAstronomiciRepository,
     },
+    base::filemanager::services::FileManagerService,
 };
 
 pub struct OggettiAstronomiciService {
@@ -72,14 +72,14 @@ impl OggettiAstronomiciService {
 
 pub struct OggettiAstronomiciImageService<'a> {
     repository: OggettiAstronomiciRepository,
-    filemanager_images_service: ImageFileManagerService<'a>,
+    filemanager_service: FileManagerService<'a>,
 }
 
 impl<'a> OggettiAstronomiciImageService<'a> {
-    pub fn new(mongo: Arc<MongoDBService>, conf: &FileManagerConf, app_namespace: &'a str) -> Self {
+    pub fn new(mongo: Arc<MongoDBService>, conf: &'a FileManagerConf, app_namespace: &'a str) -> Self {
         Self {
             repository: OggettiAstronomiciRepository::new(mongo.clone()),
-            filemanager_images_service: ImageFileManagerService::new(mongo, conf, app_namespace, app_namespace),
+            filemanager_service: FileManagerService::new(mongo, conf, app_namespace, app_namespace),
         }
     }
 
@@ -91,19 +91,14 @@ impl<'a> OggettiAstronomiciImageService<'a> {
         form: MultipartForm<FileManagerUploadForm>,
     ) -> Result<OggettoAstronomico, CornettiError> {
         let current = self.repository.get(oggetto_id).await?;
-        let uploaded = self
-            .filemanager_images_service
-            .upload_with_resource_type(claims, form, Some(TYPE_ASTRO_OBJECT_IMAGE))
+
+        let main_file = self
+            .filemanager_service
+            .upload(claims, Some(TYPE_ASTRO_OBJECT_IMAGE), form)
             .await?;
 
-        let main_file = uploaded.first().ok_or_else(|| {
-            errors::internal_server_error::generic_error(
-                "Image upload completed without returning the main file".to_string(),
-            )
-        })?;
-
         if let Some(previous_image) = current.image_filename {
-            match self.filemanager_images_service.delete(&previous_image).await {
+            match self.filemanager_service.delete(&previous_image).await {
                 Ok(()) => {}
                 Err(err) if err.status == 404 => {}
                 Err(err) => return Err(err),

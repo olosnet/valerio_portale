@@ -47,6 +47,7 @@ impl<'a> FileManagerService<'a> {
     pub async fn upload(
         &self,
         claims: Option<JwtDefaultClaims>,
+        resource_type: Option<usize>,
         form: MultipartForm<FileManagerUploadForm>,
     ) -> Result<FileManager, CornettiError> {
         let mut identity = String::from("unknown");
@@ -59,7 +60,7 @@ impl<'a> FileManagerService<'a> {
         }
 
         self.base_service
-            .upload(self.tenant_id, self.app_namespace, &identity, &identity_id, None, form)
+            .upload(self.tenant_id, self.app_namespace, &identity, &identity_id, resource_type, form)
             .await
     }
 

@@ -48,7 +48,7 @@ mod filemanager_view {
             &state.base_conf.shared_resources_id,
             &state.app_info.name,
         );
-        match filemanager_service.upload(claims, form).await {
+        match filemanager_service.upload(claims, None, form).await {
             Ok(file) => HttpResponse::Ok().json(file),
             Err(err) => err.into(),
         }
