@@ -437,7 +437,7 @@ impl UsersRepository {
 
     pub async fn get_user_permissions(
         &self,
-        email: &String,
+        email: &str,
     ) -> Result<HashMap<String, AuthorizationPermission>, cornetti::core::models::CornettiError>
     {
         let collection = self

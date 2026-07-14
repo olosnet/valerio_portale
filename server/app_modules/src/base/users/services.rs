@@ -102,7 +102,7 @@ impl IdentityAuthorization for UserAuthorizationService {
     fn get_identity_permissions(
         &self,
         _tenant_id: &str,
-        sub: &String,
+        sub: &str,
     ) -> impl std::future::Future<
         Output = Result<std::collections::HashMap<String, AuthorizationPermission>, CornettiError>,
     > + Send {

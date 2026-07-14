@@ -88,7 +88,7 @@ impl BaseModel for MongoFileManagerModel {
 impl From<MongoFileManagerModel> for FileManager {
     fn from(model: MongoFileManagerModel) -> Self {
         FileManager {
-            _id: model._id.map(|id| id.to_string()).unwrap_or_default(),
+            id: model._id.map(|id| id.to_string()).unwrap_or_default(),
             created: model.created.unwrap(),
             modified: model.modified,
             app_source: model.app_source,
