@@ -8,5 +8,6 @@ pub mod oggetti_astronomici;
 pub mod permissions;
 pub mod sessioni_osservative;
 pub mod siti_osservativi;
+pub mod statics;
 pub mod strumentazione;
 pub mod users;
