@@ -1,6 +1,8 @@
 use crate::import_catalogs::coords::*;
 use crate::import_catalogs::models::*;
 
+use app_modules::astronomia::oggetti_astronomici::models::Costellazione;
+
 const LOCAL_NGC_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/import_catalogs/NGC.csv");
 const REMOTE_NGC_URL: &str = "https://raw.githubusercontent.com/mattiaverga/OpenNGC/refs/heads/master/database_files/NGC.csv";
 
@@ -189,7 +191,7 @@ pub async fn download_ngc(skip: bool) -> Vec<ImportCatalogEntry> {
         let constellation = col_const
             .and_then(|ci| {
                 let v = fields[ci];
-                if v.is_empty() { None } else { Some(v.to_string()) }
+                if v.is_empty() { None } else { Some(Costellazione::parse(v)) }
             })
             .unwrap_or_default();
 

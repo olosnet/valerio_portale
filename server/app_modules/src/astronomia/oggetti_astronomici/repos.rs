@@ -19,7 +19,7 @@ use crate::{
     astronomia::oggetti_astronomici::{
         OggettiAstronomiciModule,
         models::{
-            Catalogo, CatalogoInput, DimensioniApparenti, DimensioniApparentiInput,
+            Catalogo, CatalogoInput, Costellazione, DimensioniApparenti, DimensioniApparentiInput,
             OggettoAstronomico, OggettoAstronomicoCreate, OggettoAstronomicoUpdate, TipoOggetto,
         },
     },
@@ -85,7 +85,7 @@ pub struct MongoOggettoAstronomicoModel {
     #[serde(default)]
     pub nome_comune: String,
     #[serde(default)]
-    pub abbr_costellazione: String,
+    pub abbr_costellazione: Costellazione,
     #[serde(default)]
     pub coord_ar: String,
     #[serde(default)]
@@ -140,7 +140,7 @@ impl BaseModel for MongoOggettoAstronomicoModel {
             modified: chrono::Utc::now(),
             tipo: TipoOggetto::default(),
             nome_comune: String::new(),
-            abbr_costellazione: String::new(),
+            abbr_costellazione: Costellazione::default(),
             coord_ar: String::new(),
             coord_dec: String::new(),
             mag_apparente: None,

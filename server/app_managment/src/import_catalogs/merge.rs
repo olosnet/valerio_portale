@@ -20,7 +20,7 @@ fn _merge_into(target: &mut ImportCatalogEntry, source: &ImportCatalogEntry) {
     if target.nome_comune.is_empty() && !source.nome_comune.is_empty() {
         target.nome_comune = source.nome_comune.clone();
     }
-    if target.abbr_costellazione.is_empty() && !source.abbr_costellazione.is_empty() {
+    if target.abbr_costellazione == Costellazione::Sconosciuta && source.abbr_costellazione != Costellazione::Sconosciuta {
         target.abbr_costellazione = source.abbr_costellazione.clone();
     }
     if target.tipo == "GAL" && source.tipo != "GAL" {

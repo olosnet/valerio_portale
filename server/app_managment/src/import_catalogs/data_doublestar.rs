@@ -69,7 +69,7 @@ pub fn load_doublestar() -> Vec<ImportCatalogEntry> {
             cataloghi,
             tipo: "2Star".to_string(),
             nome_comune: name.to_string(),
-            abbr_costellazione: con.to_string(),
+            abbr_costellazione: Costellazione::parse(con),
             coord_ar: decimal_ra_to_coord(ra),
             coord_dec: decimal_dec_to_coord(dec),
             mag_apparente: Some(mag),

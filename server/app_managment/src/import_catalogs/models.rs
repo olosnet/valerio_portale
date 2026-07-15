@@ -1,3 +1,4 @@
+pub use app_modules::astronomia::oggetti_astronomici::models::Costellazione;
 use serde::{Deserialize, Serialize};
 
 /// Internal representation of an astronomical object during import.
@@ -6,7 +7,7 @@ pub struct ImportCatalogEntry {
     pub cataloghi: Vec<CatalogEntry>,
     pub tipo: String,
     pub nome_comune: String,
-    pub abbr_costellazione: String,
+    pub abbr_costellazione: Costellazione,
     pub coord_ar: String,
     pub coord_dec: String,
     pub mag_apparente: Option<f64>,

@@ -129,7 +129,7 @@ pub fn load_messier() -> Vec<ImportCatalogEntry> {
             cataloghi,
             tipo: tipo.to_string(),
             nome_comune: nome.to_string(),
-            abbr_costellazione: con.to_string(),
+            abbr_costellazione: Costellazione::parse(con),
             coord_ar: decimal_ra_to_coord(ra),
             coord_dec: decimal_dec_to_coord(dec),
             mag_apparente: Some(mag),

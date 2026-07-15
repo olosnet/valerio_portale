@@ -4,7 +4,10 @@ mod tests;
 
 use app_modules::{
     astronomia::{
-        oggetti_astronomici::{OggettiAstronomiciModule, repos::MongoOggettoAstronomicoModel},
+        oggetti_astronomici::{
+            OggettiAstronomiciModule,
+            repos::MongoOggettoAstronomicoModel,
+        },
         sessioni_osservative::SessioniOsservativeModule,
         siti_osservativi::SitiOsservativiModule,
         strumentazione::StrumentazioneModule,
@@ -299,7 +302,7 @@ async fn cmd_catalog_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::
         let mut model = MongoOggettoAstronomicoModel::new();
         model.tipo = serde_json::from_value(obj["tipo"].clone()).unwrap_or_default();
         model.nome_comune = obj["nome_comune"].as_str().unwrap_or("").to_string();
-        model.abbr_costellazione = obj["abbr_costellazione"].as_str().unwrap_or("").to_string();
+        model.abbr_costellazione = serde_json::from_value(obj["abbr_costellazione"].clone()).unwrap_or_default();
         model.coord_ar = obj["coord_ar"].as_str().unwrap_or("").to_string();
         model.coord_dec = obj["coord_dec"].as_str().unwrap_or("").to_string();
 

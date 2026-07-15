@@ -188,7 +188,7 @@ pub fn load_arp() -> Vec<ImportCatalogEntry> {
             cataloghi,
             tipo: tipo.to_string(),
             nome_comune: String::new(),
-            abbr_costellazione: con.to_string(),
+            abbr_costellazione: Costellazione::parse(con),
             coord_ar: decimal_ra_to_coord(ra),
             coord_dec: decimal_dec_to_coord(dec),
             mag_apparente: None,
