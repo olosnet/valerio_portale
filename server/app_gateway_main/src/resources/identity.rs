@@ -31,6 +31,7 @@ mod identity_view {
             state.mongo.clone(),
             &state.filemanager_conf,
             &state.base_conf.shared_resources_id,
+            &state.tenant_conf.tenant_id,
         );
 
         match service.get_identity(claims).await {
@@ -59,6 +60,7 @@ mod identity_view {
             state.mongo.clone(),
             &state.filemanager_conf,
             &state.base_conf.shared_resources_id,
+            &state.tenant_conf.tenant_id,
         );
 
         match service.update_profile(claims, body.into_inner()).await {
@@ -88,6 +90,7 @@ mod identity_view {
             state.mongo.clone(),
             &state.filemanager_conf,
             &state.base_conf.shared_resources_id,
+            &state.tenant_conf.tenant_id,
         );
 
         match service.update_profile_image(claims, form).await {
@@ -116,6 +119,7 @@ mod identity_view {
             state.mongo.clone(),
             &state.filemanager_conf,
             &state.base_conf.shared_resources_id,
+            &state.tenant_conf.tenant_id,
         );
 
         match service.update_password(claims, body.into_inner()).await {

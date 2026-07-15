@@ -76,10 +76,10 @@ pub struct OggettiAstronomiciImageService<'a> {
 }
 
 impl<'a> OggettiAstronomiciImageService<'a> {
-    pub fn new(mongo: Arc<MongoDBService>, conf: &'a FileManagerConf, app_namespace: &'a str) -> Self {
+    pub fn new(mongo: Arc<MongoDBService>, conf: &'a FileManagerConf, app_namespace: &'a str, tenant_id: &'a str) -> Self {
         Self {
             repository: OggettiAstronomiciRepository::new(mongo.clone()),
-            filemanager_service: FileManagerService::new(mongo, conf, app_namespace, app_namespace),
+            filemanager_service: FileManagerService::new(mongo, conf, app_namespace, tenant_id),
         }
     }
 

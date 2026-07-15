@@ -31,6 +31,7 @@ impl<'a> IdentityService<'a> {
         mongo: Arc<MongoDBService>,
         conf: &'a FileManagerConf,
         app_namespace: &'a str,
+        tenant_id: &'a str,
     ) -> Self {
         Self {
             repository: IdentityRepository::new(mongo.clone()),
@@ -38,7 +39,7 @@ impl<'a> IdentityService<'a> {
                 mongo,
                 conf,
                 app_namespace,
-                app_namespace,
+                tenant_id,
             ),
         }
     }
