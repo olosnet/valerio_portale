@@ -28,7 +28,7 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            &state.app_info.name,
+            &state.tenant_conf.tenant_id,
             Some(state.session_store.clone()),
         );
 
@@ -76,7 +76,7 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            &state.app_info.name,
+            &state.tenant_conf.tenant_id,
             Some(state.session_store.clone()),
         );
 
@@ -110,7 +110,7 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            &state.app_info.name,
+            &state.tenant_conf.tenant_id,
             Some(state.session_store.clone()),
         );
 

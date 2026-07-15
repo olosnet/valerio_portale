@@ -88,14 +88,18 @@ async fn main() -> std::io::Result<()> {
     let redis_config = redis::confs::RedisDBConfig::from_env();
     let redis_service: Arc<RedisDBService> = Arc::new(RedisDBService::new(&redis_config).unwrap());
 
-    let sessions_store_conf = cornetti::auth::confs::JWTStoreConf::from_env(&app_info.name);
+    let base_conf = Arc::new(cornetti::core::confs::BaseConf::from_env());
+    let tenant_conf = Arc::new(cornetti::core::confs::TenantConf::from_env());
+
+    let sessions_store_conf =
+        cornetti::auth::confs::JWTStoreConf::from_env(&base_conf.app_id);
 
     // Session store for JWT
     let session_store: Arc<cornetti::redis::auth::RedisSessionStore> =
         Arc::new(cornetti::redis::auth::RedisSessionStore::new(
             sessions_store_conf,
             redis_service.clone(),
-            &app_info.name,
+            &base_conf.app_id,
         ));
 
     let app_state: Arc<AppState> = Arc::new(AppState {
@@ -105,8 +109,8 @@ async fn main() -> std::io::Result<()> {
             cornetti::templates::confs::TemplatesConf::from_env(),
         )),
         auth_conf: Arc::new(cornetti::auth::confs::JwtAuthConf::from_env()),
-        base_conf: Arc::new(cornetti::core::confs::BaseConf::from_env()),
-        tenant_conf: Arc::new(cornetti::core::confs::TenantConf::from_env()),
+        base_conf,
+        tenant_conf,
         filemanager_conf: Arc::new(cornetti::filemanager::confs::FileManagerConf::from_env()),
         templates_conf: Arc::new(cornetti::templates::confs::TemplatesConf::from_env()),
         mail_conf: Arc::new(cornetti::mail::smtp::confs::SmtpMailConf::from_env()),
@@ -117,7 +121,7 @@ async fn main() -> std::io::Result<()> {
     let host: String = app_state.base_conf.host.clone();
     let port = app_state.base_conf.port;
 
-    log::info!("init {} server...", &app_state.app_info.name);
+    log::info!("init {} server...", env!("CARGO_PKG_NAME"));
 
     HttpServer::new(move || {
         let api_prefix = &app_state.base_conf.api_prefix;
