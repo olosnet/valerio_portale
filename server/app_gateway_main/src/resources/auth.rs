@@ -1,7 +1,7 @@
 mod auth_view {
 
     use crate::AppState;
-    use actix_web::{HttpRequest, HttpResponse, Responder, get, post, web};
+    use actix_web::{HttpRequest, HttpResponse, Responder, post, web};
     use app_modules::base::auth::services::AuthenticationService;
     use app_modules::base::users::models::User;
     use cornetti::auth::models::{
@@ -129,32 +129,6 @@ mod auth_view {
         }
     }
 
-    #[utoipa::path(
-    summary = "User's Identity",
-    tags = ["Auth"],
-    responses(
-        (status = 200, description = "User's Identity", body = User),
-        (status = 404, description = "Item not found", body = CornettiError),
-        (status = 500, description = "Internal server error", body = CornettiError)
-    )
-    )]
-    #[get("/identity")]
-    async fn identity(
-        state: web::Data<AppState>,
-        claims: Option<JwtDefaultClaims>,
-    ) -> impl Responder {
-        let auth_service = AuthenticationService::new(
-            state.mongo.clone(),
-            &state.auth_conf,
-            Some(state.session_store.clone()),
-            &state.app_info.name,
-        );
-
-        match auth_service.identity(claims).await {
-            Ok(user) => HttpResponse::Ok().json(user),
-            Err(err) => err.into(),
-        }
-    }
 }
 
 pub mod auth_api {
@@ -177,7 +151,6 @@ pub mod auth_api {
     #[openapi(paths(
     super::auth_view::login,
     super::auth_view::logout,
-    super::auth_view::identity,
     super::auth_view::refresh
     ),
     tags((name = "Auth", description = "Auth management"))
@@ -215,7 +188,6 @@ pub mod auth_api {
 
     pub fn routes() -> impl HttpServiceFactory {
         web::scope("/auth")
-            .service(super::auth_view::identity)
             .service(super::auth_view::login)
             .service(super::auth_view::logout)
             .service(super::auth_view::refresh)

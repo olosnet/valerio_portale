@@ -3,6 +3,7 @@ pub mod enums;
 pub mod filemanager;
 pub mod filemanager_images;
 pub mod groups;
+pub mod identity;
 pub mod info;
 pub mod oggetti_astronomici;
 pub mod permissions;

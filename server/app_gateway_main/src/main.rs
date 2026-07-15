@@ -4,6 +4,7 @@ use crate::resources::enums::enums_api;
 use crate::resources::filemanager::filemanager_api;
 use crate::resources::filemanager_images::filemanager_images_api;
 use crate::resources::groups::groups_api;
+use crate::resources::identity::identity_api;
 use crate::resources::info::info_api;
 use crate::resources::oggetti_astronomici::oggetti_astronomici_api;
 use crate::resources::permissions::permissions_api;
@@ -126,6 +127,7 @@ async fn main() -> std::io::Result<()> {
             auth_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             enums_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             groups_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
+            identity_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             filemanager_api::api_doc(
                 &app_state.base_conf,
                 &app_state.auth_conf,
@@ -203,6 +205,7 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(auth_api::routes());
                     cfg.service(enums_api::routes(user_authorization_service.clone()));
                     cfg.service(groups_api::routes(user_authorization_service.clone()));
+                    cfg.service(identity_api::routes());
                     cfg.service(filemanager_images_api::routes(
                         app_state.base_conf.test_features,
                     ));
