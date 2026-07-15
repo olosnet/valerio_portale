@@ -7,6 +7,7 @@ use app_modules::{
         oggetti_astronomici::{OggettiAstronomiciModule, repos::MongoOggettoAstronomicoModel},
         sessioni_osservative::SessioniOsservativeModule,
         siti_osservativi::SitiOsservativiModule,
+        strumentazione::StrumentazioneModule,
     },
     base::{
         enums::EnumsModule, filemanager::FileManagerModule,
@@ -107,6 +108,7 @@ async fn register_all_modules(mongo: &MongoDBService) -> Result<(), Box<dyn std:
     OggettiAstronomiciModule::register(mongo).await?;
     SitiOsservativiModule::register(mongo).await?;
     SessioniOsservativeModule::register(mongo).await?;
+    StrumentazioneModule::register(mongo).await?;
     FileManagerModule::register(mongo).await?;
     FileManagerImagesModule::register(mongo).await?;
     log::info!("All modules registered successfully.");

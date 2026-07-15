@@ -9,6 +9,7 @@ use crate::resources::oggetti_astronomici::oggetti_astronomici_api;
 use crate::resources::permissions::permissions_api;
 use crate::resources::sessioni_osservative::sessioni_osservative_api;
 use crate::resources::siti_osservativi::siti_osservativi_api;
+use crate::resources::strumentazione::strumentazione_api;
 use crate::resources::users::users_api;
 use actix_web::{App, HttpServer, web};
 use app_modules::base::users::services::UserAuthorizationService;
@@ -138,6 +139,7 @@ async fn main() -> std::io::Result<()> {
             permissions_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             sessioni_osservative_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             siti_osservativi_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
+            strumentazione_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             users_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
         ]);
 
@@ -211,6 +213,9 @@ async fn main() -> std::io::Result<()> {
                         user_authorization_service.clone(),
                     ));
                     cfg.service(siti_osservativi_api::routes(
+                        user_authorization_service.clone(),
+                    ));
+                    cfg.service(strumentazione_api::routes(
                         user_authorization_service.clone(),
                     ));
                     cfg.service(users_api::routes(user_authorization_service.clone()));
