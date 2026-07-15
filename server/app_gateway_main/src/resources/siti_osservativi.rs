@@ -159,6 +159,7 @@ pub mod siti_osservativi_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         let siti_osservativi_authorization_middleware:
             JwtAuthorizationMiddleware<UserAuthorizationService> =
@@ -176,6 +177,7 @@ pub mod siti_osservativi_api {
                 ]
                 .into(),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/siti_osservativi")

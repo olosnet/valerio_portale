@@ -31,7 +31,7 @@ pub mod authentication {
         exclude: Arc<[CornettiHttpFilter]>,
         only: Arc<[CornettiHttpFilter]>,
         store: Option<Arc<T>>,
-        tenant_id: Option<String>,
+        tenant_id: String,
     }
 
     impl<T: SessionStore + 'static> JWTMiddleware<T> {
@@ -41,12 +41,14 @@ pub mod authentication {
         /// `exclude`: paths excluded from authentication.
         /// `only`: paths restricted to authentication (empty = all paths).
         /// `store`: optional session store for token validation.
+        /// `tenant_id`: tenant identifier for multi-tenancy.
         pub fn new(
             auth_conf: Arc<JwtAuthConf>,
             refresh_mode: bool,
             exclude: Arc<[CornettiHttpFilter]>,
             only: Arc<[CornettiHttpFilter]>,
             store: Option<Arc<T>>,
+            tenant_id: String,
         ) -> Self {
             JWTMiddleware {
                 auth_conf,
@@ -54,14 +56,8 @@ pub mod authentication {
                 exclude,
                 only,
                 store,
-                tenant_id: None,
+                tenant_id,
             }
-        }
-
-        /// Sets the tenant identifier for multi-tenancy.
-        pub fn with_tenant_id(mut self, tenant_id: String) -> Self {
-            self.tenant_id = Some(tenant_id);
-            self
         }
     }
 
@@ -98,7 +94,7 @@ pub mod authentication {
         exclude: Arc<[CornettiHttpFilter]>,
         only: Arc<[CornettiHttpFilter]>,
         store: Option<Arc<T>>,
-        tenant_id: Option<String>,
+        tenant_id: String,
     }
 
     impl<S, T: SessionStore + 'static> JWTMiddlewareService<S, T> {
@@ -280,7 +276,7 @@ pub mod authentication {
                 let updated_req = ServiceRequest::from_parts(http_req, payload);
 
                 let fut = service.call(updated_req);
-                let tid = self.tenant_id.as_deref().unwrap_or(crate::core::models::DEFAULT_TENANT_ID).to_string();
+                let tid = self.tenant_id.clone();
 
                 Box::pin(async move {
                     let mut status = status;
@@ -350,7 +346,7 @@ pub mod authorization {
         permissions: Arc<[String]>,
         exclude: Arc<[CornettiHttpFilter]>,
         identity_permissions: Arc<T>,
-        tenant_id: Option<String>,
+        tenant_id: String,
     }
 
     impl<T> JwtAuthorizationMiddleware<T>
@@ -362,23 +358,19 @@ pub mod authorization {
         /// `permissions`: required permission names.
         /// `exclude`: paths excluded from authorization checks.
         /// `identity`: permission resolver for the authenticated identity.
+        /// `tenant_id`: tenant identifier for multi-tenancy.
         pub fn new(
             permissions: Arc<[String]>,
             exclude: Arc<[CornettiHttpFilter]>,
             identity: Arc<T>,
+            tenant_id: String,
         ) -> Self {
             Self {
                 permissions,
                 exclude,
                 identity_permissions: identity,
-                tenant_id: None,
+                tenant_id,
             }
-        }
-
-        /// Sets the tenant identifier for multi-tenancy.
-        pub fn with_tenant_id(mut self, tenant_id: String) -> Self {
-            self.tenant_id = Some(tenant_id);
-            self
         }
     }
 
@@ -411,7 +403,7 @@ pub mod authorization {
         permissions: Arc<[String]>,
         exclude: Arc<[CornettiHttpFilter]>,
         identity_permissions: Arc<T>,
-        tenant_id: Option<String>,
+        tenant_id: String,
     }
 
     impl<S, B, T> Service<ServiceRequest> for JwtAuthorizationMiddlewareService<S, T>
@@ -438,7 +430,7 @@ pub mod authorization {
                 .get::<crate::auth::models::JwtDefaultClaims>()
                 .cloned();
             let fut = self.service.call(req);
-            let tid = self.tenant_id.clone().unwrap_or_else(|| crate::core::models::DEFAULT_TENANT_ID.to_string());
+            let tid = self.tenant_id.clone();
 
             let mut has_authorization = exclude
                 .iter()

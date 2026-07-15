@@ -94,7 +94,8 @@ See `BaseModule` in `src/core/traits.rs`.
 
 `BaseConf` and `TenantConf` SHALL read their values from environment variables
 with sensible defaults. `BaseConf` SHALL panic on invalid `u16` parsing of `APP_PORT`.
-`TenantConf` SHALL fall back to `DEFAULT_TENANT_ID` when `APP_TENANT_ID` is empty.
+`TenantConf` SHALL fall back to `DEFAULT_TENANT_ID` when `APP_TENANT_ID` is empty.  
+Middleware (`JWTMiddleware`, `JwtAuthorizationMiddleware`) SHALL require an explicit `tenant_id` parameter — no fallback.
 
 `BaseConf` SHALL read the optional `APP_SHARED_RESOURCES_ID` variable and store its
 value in the `shared_resources_id` field, defaulting to `"shared_res_app_default"` when unset.

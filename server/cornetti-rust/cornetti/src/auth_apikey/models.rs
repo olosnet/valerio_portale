@@ -133,6 +133,8 @@ impl AuthApiKeyStored {
 }
 
 impl Default for AuthApiKeyStored {
+    /// Creates a new stored key instance with a generated UUID, enabled by default,
+    /// and no hashed key value set. Equivalent to calling [`AuthApiKeyStored::new`].
     fn default() -> Self {
         Self::new()
     }

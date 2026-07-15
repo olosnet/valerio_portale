@@ -36,6 +36,10 @@ middleware SHALL respect `exclude`/`only` path filters and SHALL optionally vali
 tokens against a `SessionStore`. On success, it SHALL insert `JwtDefaultClaims` into
 request extensions. On failure, it SHALL return a JSON 401 response.
 
+The middleware constructor (`new()`) SHALL require an explicit `tenant_id: String`
+parameter. There is no default or fallback — the caller MUST supply the tenant
+identifier at construction time. The `with_tenant_id()` builder method has been removed.
+
 See `authentication` module in `src/actix/auth/middlewares.rs`.
 
 #### Scenario: Valid token passes through
@@ -53,18 +57,29 @@ See `authentication` module in `src/actix/auth/middlewares.rs`.
 - WHEN a `SessionStore` is configured
 - AND the token JTI is not found in the store
 - THEN the request SHALL be rejected with 401
+- AND the store lookup SHALL use the explicit tenant_id provided at construction
 
 ### Requirement: JWT authorization middleware
 
 The `JwtAuthorizationMiddleware` SHALL check that the authenticated identity has the
 required permissions for the requested HTTP method. Permissions SHALL be resolved via
-`IdentityAuthorization`. Excluded paths SHALL bypass the check.
+`IdentityAuthorization` using the explicit `tenant_id` provided at construction.
+Excluded paths SHALL bypass the check.
+
+The middleware constructor (`new()`) SHALL require an explicit `tenant_id: String`
+parameter. There is no default or fallback. The `with_tenant_id()` builder method
+has been removed.
 
 See `authorization` module in `src/actix/auth/middlewares.rs`.
 
 #### Scenario: Insufficient permissions
 - WHEN the identity lacks the required permission for the requested HTTP method
 - THEN a 403 JSON response SHALL be returned
+
+#### Scenario: Tenant-scoped permission resolution
+- WHEN the middleware resolves permissions
+- THEN `IdentityAuthorization::get_identity_permissions` SHALL be called with the
+  explicit tenant_id provided at construction — never with a fallback value
 
 ### Requirement: API key middleware
 

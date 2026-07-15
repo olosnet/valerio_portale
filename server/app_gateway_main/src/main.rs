@@ -172,6 +172,7 @@ async fn main() -> std::io::Result<()> {
                 .into(),
                 vec![].into(),
                 Some(session_store.clone()),
+                app_state.tenant_conf.tenant_id.clone(),
             );
 
         // Middleware for JWT refresh
@@ -186,6 +187,7 @@ async fn main() -> std::io::Result<()> {
                 )]
                 .into(),
                 Some(session_store.clone()),
+                app_state.tenant_conf.tenant_id.clone(),
             );
 
         // User Authorization Service
@@ -203,8 +205,14 @@ async fn main() -> std::io::Result<()> {
                     cfg.app_data(web::Data::from(app_state.clone()));
                     cfg.service(info_api::routes());
                     cfg.service(auth_api::routes());
-                    cfg.service(enums_api::routes(user_authorization_service.clone()));
-                    cfg.service(groups_api::routes(user_authorization_service.clone()));
+                    cfg.service(enums_api::routes(
+                        user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
+                    ));
+                    cfg.service(groups_api::routes(
+                        user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
+                    ));
                     cfg.service(identity_api::routes());
                     cfg.service(filemanager_images_api::routes(
                         app_state.base_conf.test_features,
@@ -212,19 +220,26 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(filemanager_api::routes(app_state.base_conf.test_features));
                     cfg.service(oggetti_astronomici_api::routes(
                         user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
                     ));
                     cfg.service(permissions_api::routes());
                     cfg.service(sessioni_osservative_api::routes(
                         user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
                     ));
                     cfg.service(siti_osservativi_api::routes(
                         user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
                     ));
                     cfg.service(statics_api::routes());
                     cfg.service(strumentazione_api::routes(
                         user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
                     ));
-                    cfg.service(users_api::routes(user_authorization_service.clone()));
+                    cfg.service(users_api::routes(
+                        user_authorization_service.clone(),
+                        app_state.tenant_conf.tenant_id.clone(),
+                    ));
                 }
             })];
 

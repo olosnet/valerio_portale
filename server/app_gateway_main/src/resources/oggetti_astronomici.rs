@@ -251,6 +251,7 @@ pub mod oggetti_astronomici_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         let oggetti_astronomici_authorization_middleware:
             JwtAuthorizationMiddleware<UserAuthorizationService> =
@@ -268,6 +269,7 @@ pub mod oggetti_astronomici_api {
                 ]
                 .into(),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/oggetti_astronomici")

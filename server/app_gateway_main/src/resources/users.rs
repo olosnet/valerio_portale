@@ -192,6 +192,7 @@ pub mod users_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         // Clone the identity to ensure it is owned and can be moved into the middleware
 
@@ -201,6 +202,7 @@ pub mod users_api {
                 UsersModule::module_permissions_strings().into(),
                 std::sync::Arc::from([]),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/users")

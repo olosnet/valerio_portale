@@ -156,6 +156,7 @@ pub mod enums_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         let enums_authorization_middleware: JwtAuthorizationMiddleware<UserAuthorizationService> =
             JwtAuthorizationMiddleware::new(
@@ -169,6 +170,7 @@ pub mod enums_api {
                 ]
                 .into(),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/enums")

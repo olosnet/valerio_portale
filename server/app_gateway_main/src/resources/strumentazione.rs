@@ -162,6 +162,7 @@ pub mod strumentazione_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         let authorization_middleware: JwtAuthorizationMiddleware<UserAuthorizationService> =
             JwtAuthorizationMiddleware::new(
@@ -178,6 +179,7 @@ pub mod strumentazione_api {
                 ]
                 .into(),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/strumentazione")

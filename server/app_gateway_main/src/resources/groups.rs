@@ -170,12 +170,14 @@ pub mod groups_api {
 
     pub fn routes(
         user_authorization_service: std::sync::Arc<UserAuthorizationService>,
+        tenant_id: String,
     ) -> impl HttpServiceFactory {
         let groups_authorization_middleware: JwtAuthorizationMiddleware<UserAuthorizationService> =
             JwtAuthorizationMiddleware::new(
                 GroupsModule::module_permissions_strings().into(),
                 std::sync::Arc::from([]),
                 user_authorization_service,
+                tenant_id,
             );
 
         web::scope("/groups")
