@@ -5,7 +5,7 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::{models::FileManagerUploadForm, services::FileManagerBaseService},
     auth::models::JwtDefaultClaims,
-    core::models::CornettiError,
+    core::models::CornettiResult,
     filemanager::{
         confs::FileManagerConf,
         models::{FileManager, FileManagerInfo},
@@ -18,16 +18,16 @@ use crate::{base::filemanager::repos::FileManagerRepository, base::users::repos:
 pub struct FileManagerService<'a> {
     base_service: FileManagerBaseService<'a>,
     user_repository: UsersRepository,
-    app_namespace: &'a str,
     tenant_id: &'a str,
+    app_namespace: &'a str,
 }
 
 impl<'a> FileManagerService<'a> {
     pub fn new(
         mongo: Arc<MongoDBService>,
         conf: &'a FileManagerConf,
-        app_namespace: &'a str,
         tenant_id: &'a str,
+        app_namespace: &'a str,
     ) -> Self {
         Self {
             base_service: FileManagerBaseService::new(
@@ -35,8 +35,8 @@ impl<'a> FileManagerService<'a> {
                 conf,
             ),
             user_repository: UsersRepository::new(mongo),
-            app_namespace,
             tenant_id,
+            app_namespace,
         }
     }
 
@@ -49,7 +49,7 @@ impl<'a> FileManagerService<'a> {
         claims: Option<JwtDefaultClaims>,
         resource_type: Option<usize>,
         form: MultipartForm<FileManagerUploadForm>,
-    ) -> Result<FileManager, CornettiError> {
+    ) -> CornettiResult<FileManager> {
         let mut identity = String::from("unknown");
         let mut identity_id = String::from("unknown");
 
@@ -68,13 +68,13 @@ impl<'a> FileManagerService<'a> {
         &self,
         filename: &str,
         is_download: bool,
-    ) -> Result<NamedFile, CornettiError> {
+    ) -> CornettiResult<NamedFile> {
         self.base_service
             .retrieve(self.tenant_id, filename, self.app_namespace, is_download)
             .await
     }
 
-    pub async fn delete(&self, filename: &str) -> Result<(), CornettiError> {
+    pub async fn delete(&self, filename: &str) -> CornettiResult<()> {
         self.base_service.delete(self.tenant_id, filename, self.app_namespace).await
     }
 }

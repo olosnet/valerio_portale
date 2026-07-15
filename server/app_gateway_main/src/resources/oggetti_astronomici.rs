@@ -208,7 +208,7 @@ mod osservazioni_per_oggetto_view {
 pub mod oggetti_astronomici_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{astronomia::oggetti_astronomici::OggettiAstronomiciModule, base::users::services::UserAuthorizationService};
+    use app_modules::{astronomia::oggetti_astronomici::OggettiAstronomiciModule, base::auth::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

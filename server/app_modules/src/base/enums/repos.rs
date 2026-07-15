@@ -4,7 +4,7 @@ use bson::doc;
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
     mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
@@ -109,7 +109,7 @@ impl EnumsRepository {
         Self { mongo }
     }
 
-    pub async fn list(&self, category: Option<&str>) -> Result<Vec<EnumItem>, CornettiError> {
+    pub async fn list(&self, category: Option<&str>) -> CornettiResult<Vec<EnumItem>> {
         let collection_name = MongoEnumModel::collection_name();
         let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
         let filter = category
@@ -130,7 +130,7 @@ impl EnumsRepository {
         Ok(items.into_iter().map(Into::into).collect())
     }
 
-    pub async fn get(&self, enum_id: &str) -> Result<EnumItem, CornettiError> {
+    pub async fn get(&self, enum_id: &str) -> CornettiResult<EnumItem> {
         let obj_id = CornettiObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
@@ -146,7 +146,7 @@ impl EnumsRepository {
         }
     }
 
-    pub async fn create(&self, enum_create: EnumCreate) -> Result<EnumItem, CornettiError> {
+    pub async fn create(&self, enum_create: EnumCreate) -> CornettiResult<EnumItem> {
         let mut model: MongoEnumModel = enum_create.into();
         let collection_name = MongoEnumModel::collection_name();
         let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
@@ -166,7 +166,7 @@ impl EnumsRepository {
         &self,
         enum_id: &str,
         enum_update: EnumUpdate,
-    ) -> Result<EnumItem, CornettiError> {
+    ) -> CornettiResult<EnumItem> {
         let obj_id = CornettiObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
@@ -193,7 +193,7 @@ impl EnumsRepository {
         }
     }
 
-    pub async fn delete(&self, enum_id: &str) -> Result<(), CornettiError> {
+    pub async fn delete(&self, enum_id: &str) -> CornettiResult<()> {
         let obj_id = CornettiObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 

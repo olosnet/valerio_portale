@@ -1,5 +1,5 @@
 use cornetti::{
-    core::models::CornettiError, mongo::services::MongoDBService, redis::services::RedisDBService,
+    core::models::CornettiResult, mongo::services::MongoDBService, redis::services::RedisDBService,
 };
 use std::sync::Arc;
 use validator::Validate;
@@ -33,15 +33,15 @@ impl<'a> GroupService<'a> {
         }
     }
 
-    pub async fn list_groups(&self) -> Result<Vec<Group>, CornettiError> {
+    pub async fn list_groups(&self) -> CornettiResult<Vec<Group>> {
         self.repository.list().await
     }
 
-    pub async fn get_group(&self, group_id: &str) -> Result<Group, CornettiError> {
+    pub async fn get_group(&self, group_id: &str) -> CornettiResult<Group> {
         self.repository.get(group_id).await
     }
 
-    pub async fn create_group(&self, group_create: GroupCreate) -> Result<Group, CornettiError> {
+    pub async fn create_group(&self, group_create: GroupCreate) -> CornettiResult<Group> {
         group_create.validate()?;
         self.repository.create(group_create).await
     }
@@ -50,7 +50,7 @@ impl<'a> GroupService<'a> {
         &self,
         group_id: &str,
         group_update: GroupUpdate,
-    ) -> Result<Group, CornettiError> {
+    ) -> CornettiResult<Group> {
         group_update.validate()?;
 
         let result = self.repository.update(group_id, group_update).await;
@@ -73,7 +73,7 @@ impl<'a> GroupService<'a> {
         }
     }
 
-    pub async fn delete_group(&self, group_id: &str) -> Result<(), CornettiError> {
+    pub async fn delete_group(&self, group_id: &str) -> CornettiResult<()> {
         let result = self.repository.delete(group_id).await;
         match result {
             Ok(_) => {

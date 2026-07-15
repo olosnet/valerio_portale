@@ -20,8 +20,8 @@ mod filemanager_images_view {
         let filemanager_service = ImageFileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
+            &state.base_conf.shared_resources_id,
         );
 
         let info: FileManagerInfo = filemanager_service.info();
@@ -46,8 +46,8 @@ mod filemanager_images_view {
         let filemanager_service = ImageFileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
+            &state.base_conf.shared_resources_id,
         );
         match filemanager_service.upload(claims, form).await {
             Ok(file) => HttpResponse::Ok().json(file),
@@ -69,8 +69,8 @@ mod filemanager_images_view {
         let filemanager_service = ImageFileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
+            &state.base_conf.shared_resources_id,
         );
 
         match filemanager_service.delete(&filename.into_inner()).await {
@@ -96,8 +96,8 @@ mod filemanager_images_view {
         let filemanager_service = ImageFileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
+            &state.base_conf.shared_resources_id,
         );
 
         match filemanager_service.list_resized(&filename).await {
@@ -124,8 +124,8 @@ mod filemanager_images_view {
         let filemanager_service = ImageFileManagerService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
-            &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
+            &state.base_conf.shared_resources_id,
         );
 
         match filemanager_service.get_resized(&filename, &slug).await {

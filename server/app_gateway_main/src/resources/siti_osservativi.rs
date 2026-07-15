@@ -118,7 +118,7 @@ pub mod siti_osservativi_api {
     use actix_web::{dev::HttpServiceFactory, web};
     use app_modules::{
         astronomia::siti_osservativi::SitiOsservativiModule,
-        base::users::services::UserAuthorizationService,
+        base::auth::services::UserAuthorizationService,
     };
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,

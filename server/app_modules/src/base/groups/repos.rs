@@ -8,7 +8,7 @@ use bson::doc;
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
     mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
@@ -119,7 +119,7 @@ impl GroupsRepository {
         GroupsRepository { mongo }
     }
 
-    pub async fn list(&self) -> Result<Vec<Group>, CornettiError> {
+    pub async fn list(&self) -> CornettiResult<Vec<Group>> {
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
 
@@ -135,7 +135,7 @@ impl GroupsRepository {
         }
     }
 
-    pub async fn get(&self, group_id: &str) -> Result<Group, CornettiError> {
+    pub async fn get(&self, group_id: &str) -> CornettiResult<Group> {
         let obj_id = CornettiObjectId::parse_str(group_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
@@ -151,7 +151,7 @@ impl GroupsRepository {
         }
     }
 
-    pub async fn create(&self, group_create: GroupCreate) -> Result<Group, CornettiError> {
+    pub async fn create(&self, group_create: GroupCreate) -> CornettiResult<Group> {
         let mut new_group: MongoGroupModel = group_create.into();
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
@@ -170,7 +170,7 @@ impl GroupsRepository {
         &self,
         group_id: &str,
         group_update: GroupUpdate,
-    ) -> Result<Group, CornettiError> {
+    ) -> CornettiResult<Group> {
         let obj_id = CornettiObjectId::parse_str(group_id)?;
 
         // Aggiornamento modified
@@ -193,7 +193,7 @@ impl GroupsRepository {
         }
     }
 
-    pub async fn delete(&self, group_id: &str) -> Result<(), CornettiError> {
+    pub async fn delete(&self, group_id: &str) -> CornettiResult<()> {
         let obj_id: CornettiObjectId = CornettiObjectId::parse_str(group_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 

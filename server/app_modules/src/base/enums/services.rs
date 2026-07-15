@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cornetti::{core::models::CornettiError, mongo::services::MongoDBService};
+use cornetti::{core::models::CornettiResult, mongo::services::MongoDBService};
 use validator::Validate;
 
 use crate::base::enums::{
@@ -19,15 +19,15 @@ impl EnumsService {
         }
     }
 
-    pub async fn list_enums(&self, category: Option<&str>) -> Result<Vec<EnumItem>, CornettiError> {
+    pub async fn list_enums(&self, category: Option<&str>) -> CornettiResult<Vec<EnumItem>> {
         self.repository.list(category).await
     }
 
-    pub async fn get_enum(&self, enum_id: &str) -> Result<EnumItem, CornettiError> {
+    pub async fn get_enum(&self, enum_id: &str) -> CornettiResult<EnumItem> {
         self.repository.get(enum_id).await
     }
 
-    pub async fn create_enum(&self, enum_create: EnumCreate) -> Result<EnumItem, CornettiError> {
+    pub async fn create_enum(&self, enum_create: EnumCreate) -> CornettiResult<EnumItem> {
         enum_create.validate()?;
         self.repository.create(enum_create).await
     }
@@ -36,12 +36,12 @@ impl EnumsService {
         &self,
         enum_id: &str,
         enum_update: EnumUpdate,
-    ) -> Result<EnumItem, CornettiError> {
+    ) -> CornettiResult<EnumItem> {
         enum_update.validate()?;
         self.repository.update(enum_id, enum_update).await
     }
 
-    pub async fn delete_enum(&self, enum_id: &str) -> Result<(), CornettiError> {
+    pub async fn delete_enum(&self, enum_id: &str) -> CornettiResult<()> {
         self.repository.delete(enum_id).await
     }
 }

@@ -4,7 +4,7 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::{errors, helpers::sec::verify_password, models::CornettiError},
+    core::{errors, helpers::sec::verify_password, models::CornettiResult},
     filemanager::confs::FileManagerConf,
     mongo::services::MongoDBService,
 };
@@ -14,10 +14,10 @@ use crate::{
     base::{
         filemanager::services::FileManagerService,
         identity::{
-            models::{UserIdentityUpdate, UserIdentityUpdatePassword},
+            models::{UserIdentity, UserIdentityUpdate, UserIdentityUpdatePassword},
             repos::IdentityRepository,
         },
-        users::models::{User, UserIdentity},
+        users::models::User,
     },
 };
 
@@ -30,7 +30,8 @@ impl<'a> IdentityService<'a> {
     pub fn new(
         mongo: Arc<MongoDBService>,
         conf: &'a FileManagerConf,
-        app_namespace: &'a str,
+        _app_namespace: &'a str,
+        filemanager_app_namespace: &'a str,
         tenant_id: &'a str,
     ) -> Self {
         Self {
@@ -38,8 +39,8 @@ impl<'a> IdentityService<'a> {
             filemanager_service: FileManagerService::new(
                 mongo,
                 conf,
-                app_namespace,
                 tenant_id,
+                filemanager_app_namespace,
             ),
         }
     }
@@ -47,7 +48,7 @@ impl<'a> IdentityService<'a> {
     pub async fn get_identity(
         &self,
         claims: Option<JwtDefaultClaims>,
-    ) -> Result<UserIdentity, CornettiError> {
+    ) -> CornettiResult<UserIdentity> {
         match claims {
             Some(c) => self.repository.get_identity(&c.sub).await,
             None => Err(errors::not_found::item_not_found()),
@@ -58,7 +59,7 @@ impl<'a> IdentityService<'a> {
         &self,
         claims: Option<JwtDefaultClaims>,
         dto: UserIdentityUpdate,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let claims = claims.ok_or_else(errors::not_found::item_not_found)?;
         dto.validate()?;
 
@@ -71,7 +72,7 @@ impl<'a> IdentityService<'a> {
         &self,
         claims: Option<JwtDefaultClaims>,
         form: MultipartForm<FileManagerUploadForm>,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let claims = claims.ok_or_else(errors::not_found::item_not_found)?;
 
         let current = self.repository.get_user_by_email(&claims.sub).await?;
@@ -101,7 +102,7 @@ impl<'a> IdentityService<'a> {
         &self,
         claims: Option<JwtDefaultClaims>,
         dto: UserIdentityUpdatePassword,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let claims = claims.ok_or_else(errors::not_found::item_not_found)?;
         dto.validate()?;
 

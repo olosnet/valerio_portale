@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use cornetti::{
-    auth::{models::AuthorizationPermission, traits::IdentityAuthorization},
-    core::models::CornettiError,
+    core::models::CornettiResult,
     mongo::services::MongoDBService,
     redis::services::RedisDBService,
 };
@@ -32,15 +31,15 @@ impl<'a> UsersService<'a> {
         }
     }
 
-    pub async fn list_users(&self) -> Result<Vec<User>, CornettiError> {
+    pub async fn list_users(&self) -> CornettiResult<Vec<User>> {
         self.repository.list().await
     }
 
-    pub async fn get_user(&self, user_id: &str) -> Result<User, CornettiError> {
+    pub async fn get_user(&self, user_id: &str) -> CornettiResult<User> {
         self.repository.get(user_id).await
     }
 
-    pub async fn create_user(&self, user_create: UserCreate) -> Result<User, CornettiError> {
+    pub async fn create_user(&self, user_create: UserCreate) -> CornettiResult<User> {
         user_create.validate()?;
         self.repository.create(user_create).await
     }
@@ -49,7 +48,7 @@ impl<'a> UsersService<'a> {
         &self,
         user_id: &str,
         user_update: UserUpdate,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         user_update.validate()?;
         let user_updated = self.repository.update(user_id, user_update).await?;
         if let Some(ref email) = user_updated.email {
@@ -61,7 +60,7 @@ impl<'a> UsersService<'a> {
         Ok(user_updated)
     }
 
-    pub async fn delete_user(&self, user_id: &str) -> Result<(), CornettiError> {
+    pub async fn delete_user(&self, user_id: &str) -> CornettiResult<()> {
         let result = self.repository.delete(user_id, false).await?;
         Ok(result)
     }
@@ -70,58 +69,10 @@ impl<'a> UsersService<'a> {
         &self,
         user_id: &str,
         set_password_body: SetPasswordBody,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         set_password_body.validate()?;
         self.repository
             .set_password(user_id, &set_password_body.password)
             .await
-    }
-}
-
-pub struct UserAuthorizationService {
-    repository: UsersRepository,
-    cache_repository: UsersCacheRepository,
-    app_namespace: String,
-}
-
-impl UserAuthorizationService {
-    pub fn new(
-        mongo: Arc<MongoDBService>,
-        redis: Arc<RedisDBService>,
-        app_namespace: String,
-    ) -> Self {
-        Self {
-            repository: UsersRepository::new(mongo),
-            cache_repository: UsersCacheRepository::new(redis),
-            app_namespace,
-        }
-    }
-}
-
-impl IdentityAuthorization for UserAuthorizationService {
-    fn get_identity_permissions(
-        &self,
-        _tenant_id: &str,
-        sub: &str,
-    ) -> impl std::future::Future<
-        Output = Result<std::collections::HashMap<String, AuthorizationPermission>, CornettiError>,
-    > + Send {
-        Box::pin(async move {
-            let cached = self
-                .cache_repository
-                .get_identity_permissions(&self.app_namespace, sub)
-                .await?;
-
-            match cached {
-                Some(permissions) => Ok(permissions),
-                None => {
-                    let permissions = self.repository.get_user_permissions(sub).await?;
-                    self.cache_repository
-                        .set_identity_permissions(&self.app_namespace, sub, &permissions)
-                        .await?;
-                    Ok(permissions)
-                }
-            }
-        })
     }
 }

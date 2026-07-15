@@ -1,6 +1,49 @@
-use serde::Deserialize;
+use std::collections::HashMap;
+
+use cornetti::auth::models::AuthorizationPermission;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::{Validate, ValidationError};
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UserIdentity {
+    pub _id: Option<String>,
+    pub name: Option<String>,
+    pub surname: Option<String>,
+    pub email: Option<String>,
+    pub created: Option<chrono::DateTime<chrono::Utc>>,
+    pub modified: chrono::DateTime<chrono::Utc>,
+    pub last_access: Option<chrono::DateTime<chrono::Utc>>,
+    pub profile_image: String,
+    pub enabled: bool,
+    pub default: bool,
+    pub user_type: u8,
+    pub groups_ids: Vec<String>,
+    pub permissions: HashMap<String, AuthorizationPermission>,
+}
+
+impl UserIdentity {
+    pub fn from_user_and_permissions(
+        user: crate::base::users::models::User,
+        permissions: HashMap<String, AuthorizationPermission>,
+    ) -> Self {
+        Self {
+            _id: user._id,
+            name: user.name,
+            surname: user.surname,
+            email: user.email,
+            created: user.created,
+            modified: user.modified,
+            last_access: user.last_access,
+            profile_image: user.profile_image,
+            enabled: user.enabled,
+            default: user.default,
+            user_type: user.user_type,
+            groups_ids: user.groups_ids,
+            permissions,
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct UserIdentityUpdate {

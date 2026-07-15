@@ -121,7 +121,7 @@ pub mod strumentazione_api {
     use actix_web::{dev::HttpServiceFactory, web};
     use app_modules::{
         astronomia::strumentazione::StrumentazioneModule,
-        base::users::services::UserAuthorizationService,
+        base::auth::services::UserAuthorizationService,
     };
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,

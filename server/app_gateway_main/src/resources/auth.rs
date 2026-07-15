@@ -28,8 +28,8 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            Some(state.session_store.clone()),
             &state.app_info.name,
+            Some(state.session_store.clone()),
         );
 
         match auth_service.login(body, req).await {
@@ -76,8 +76,8 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            Some(state.session_store.clone()),
             &state.app_info.name,
+            Some(state.session_store.clone()),
         );
 
         match auth_service.logout(claims).await {
@@ -110,8 +110,8 @@ mod auth_view {
         let auth_service = AuthenticationService::new(
             state.mongo.clone(),
             &state.auth_conf,
-            Some(state.session_store.clone()),
             &state.app_info.name,
+            Some(state.session_store.clone()),
         );
 
         match auth_service.refresh(claims, req).await {

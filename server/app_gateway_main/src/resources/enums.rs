@@ -116,7 +116,7 @@ mod enums_view {
 
 pub mod enums_api {
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{base::enums::EnumsModule, base::users::services::UserAuthorizationService};
+    use app_modules::{base::enums::EnumsModule, base::auth::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

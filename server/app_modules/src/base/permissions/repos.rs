@@ -1,5 +1,5 @@
 use cornetti::{
-    core::{errors, models::CornettiError},
+    core::{errors, models::CornettiResult},
     mongo::{helpers::modules_collection_name, services::MongoDBService},
 };
 use futures::TryStreamExt;
@@ -13,7 +13,7 @@ impl<'a> PermissionsRepository<'a> {
         PermissionsRepository { mongo }
     }
 
-    pub async fn list(&self) -> Result<Vec<String>, CornettiError> {
+    pub async fn list(&self) -> CornettiResult<Vec<String>> {
         let collection = self
             .mongo
             .db()

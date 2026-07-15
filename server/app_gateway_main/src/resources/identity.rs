@@ -17,7 +17,7 @@ mod identity_view {
         summary = "Current user identity",
         tags = ["Identity"],
         responses(
-            (status = 200, description = "Current user identity", body = app_modules::base::users::models::UserIdentity),
+            (status = 200, description = "Current user identity", body = app_modules::base::identity::models::UserIdentity),
             (status = 404, description = "Item not found", body = CornettiError),
             (status = 500, description = "Internal server error", body = CornettiError)
         )
@@ -30,6 +30,7 @@ mod identity_view {
         let service = IdentityService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
+            &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
         );
@@ -59,6 +60,7 @@ mod identity_view {
         let service = IdentityService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
+            &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
         );
@@ -89,6 +91,7 @@ mod identity_view {
         let service = IdentityService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
+            &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
         );
@@ -118,6 +121,7 @@ mod identity_view {
         let service = IdentityService::new(
             state.mongo.clone(),
             &state.filemanager_conf,
+            &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
             &state.tenant_conf.tenant_id,
         );

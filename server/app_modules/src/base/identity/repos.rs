@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use bson::doc;
 use cornetti::{
-    core::{errors, helpers::sec::hash_password, models::CornettiError, traits::BaseModule},
+    core::{errors, helpers::sec::hash_password, models::CornettiResult, traits::BaseModule},
     mongo::services::MongoDBService,
 };
 use mongodb::{Collection, options::ReturnDocument};
 
 use crate::base::users::{
     UsersModule,
-    models::{User, UserIdentity},
+    models::User,
     repos::MongoUserModel,
 };
 
-use super::models::UserIdentityUpdate;
+use super::models::{UserIdentity, UserIdentityUpdate};
 
 pub struct IdentityRepository {
     mongo: Arc<MongoDBService>,
@@ -24,12 +24,12 @@ impl IdentityRepository {
         Self { mongo }
     }
 
-    pub async fn get_identity(&self, email: &str) -> Result<UserIdentity, CornettiError> {
+    pub async fn get_identity(&self, email: &str) -> CornettiResult<UserIdentity> {
         let users_repo = crate::base::users::repos::UsersRepository::new(self.mongo.clone());
         users_repo.get_identity(&email.to_string()).await
     }
 
-    pub async fn get_user_by_email(&self, email: &str) -> Result<User, CornettiError> {
+    pub async fn get_user_by_email(&self, email: &str) -> CornettiResult<User> {
         let collection_name = UsersModule::module_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -39,7 +39,7 @@ impl IdentityRepository {
         }
     }
 
-    pub async fn get_user_password_hash(&self, email: &str) -> Result<String, CornettiError> {
+    pub async fn get_user_password_hash(&self, email: &str) -> CornettiResult<String> {
         let collection_name = UsersModule::module_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -55,7 +55,7 @@ impl IdentityRepository {
         &self,
         email: &str,
         dto: &UserIdentityUpdate,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let collection_name = UsersModule::module_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -85,7 +85,7 @@ impl IdentityRepository {
         }
     }
 
-    pub async fn set_profile_image(&self, email: &str, filename: &str) -> Result<User, CornettiError> {
+    pub async fn set_profile_image(&self, email: &str, filename: &str) -> CornettiResult<User> {
         let collection_name = UsersModule::module_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -109,7 +109,7 @@ impl IdentityRepository {
         }
     }
 
-    pub async fn update_password(&self, email: &str, new_password: &str) -> Result<User, CornettiError> {
+    pub async fn update_password(&self, email: &str, new_password: &str) -> CornettiResult<User> {
         let collection_name = UsersModule::module_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 

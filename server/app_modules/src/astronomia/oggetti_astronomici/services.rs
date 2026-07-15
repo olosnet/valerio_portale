@@ -79,7 +79,7 @@ impl<'a> OggettiAstronomiciImageService<'a> {
     pub fn new(mongo: Arc<MongoDBService>, conf: &'a FileManagerConf, app_namespace: &'a str, tenant_id: &'a str) -> Self {
         Self {
             repository: OggettiAstronomiciRepository::new(mongo.clone()),
-            filemanager_service: FileManagerService::new(mongo, conf, app_namespace, tenant_id),
+            filemanager_service: FileManagerService::new(mongo, conf, tenant_id, app_namespace),
         }
     }
 

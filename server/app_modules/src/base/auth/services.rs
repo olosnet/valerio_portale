@@ -1,32 +1,43 @@
 use std::sync::Arc;
 
-use crate::base::users::repos::UsersRepository;
 use cornetti::{
     actix::auth::helpers::invalidate_session,
-    auth::{confs::JwtAuthConf, models::JwtDefaultClaims, traits::SessionStore},
-    core::errors,
+    auth::{
+        confs::JwtAuthConf,
+        models::{AuthorizationPermission, JwtDefaultClaims},
+        traits::{IdentityAuthorization, SessionStore},
+    },
+    core::{errors, models::CornettiResult},
     mongo::services::MongoDBService,
+    redis::services::RedisDBService,
+};
+
+use crate::base::{
+    identity::repos::IdentityRepository,
+    users::repos::{UsersCacheRepository, UsersRepository},
 };
 
 pub struct AuthenticationService<'a, S: SessionStore> {
     users_repository: UsersRepository,
+    identity_repository: IdentityRepository,
     conf: &'a JwtAuthConf,
-    session_store: Option<Arc<S>>,
     tenant_id: &'a str,
+    session_store: Option<Arc<S>>,
 }
 
 impl<'a, S: SessionStore> AuthenticationService<'a, S> {
     pub fn new(
         mongo: Arc<MongoDBService>,
         conf: &'a JwtAuthConf,
-        session_store: Option<Arc<S>>,
         tenant_id: &'a str,
+        session_store: Option<Arc<S>>,
     ) -> AuthenticationService<'a, S> {
         AuthenticationService {
-            users_repository: UsersRepository::new(mongo),
+            users_repository: UsersRepository::new(mongo.clone()),
+            identity_repository: IdentityRepository::new(mongo),
             conf,
-            session_store,
             tenant_id,
+            session_store,
         }
     }
 
@@ -34,7 +45,7 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         &self,
         login: cornetti::auth::models::DefaultLoginBody,
         req: actix_web::HttpRequest,
-    ) -> Result<
+    ) -> CornettiResult<
         (
             cornetti::auth::models::DefaultLoginResponse<crate::base::users::models::User>,
             Option<actix_web::cookie::Cookie<'_>>,
@@ -42,7 +53,6 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
             Option<actix_web::cookie::Cookie<'_>>,
             Option<actix_web::cookie::Cookie<'_>>,
         ),
-        cornetti::core::models::CornettiError,
     > {
         let _ = self
             .users_repository
@@ -68,9 +78,9 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
     pub async fn logout(
         &self,
         claims: Option<JwtDefaultClaims>,
-    ) -> Result<Vec<&str>, cornetti::core::models::CornettiError> {
+    ) -> CornettiResult<Vec<&str>> {
         if let Some(c) = claims {
-            let _ = self.users_repository.get_identity(&c.sub).await?;
+            let _ = self.identity_repository.get_user_by_email(&c.sub).await?;
 
             return invalidate_session(
                 self.conf,
@@ -85,31 +95,19 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         Err(errors::not_found::item_not_found())
     }
 
-    pub async fn identity(
-        &self,
-        claims: Option<JwtDefaultClaims>,
-    ) -> Result<crate::base::users::models::UserIdentity, cornetti::core::models::CornettiError> {
-        if let Some(c) = claims {
-            return self.users_repository.get_identity(&c.sub).await;
-        }
-
-        Err(errors::not_found::item_not_found())
-    }
-
     pub async fn refresh(
         &self,
         claims: Option<JwtDefaultClaims>,
         req: actix_web::HttpRequest,
-    ) -> Result<
+    ) -> CornettiResult<
         (
-            cornetti::auth::models::RefreshAuthResponseDto<crate::base::users::models::UserIdentity>,
+            cornetti::auth::models::RefreshAuthResponseDto<crate::base::identity::models::UserIdentity>,
             Option<actix_web::cookie::Cookie<'_>>,
             Option<actix_web::cookie::Cookie<'_>>,
         ),
-        cornetti::core::models::CornettiError,
     > {
         if let Some(c) = claims {
-            let user = self.users_repository.get_identity(&c.sub).await?;
+            let user = self.identity_repository.get_identity(&c.sub).await?;
             return cornetti::actix::auth::helpers::refresh_auth_tokens_and_response(
                 &self.conf,
                 user,
@@ -122,5 +120,53 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         }
 
         Err(errors::not_found::item_not_found())
+    }
+}
+
+pub struct UserAuthorizationService {
+    repository: UsersRepository,
+    cache_repository: UsersCacheRepository,
+    app_namespace: String,
+}
+
+impl UserAuthorizationService {
+    pub fn new(
+        mongo: Arc<MongoDBService>,
+        redis: Arc<RedisDBService>,
+        app_namespace: String,
+    ) -> Self {
+        Self {
+            repository: UsersRepository::new(mongo),
+            cache_repository: UsersCacheRepository::new(redis),
+            app_namespace,
+        }
+    }
+}
+
+impl IdentityAuthorization for UserAuthorizationService {
+    fn get_identity_permissions(
+        &self,
+        _tenant_id: &str,
+        sub: &str,
+    ) -> impl std::future::Future<
+        Output = CornettiResult<std::collections::HashMap<String, AuthorizationPermission>>,
+    > + Send {
+        Box::pin(async move {
+            let cached = self
+                .cache_repository
+                .get_identity_permissions(&self.app_namespace, sub)
+                .await?;
+
+            match cached {
+                Some(permissions) => Ok(permissions),
+                None => {
+                    let permissions = self.repository.get_user_permissions(sub).await?;
+                    self.cache_repository
+                        .set_identity_permissions(&self.app_namespace, sub, &permissions)
+                        .await?;
+                    Ok(permissions)
+                }
+            }
+        })
     }
 }

@@ -245,7 +245,7 @@ mod sessioni_osservative_view {
 pub mod sessioni_osservative_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{astronomia::sessioni_osservative::SessioniOsservativeModule, base::users::services::UserAuthorizationService};
+    use app_modules::{astronomia::sessioni_osservative::SessioniOsservativeModule, base::auth::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

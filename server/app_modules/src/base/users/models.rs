@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-use cornetti::auth::models::AuthorizationPermission;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use validator::{Validate, ValidationError};
@@ -21,23 +18,6 @@ pub struct User {
     pub groups_ids: Vec<String>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
-
-pub struct UserIdentity {
-    pub _id: Option<String>, //La descrizione dei singoli campi attualmente non è supportata
-    pub name: Option<String>,
-    pub surname: Option<String>,
-    pub email: Option<String>,
-    pub created: Option<chrono::DateTime<chrono::Utc>>,
-    pub modified: chrono::DateTime<chrono::Utc>,
-    pub last_access: Option<chrono::DateTime<chrono::Utc>>,
-    pub profile_image: String,
-    pub enabled: bool,
-    pub default: bool,
-    pub user_type: u8,
-    pub groups_ids: Vec<String>,
-    pub permissions: HashMap<String, AuthorizationPermission>,
-}
 #[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct UserCreate {
     pub name: String,

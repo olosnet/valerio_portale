@@ -1,9 +1,10 @@
-use crate::base::users::models::{User, UserCreate, UserIdentity, UserUpdate};
+use crate::base::identity::models::UserIdentity;
+use crate::base::users::models::{User, UserCreate, UserUpdate};
 use bson::doc;
 use cornetti::auth::models::AuthorizationPermission;
 use cornetti::core::errors;
 use cornetti::core::helpers::sec::{hash_password, random_pass, verify_password};
-use cornetti::core::models::CornettiError;
+use cornetti::core::models::CornettiResult;
 use cornetti::core::traits::{BaseModel, BaseModule};
 use cornetti::mongo::services::MongoDBService;
 use cornetti::mongo::traits::MongoBaseModel;
@@ -188,7 +189,7 @@ impl UsersRepository {
         UsersRepository { mongo }
     }
 
-    pub async fn list(&self) -> Result<Vec<User>, CornettiError> {
+    pub async fn list(&self) -> CornettiResult<Vec<User>> {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -198,7 +199,7 @@ impl UsersRepository {
         Ok(results.into_iter().map(|item| item.into()).collect())
     }
 
-    pub async fn get(&self, user_id: &str) -> Result<User, CornettiError> {
+    pub async fn get(&self, user_id: &str) -> CornettiResult<User> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
 
         let collection_name: &'static str = MongoUserModel::collection_name();
@@ -213,7 +214,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn get_by_email(&self, email: &str) -> Result<Option<User>, CornettiError> {
+    pub async fn get_by_email(&self, email: &str) -> CornettiResult<Option<User>> {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -223,7 +224,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn create(&self, user_create: UserCreate) -> Result<User, CornettiError> {
+    pub async fn create(&self, user_create: UserCreate) -> CornettiResult<User> {
         let mut new_user: MongoUserModel = user_create.into();
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -242,7 +243,7 @@ impl UsersRepository {
         &self,
         user_id: &str,
         is_default: bool,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -270,7 +271,7 @@ impl UsersRepository {
         &self,
         user_id: &str,
         user_update: UserUpdate,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
 
         let user: MongoUserModel = user_update.into();
@@ -291,7 +292,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn delete(&self, user_id: &str, delete_default: bool) -> Result<(), CornettiError> {
+    pub async fn delete(&self, user_id: &str, delete_default: bool) -> CornettiResult<()> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
 
         let collection_name: &'static str = MongoUserModel::collection_name();
@@ -313,7 +314,7 @@ impl UsersRepository {
         &self,
         user_id: &str,
         password: &String,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -333,7 +334,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn set_last_access(&self, email: &String) -> Result<User, CornettiError> {
+    pub async fn set_last_access(&self, email: &String) -> CornettiResult<User> {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
         let last_access = Some(chrono::Utc::now());
@@ -355,7 +356,7 @@ impl UsersRepository {
         &self,
         user_id: &str,
         group_id: &str,
-    ) -> Result<bool, CornettiError> {
+    ) -> CornettiResult<bool> {
         let obj_user_id = CornettiObjectId::parse_str(user_id)?;
         let obj_group_id = CornettiObjectId::parse_str(group_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
@@ -391,7 +392,7 @@ impl UsersRepository {
         Ok(true)
     }
 
-    pub async fn get_identity(&self, email: &String) -> Result<UserIdentity, CornettiError> {
+    pub async fn get_identity(&self, email: &String) -> CornettiResult<UserIdentity> {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -410,7 +411,7 @@ impl UsersRepository {
         &self,
         email: &String,
         in_password: &String,
-    ) -> Result<User, CornettiError> {
+    ) -> CornettiResult<User> {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -438,7 +439,7 @@ impl UsersRepository {
     pub async fn get_user_permissions(
         &self,
         email: &str,
-    ) -> Result<HashMap<String, AuthorizationPermission>, cornetti::core::models::CornettiError>
+    ) -> CornettiResult<HashMap<String, AuthorizationPermission>>
     {
         let collection = self
             .mongo
@@ -533,7 +534,7 @@ impl UsersRepository {
     pub async fn get_users_from_group_id(
         &self,
         group_id: &str,
-    ) -> Result<Vec<MongoUserModel>, CornettiError> {
+    ) -> CornettiResult<Vec<MongoUserModel>> {
         let obj_id = CornettiObjectId::parse_str(group_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -563,10 +564,7 @@ impl UsersCacheRepository {
         &self,
         namespace: &str,
         sub: &str,
-    ) -> Result<
-        Option<HashMap<String, AuthorizationPermission>>,
-        cornetti::core::models::CornettiError,
-    > {
+    ) -> CornettiResult<Option<HashMap<String, AuthorizationPermission>>> {
         let key = self.identity_key(namespace, sub);
 
         let mut connection = self
@@ -591,7 +589,7 @@ impl UsersCacheRepository {
         namespace: &str,
         sub: &str,
         permissions: &HashMap<String, AuthorizationPermission>,
-    ) -> Result<(), cornetti::core::models::CornettiError> {
+    ) -> CornettiResult<()> {
         let key = self.identity_key(namespace, sub);
         let mut connection = self
             .redis
@@ -609,7 +607,7 @@ impl UsersCacheRepository {
         &self,
         namespace: &str,
         sub: &str,
-    ) -> Result<(), cornetti::core::models::CornettiError> {
+    ) -> CornettiResult<()> {
         let key = self.identity_key(namespace, sub);
         let mut connection = self
             .redis

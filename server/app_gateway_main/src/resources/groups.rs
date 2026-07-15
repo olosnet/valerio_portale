@@ -135,7 +135,7 @@ mod groups_view {
 pub mod groups_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::{base::groups::GroupsModule, base::users::services::UserAuthorizationService};
+    use app_modules::{base::groups::GroupsModule, base::auth::services::UserAuthorizationService};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

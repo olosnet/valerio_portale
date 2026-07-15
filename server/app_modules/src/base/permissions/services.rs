@@ -1,3 +1,5 @@
+use cornetti::core::models::CornettiResult;
+
 use crate::base::permissions::repos::PermissionsRepository;
 
 pub struct PermissionsService<'a> {
@@ -11,7 +13,7 @@ impl<'a> PermissionsService<'a> {
 
     pub async fn list_permissions(
         &self,
-    ) -> Result<Vec<String>, cornetti::core::models::CornettiError> {
+    ) -> CornettiResult<Vec<String>> {
         self.repository.list().await
     }
 }

@@ -156,7 +156,7 @@ mod users_view {
 
 pub mod users_api {
     use actix_web::{dev::HttpServiceFactory, web};
-    use app_modules::base::users::{UsersModule, services::UserAuthorizationService};
+    use app_modules::base::{auth::services::UserAuthorizationService, users::UsersModule};
     use cornetti::{
         actix::auth::middlewares::authorization::JwtAuthorizationMiddleware,
         auth::{confs::JwtAuthConf, helpers::utoipa::AuthApiDocEntry},

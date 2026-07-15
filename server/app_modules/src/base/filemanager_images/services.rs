@@ -6,7 +6,7 @@ use cornetti::{
         models::FileManagerUploadForm, services::images::ImageFileManagerBaseService,
     },
     auth::models::JwtDefaultClaims,
-    core::models::CornettiError,
+    core::models::CornettiResult,
     filemanager::{
         confs::FileManagerConf,
         models::{
@@ -27,16 +27,16 @@ use crate::{
 pub struct ImageFileManagerService<'a> {
     base_service: ImageFileManagerBaseService,
     user_repository: UsersRepository,
-    app_namespace: &'a str,
     tenant_id: &'a str,
+    app_namespace: &'a str,
 }
 
 impl<'a> ImageFileManagerService<'a> {
     pub fn new(
         mongo: Arc<MongoDBService>,
         conf: &FileManagerConf,
-        app_namespace: &'a str,
         tenant_id: &'a str,
+        app_namespace: &'a str,
     ) -> Self {
         Self {
             base_service: ImageFileManagerBaseService::new(
@@ -75,8 +75,8 @@ impl<'a> ImageFileManagerService<'a> {
                 ],
             ),
             user_repository: UsersRepository::new(mongo),
-            app_namespace,
             tenant_id,
+            app_namespace,
         }
     }
 
@@ -89,7 +89,7 @@ impl<'a> ImageFileManagerService<'a> {
         claims: Option<JwtDefaultClaims>,
         form: MultipartForm<FileManagerUploadForm>,
         resource_type: Option<usize>,
-    ) -> Result<Vec<FileManager>, CornettiError> {
+    ) -> CornettiResult<Vec<FileManager>> {
         let mut identity = String::from("unknown");
         let mut identity_id = String::from("unknown");
 
@@ -118,14 +118,14 @@ impl<'a> ImageFileManagerService<'a> {
         &self,
         claims: Option<JwtDefaultClaims>,
         form: MultipartForm<FileManagerUploadForm>,
-    ) -> Result<Vec<FileManager>, CornettiError> {
+    ) -> CornettiResult<Vec<FileManager>> {
         self.upload_with_resource_type(claims, form, None).await
     }
 
     pub async fn list_resized(
         &self,
         parent_filename: &str,
-    ) -> Result<Vec<ImagesFileManagerResizedRel>, CornettiError> {
+    ) -> CornettiResult<Vec<ImagesFileManagerResizedRel>> {
         self.base_service.list_resized(self.tenant_id, parent_filename).await
     }
 
@@ -133,11 +133,11 @@ impl<'a> ImageFileManagerService<'a> {
         &self,
         parent_filename: &str,
         slug: &str,
-    ) -> Result<ImagesFileManagerResizedRel, CornettiError> {
+    ) -> CornettiResult<ImagesFileManagerResizedRel> {
         self.base_service.get_resized(self.tenant_id, parent_filename, slug).await
     }
 
-    pub async fn delete(&self, parent_filename: &str) -> Result<(), CornettiError> {
+    pub async fn delete(&self, parent_filename: &str) -> CornettiResult<()> {
         self.base_service
             .delete(self.tenant_id, self.app_namespace, parent_filename)
             .await
