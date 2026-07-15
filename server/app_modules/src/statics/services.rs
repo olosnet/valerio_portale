@@ -1,18 +1,22 @@
 use crate::statics::models::StaticsResponse;
-use crate::statics::{COSTELLAZIONI, TIPO_OGGETTO, TIPO_STRUMENTAZIONE};
+use crate::statics::repos::StaticsRepository;
 
-pub struct StaticsService;
+pub struct StaticsService {
+    repository: StaticsRepository,
+}
 
 impl StaticsService {
     pub fn new() -> Self {
-        Self
+        Self {
+            repository: StaticsRepository::new(),
+        }
     }
 
     pub fn get_enum_values(&self) -> StaticsResponse {
         StaticsResponse {
-            tipo_strumentazione: TIPO_STRUMENTAZIONE.to_vec(),
-            tipo_oggetto: TIPO_OGGETTO.to_vec(),
-            costellazioni: COSTELLAZIONI.to_vec(),
+            tipo_strumentazione: self.repository.get_tipi_strumentazione().to_vec(),
+            tipo_oggetto: self.repository.get_tipi_oggetto().to_vec(),
+            costellazioni: self.repository.get_costellazioni().to_vec(),
         }
     }
 }
