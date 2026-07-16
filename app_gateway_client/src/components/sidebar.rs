@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
@@ -7,7 +9,7 @@ use crate::stores::auth_store::use_auth;
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let auth = use_auth();
-    let navigate = use_navigate();
+    let navigate = Arc::new(use_navigate());
     let show_impostazioni = RwSignal::new(false);
 
     let can_see_users = auth.can_read_signal("users");
@@ -15,14 +17,14 @@ pub fn Sidebar() -> impl IntoView {
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
 
     let do_logout = {
-        let auth_logout = auth.clone();
+        let auth = auth.clone();
         let navigate = navigate.clone();
         move |_| {
-            let auth = auth_logout.clone();
+            let auth = auth.clone();
             let navigate = navigate.clone();
             spawn_local(async move {
                 auth.logout().await;
-                let _ = navigate("/login", Default::default());
+                (navigate)("/login", Default::default());
             });
         }
     };
@@ -34,13 +36,13 @@ pub fn Sidebar() -> impl IntoView {
             </div>
 
             <nav class="flex-1 p-2 space-y-1">
-                <a href="/"
-                    class="block w-full text-left px-3 py-2 rounded-md text-sm text-foreground hover:bg-secondary transition-colors"
-                >"🏠  Dashboard"</a>
+                <button on:click={ let n = navigate.clone(); move |_| { n("/", Default::default()); } }
+                    class="w-full text-left px-3 py-2 rounded-md text-sm text-foreground hover:bg-secondary transition-colors"
+                >"🏠  Dashboard"</button>
 
-                <a href="/profile"
-                    class="block w-full text-left px-3 py-2 rounded-md text-sm text-foreground hover:bg-secondary transition-colors"
-                >"👤  Il mio profilo"</a>
+                <button on:click={ let n = navigate.clone(); move |_| { n("/profile", Default::default()); } }
+                    class="w-full text-left px-3 py-2 rounded-md text-sm text-foreground hover:bg-secondary transition-colors"
+                >"👤  Il mio profilo"</button>
 
                 {move || {
                     if has_admin.get() {
@@ -49,31 +51,36 @@ pub fn Sidebar() -> impl IntoView {
                                 <button on:click=move |_| show_impostazioni.update(|v| *v = !*v)
                                     class="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                                 >"⚙️  Impostazioni"</button>
-                                {move || {
-                                    if show_impostazioni.get() {
-                                        let show_users = can_see_users.get();
-                                        let show_groups = can_see_groups.get();
-                                        if show_users || show_groups {
-                                            view! {
-                                                <div class="ml-4 mt-1 space-y-1">
-                                                    {if show_users {
-                                                        Some(view! {
-                                                            <a href="/settings/users"
-                                                                class="block w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                                                            >"👥  Utenti"</a>
-                                                        })
-                                                    } else { None }}
-                                                    {if show_groups {
-                                                        Some(view! {
-                                                            <a href="/settings/groups"
-                                                                class="block w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                                                            >"👥  Gruppi"</a>
-                                                        })
-                                                    } else { None }}
-                                                </div>
-                                            }.into_any()
+                                {{
+                                    let inner_nav = navigate.clone();
+                                    move || {
+                                        if show_impostazioni.get() {
+                                            let show_users = can_see_users.get();
+                                            let show_groups = can_see_groups.get();
+                                            if show_users || show_groups {
+                                                view! {
+                                                    <div class="ml-4 mt-1 space-y-1">
+                                                        {if show_users {
+                                                            let n = inner_nav.clone();
+                                                            Some(view! {
+                                                                <button on:click=move |_| { n("/settings/users", Default::default()); }
+                                                                    class="w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                                                                >"👥  Utenti"</button>
+                                                            })
+                                                        } else { None }}
+                                                        {if show_groups {
+                                                            let n = inner_nav.clone();
+                                                            Some(view! {
+                                                                <button on:click=move |_| { n("/settings/groups", Default::default()); }
+                                                                    class="w-full text-left px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                                                                >"👥  Gruppi"</button>
+                                                            })
+                                                        } else { None }}
+                                                    </div>
+                                                }.into_any()
+                                            } else { ().into_any() }
                                         } else { ().into_any() }
-                                    } else { ().into_any() }
+                                    }
                                 }}
                             </div>
                         }.into_any()

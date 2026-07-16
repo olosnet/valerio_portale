@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use leptos::prelude::*;
-use leptos::task::spawn_local;
 
 use crate::modules::auth::api as auth_api;
 use crate::modules::base::api_client::ApiClient;
@@ -13,6 +12,7 @@ use crate::modules::identity::models::UserIdentity;
 pub struct AuthContext {
     pub user: RwSignal<Option<UserIdentity>>,
     pub api_client: ApiClient,
+    pub initial_check_done: RwSignal<bool>,
 }
 
 impl AuthContext {
@@ -20,6 +20,7 @@ impl AuthContext {
         Self {
             user: RwSignal::new(None),
             api_client,
+            initial_check_done: RwSignal::new(false),
         }
     }
 
@@ -30,6 +31,13 @@ impl AuthContext {
     pub fn is_auth_signal(&self) -> Signal<bool> {
         let user = self.user;
         Signal::derive(move || user.get().is_some())
+    }
+
+    fn get_perm(user: &UserIdentity, module: &str) -> Option<AuthorizationPermission> {
+        user.permissions
+            .get(module)
+            .or_else(|| user.permissions.get("all"))
+            .cloned()
     }
 
     pub fn perms(&self) -> HashMap<String, AuthorizationPermission> {
@@ -50,24 +58,19 @@ impl AuthContext {
         })
     }
 
-    pub fn can_read<'a>(&'a self, module: &str) -> bool {
-        self.user
-            .get()
-            .as_ref()
-            .and_then(|u| u.permissions.get(module))
-            .map(|p| p.read)
-            .unwrap_or(false)
+    pub fn can_read(&self, module: &str) -> bool {
+        self.user.get().as_ref().map_or(false, |u| {
+            Self::get_perm(u, module).map_or(false, |p| p.read)
+        })
     }
 
-    pub fn can_read_signal<'a>(&'a self, module: &str) -> Signal<bool> {
+    pub fn can_read_signal(&self, module: &str) -> Signal<bool> {
         let user = self.user;
         let module = module.to_string();
         Signal::derive(move || {
-            user.get()
-                .as_ref()
-                .and_then(|u| u.permissions.get(&module))
-                .map(|p| p.read)
-                .unwrap_or(false)
+            user.get().as_ref().map_or(false, |u| {
+                Self::get_perm(u, &module).map_or(false, |p| p.read)
+            })
         })
     }
 
@@ -94,6 +97,7 @@ impl AuthContext {
         if let Ok(identity) = identity_api::get_identity(&self.api_client).await {
             self.user.set(Some(identity));
         }
+        self.initial_check_done.set(true);
     }
 }
 

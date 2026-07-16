@@ -57,6 +57,13 @@ fn with_layout(content: impl IntoView + 'static) -> impl IntoView {
 fn ProtectedDashboard() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
@@ -68,6 +75,13 @@ fn ProtectedDashboard() -> impl IntoView {
 fn ProtectedProfile() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
@@ -79,6 +93,13 @@ fn ProtectedProfile() -> impl IntoView {
 fn ProtectedUsersList() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
@@ -90,6 +111,13 @@ fn ProtectedUsersList() -> impl IntoView {
 fn ProtectedUserDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
@@ -101,6 +129,13 @@ fn ProtectedUserDetail() -> impl IntoView {
 fn ProtectedGroupsList() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
@@ -112,6 +147,13 @@ fn ProtectedGroupsList() -> impl IntoView {
 fn ProtectedGroupDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
