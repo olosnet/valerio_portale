@@ -1,2 +1,9 @@
 [tools]
 tailwindcss = "4.3.3"
+
+[serve]
+port = 8082
+
+[[proxies]]
+backend = "http://127.0.0.1:8080"
+rewrite = "/api"

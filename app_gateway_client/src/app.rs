@@ -1,49 +1,173 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos_meta::*;
 use leptos_router::{
     StaticSegment,
-    components::{Route, Router, Routes},
+    components::{Redirect, Route, Router, Routes},
 };
+
+use crate::components::sidebar::Sidebar;
+use crate::modules::auth::pages::login::Login;
+use crate::modules::base::api_client::ApiClient;
+use crate::modules::base::components::not_found::NotFound;
+use crate::stores::auth_store::{provide_auth, use_auth};
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
+    let api_client = ApiClient::new("/api");
+    let auth = provide_auth(api_client);
+
+    spawn_local(async move {
+        auth.check_session().await;
+    });
+
     view! {
+        <Stylesheet id="leptos" href="/pkg/app_gateway_client.css"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
+        <Title text="App Gateway"/>
+
         <Router>
-            <Routes fallback=|| "Page not found.">
-                <Route path=StaticSegment("") view=Home/>
+            <Routes fallback=|| view! { <NotFound/> }>
+                <Route path=StaticSegment("login") view=Login/>
+                <Route path=StaticSegment("") view=ProtectedDashboard/>
+                <Route path=StaticSegment("profile") view=ProtectedProfile/>
+                <Route path=StaticSegment("settings/users") view=ProtectedUsersList/>
+                <Route path=StaticSegment("settings/users/:id") view=ProtectedUserDetail/>
+                <Route path=StaticSegment("settings/groups") view=ProtectedGroupsList/>
+                <Route path=StaticSegment("settings/groups/:id") view=ProtectedGroupDetail/>
             </Routes>
         </Router>
     }
 }
 
-#[component]
-fn Home() -> impl IntoView {
-    let (value, set_value) = signal(0);
-
-    // thanks to https://tailwindcomponents.com/component/blue-buttons-example for the showcase layout
+fn with_layout(content: impl IntoView + 'static) -> impl IntoView {
     view! {
-        <Title text="Leptos + Tailwindcss"/>
-        <main>
-            <div class="bg-gradient-to-tl from-blue-800 to-blue-500 text-white font-mono flex flex-col min-h-screen">
-                <div class="flex flex-row-reverse flex-wrap m-auto">
-                    <button on:click=move |_| set_value.update(|value| *value += 1) class="rounded px-3 py-2 m-1 border-b-4 border-l-2 shadow-lg bg-blue-700 border-blue-800 text-white">
-                        "+"
-                    </button>
-                    <button class="rounded px-3 py-2 m-1 border-b-4 border-l-2 shadow-lg bg-blue-800 border-blue-900 text-white">
-                        {value}
-                    </button>
-                    <button
-                        on:click=move |_| set_value.update(|value| *value -= 1)
-                        class="rounded px-3 py-2 m-1 border-b-4 border-l-2 shadow-lg bg-blue-700 border-blue-800 text-white"
-                        class:invisible=move || {value.get() < 1}
-                    >
-                        "-"
-                    </button>
-                </div>
-            </div>
-        </main>
+        <div class="flex min-h-screen bg-secondary">
+            <Sidebar/>
+            <main class="flex-1 p-8 overflow-auto">
+                {content}
+            </main>
+        </div>
     }
+}
+
+#[component]
+fn ProtectedDashboard() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { DashboardBody() }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedProfile() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { ProfileBody() }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedUsersList() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { crate::modules::users::pages::users_list::UsersList() }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedUserDetail() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { crate::modules::users::pages::user_detail::UserDetail() }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedGroupsList() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { crate::modules::groups::pages::groups_list::GroupsList() }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedGroupDetail() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { crate::modules::groups::pages::group_detail::GroupDetail() }).into_any()
+    }
+}
+
+#[component]
+fn DashboardBody() -> impl IntoView {
+    let auth = use_auth();
+
+    view! {
+        <Title text="Dashboard - App Gateway"/>
+        <div class="space-y-6">
+            <div>
+                <h2 class="text-2xl font-bold text-foreground mb-1">
+                    "Benvenuto, "
+                    {move || {
+                        auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()
+                    }}
+                </h2>
+                <p class="text-muted-foreground">"Panoramica del sistema"</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {move || {
+                    let p = auth.perms();
+                    let mut cards = Vec::new();
+                    if let Some(perm) = p.get("users") {
+                        if perm.read {
+                            cards.push(view! {
+                                <a href="/settings/users" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
+                                    <h3 class="text-lg font-semibold text-foreground mb-1">"Utenti"</h3>
+                                    <p class="text-sm text-muted-foreground">"Gestione utenti della piattaforma"</p>
+                                </a>
+                            });
+                        }
+                    }
+                    if let Some(perm) = p.get("groups") {
+                        if perm.read {
+                            cards.push(view! {
+                                <a href="/settings/groups" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
+                                    <h3 class="text-lg font-semibold text-foreground mb-1">"Gruppi"</h3>
+                                    <p class="text-sm text-muted-foreground">"Gestione gruppi e permessi"</p>
+                                </a>
+                            });
+                        }
+                    }
+                    cards.into_iter().collect::<Vec<_>>()
+                }}
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn ProfileBody() -> impl IntoView {
+    crate::modules::identity::pages::profile::Profile()
 }

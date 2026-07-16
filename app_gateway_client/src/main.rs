@@ -1,4 +1,7 @@
 mod app;
+mod components;
+mod modules;
+mod stores;
 
 use app::*;
 use leptos::{logging, mount};
