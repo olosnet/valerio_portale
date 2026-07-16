@@ -1,4 +1,4 @@
-//! Actix-web integration: error conversions, middlewares, helpers.
+#![doc = include_str!("../../../spec/actix.md")]
 
 pub mod errors;
 pub mod models;

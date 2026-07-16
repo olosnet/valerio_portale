@@ -237,27 +237,29 @@ impl JwtAuthConf {
 }
 
 /// Configuration for the JWT session store.
+///
+/// The `store_name` field was removed; Redis keys no longer include a
+/// store-name prefix. The `_app_id` parameter in `from_env` is retained
+/// for backward compatibility but is ignored.
 #[derive(Clone)]
 pub struct JWTStoreConf {
-    /// Logical store name (defaults to `app_id`).
-    pub store_name: String,
-    /// Session expiry in minutes.
+    /// Session expiry in minutes (default: 10081, ~7 days).
     pub session_expire_mins: usize,
 }
 
 impl JWTStoreConf {
     /// Reads store configuration from environment variables.
-    pub fn from_env(app_id: &str) -> Self {
-        let store_name: String =
-            std::env::var("AUTH_JWT_STORE_NAME").unwrap_or_else(|_| app_id.to_string());
-
+    ///
+    /// The `_app_id` parameter is ignored (the `store_name` field was removed).
+    ///
+    /// Environment variable: `AUTH_JWT_STORE_SESSION_EXPIRES_MINS` (default: 10081).
+    pub fn from_env(_app_id: &str) -> Self {
         let session_expire_mins: usize = std::env::var("AUTH_JWT_STORE_SESSION_EXPIRES_MINS")
             .unwrap_or("10081".to_string())
             .parse()
             .unwrap_or(10081);
 
         JWTStoreConf {
-            store_name,
             session_expire_mins,
         }
     }
@@ -308,7 +310,6 @@ mod tests {
     #[test]
     fn jwt_store_conf_from_env_default() {
         let conf = JWTStoreConf::from_env("test_app");
-        assert_eq!(conf.store_name, "test_app");
         assert_eq!(conf.session_expire_mins, 10081);
     }
 }

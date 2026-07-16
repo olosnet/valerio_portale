@@ -27,6 +27,7 @@ redisdb = ["redis"]
 templates = ["minijinja"]
 mail = ["lettre"]
 mail-gmail = ["mail", "auth", "reqwest", "base64"]
+otp = ["redisdb"]
 
 
 [dependencies]

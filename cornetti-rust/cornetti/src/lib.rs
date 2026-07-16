@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 pub mod core;
 
 #[cfg(feature = "filemanager")]
@@ -29,3 +31,6 @@ pub mod sqlx;
 
 #[cfg(feature = "grpc")]
 pub mod grpc;
+
+#[cfg(feature = "otp")]
+pub mod otp;

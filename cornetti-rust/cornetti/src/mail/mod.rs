@@ -1,3 +1,5 @@
+#![doc = include_str!("../../../spec/mail.md")]
+
 use lettre::message::header::ContentType;
 
 pub struct EmailAttachment {

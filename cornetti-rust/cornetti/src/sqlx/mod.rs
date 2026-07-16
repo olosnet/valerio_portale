@@ -1,3 +1,5 @@
+#![doc = include_str!("../../../spec/sqlx.md")]
+
 #[cfg(not(any(
     feature = "sqlxdb-postgres",
     feature = "sqlxdb-mysql",

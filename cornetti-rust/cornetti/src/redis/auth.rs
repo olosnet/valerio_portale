@@ -12,6 +12,15 @@ use std::{collections::HashSet, sync::Arc};
 /// Uses field-level TTL via `HSETEX` (requires Redis >= 7.0).
 /// Each token is stored as a dedicated key with its own expiry.
 /// Sessions are tracked via hash sets and sets for user→session lookups.
+///
+/// # Key format
+///
+/// All Redis keys follow the pattern `{tenant_id}:{app_id}:<type>:<id>`:
+///
+/// - Auth token: `{tenant_id}:{app_id}:auth:{jti}`
+/// - Refresh token: `{tenant_id}:{app_id}:refresh:{jti}`
+/// - Session hash: `{tenant_id}:{app_id}:sessions:{session_id}`
+/// - User sessions set: `{tenant_id}:{app_id}:users:{subject}:sessions`
 pub struct RedisSessionStore {
     store_conf: JWTStoreConf,
     pub redis_conn: Arc<RedisDBService>,
@@ -28,8 +37,8 @@ impl RedisSessionStore {
         }
     }
 
-    fn app_segment(&self) -> String {
-        format!("{}:", self.app_id)
+    fn auth_key(&self, tenant_id: &str, jti: &str) -> String {
+        format!("{}:{}:auth:{}", tenant_id, self.app_id, jti)
     }
 
     fn key_from_claim(&self, tenant_id: &str, claim: &SessionStoreData) -> String {
@@ -40,20 +49,16 @@ impl RedisSessionStore {
         }
     }
 
-    fn auth_key(&self, tenant_id: &str, jti: &str) -> String {
-        format!("{}:{}{}:auth:{}", self.store_conf.store_name, tenant_id, self.app_segment(), jti)
-    }
-
     fn refresh_key(&self, tenant_id: &str, jti: &str) -> String {
-        format!("{}:{}{}:refresh:{}", self.store_conf.store_name, tenant_id, self.app_segment(), jti)
+        format!("{}:{}:refresh:{}", tenant_id, self.app_id, jti)
     }
 
     fn session_key(&self, tenant_id: &str, session_id: &str) -> String {
-        format!("{}:{}{}:sessions:{}", self.store_conf.store_name, tenant_id, self.app_segment(), session_id)
+        format!("{}:{}:sessions:{}", tenant_id, self.app_id, session_id)
     }
 
     fn users_sessions_key(&self, tenant_id: &str, subject: &str) -> String {
-        format!("{}:{}{}:users:{}:sessions", self.store_conf.store_name, tenant_id, self.app_segment(), subject)
+        format!("{}:{}:users:{}:sessions", tenant_id, self.app_id, subject)
     }
 }
 

@@ -93,21 +93,24 @@ See `BaseModule` in `src/core/traits.rs`.
 ### Requirement: Configuration from environment
 
 `BaseConf` and `TenantConf` SHALL read their values from environment variables
-with sensible defaults. `BaseConf` SHALL panic on invalid `u16` parsing of `APP_PORT`.
-`TenantConf` SHALL fall back to `DEFAULT_TENANT_ID` when `APP_TENANT_ID` is empty.  
+with sensible defaults. `BaseConf` SHALL panic on a missing `APP_ID` and on invalid
+`u16` parsing of `APP_PORT`. `TenantConf` SHALL fall back to `DEFAULT_TENANT_ID`
+when `APP_TENANT_ID` is empty.  
 Middleware (`JWTMiddleware`, `JwtAuthorizationMiddleware`) SHALL require an explicit `tenant_id` parameter — no fallback.
 
 `BaseConf` SHALL read the optional `APP_SHARED_RESOURCES_ID` variable and store its
 value in the `shared_resources_id` field, defaulting to `"shared_res_app_default"` when unset.
-`APP_ID` defaults to `"app_default"`.
+`APP_ID` is mandatory and SHALL cause `from_env()` to panic if not set.
 
 See `src/core/confs.rs`.
 
 #### Scenario: Default configuration
-- WHEN no environment variables are set
+- WHEN no environment variables are set except `APP_ID`
 - THEN `BaseConf::from_env()` SHALL return a config with host `"localhost"`, port `8080`,
-  enable_swagger `true`, tmp_directory `"/tmp"`, empty api_prefix, app_id `"app_default"`,
+  enable_swagger `true`, tmp_directory `"/tmp"`, empty api_prefix,
   shared_resources_id `"shared_res_app_default"`
+- WHEN `APP_ID` is not set at all
+- THEN `BaseConf::from_env()` SHALL panic
 
 #### Scenario: Tenant fallback
 - WHEN `APP_TENANT_ID` is not set or empty

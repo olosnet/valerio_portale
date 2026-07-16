@@ -4,6 +4,8 @@ use crate::core::models::DEFAULT_TENANT_ID;
 ///
 /// # Panics
 ///
+/// `from_env()` will panic if `APP_ID` is not set.
+///
 /// `from_env()` will panic if `APP_PORT` is set but not a valid `u16`.
 #[derive(Clone)]
 pub struct BaseConf {
@@ -17,7 +19,7 @@ pub struct BaseConf {
     pub tmp_directory: String,
     /// Prefix prepended to all API routes.
     pub api_prefix: String,
-    /// Application identifier (default: `"app_default"`).
+    /// Application identifier (required — panics if `APP_ID` is not set).
     pub app_id: String,
     /// Shared resources identifier (default: `"shared_res_app_default"`).
     pub shared_resources_id: String,
@@ -26,13 +28,18 @@ pub struct BaseConf {
 }
 
 impl BaseConf {
-    /// Reads configuration from environment variables, falling back to defaults.
+    /// Reads configuration from environment variables.
+    ///
+    /// `APP_ID` is required; `from_env()` will panic if it is not set.
+    /// All other variables fall back to defaults when unset.
     ///
     /// Environment variables: `APP_HOST`, `APP_PORT`, `APP_ENABLE_SWAGGER`,
     /// `APP_TMP_DIRECTORY`, `APP_API_PREFIX`, `APP_TEST_FEATURES`, `APP_ID`,
     /// `APP_SHARED_RESOURCES_ID`.
     ///
     /// # Panics
+    ///
+    /// Panics if `APP_ID` is not set.
     ///
     /// Panics if `APP_PORT` is set to a non-numeric value.
     pub fn from_env() -> Self {
@@ -60,12 +67,10 @@ impl BaseConf {
             .parse()
             .unwrap_or(false);
 
-        let app_id: String =
-            std::env::var("APP_ID").unwrap_or_else(|_| "app_default".to_string());
+        let app_id: String = std::env::var("APP_ID").expect("APP_ID environment variable not set");
 
-        let shared_resources_id: String =
-            std::env::var("APP_SHARED_RESOURCES_ID")
-                .unwrap_or_else(|_| "shared_res_app_default".to_string());
+        let shared_resources_id: String = std::env::var("APP_SHARED_RESOURCES_ID")
+            .unwrap_or_else(|_| "shared_res_app_default".to_string());
 
         BaseConf {
             host,
@@ -113,15 +118,23 @@ mod tests {
 
     #[test]
     fn base_conf_defaults() {
+        // SAFETY: test-only single-threaded env mutation; no other tests read APP_ID concurrently.
+        unsafe {
+            std::env::set_var("APP_ID", "test_app");
+        }
         let conf = BaseConf::from_env();
         assert_eq!(conf.host, "localhost");
         assert_eq!(conf.port, 8080);
         assert!(conf.enable_swagger);
         assert_eq!(conf.tmp_directory, "/tmp");
         assert_eq!(conf.api_prefix, "");
-        assert_eq!(conf.app_id, "app_default");
+        assert_eq!(conf.app_id, "test_app");
         assert_eq!(conf.shared_resources_id, "shared_res_app_default");
         assert!(!conf.test_features);
+        // SAFETY: restore clean env after test.
+        unsafe {
+            std::env::remove_var("APP_ID");
+        }
     }
 
     #[test]

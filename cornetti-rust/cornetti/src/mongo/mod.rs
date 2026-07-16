@@ -1,3 +1,5 @@
+#![doc = include_str!("../../../spec/mongo.md")]
+
 pub mod confs;
 pub mod errors;
 pub mod helpers;

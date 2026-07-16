@@ -45,6 +45,15 @@ Each token SHALL be stored as a dedicated key with TTL set to the claim expiry.
 Sessions SHALL be tracked via `HSETEX` hash fields with field-level TTL (requires
 Redis >= 7.0). User→session lookups SHALL use Redis sets.
 
+All Redis keys SHALL follow the pattern `{tenant_id}:{app_id}:<type>:<id>`:
+- Auth token: `{tenant_id}:{app_id}:auth:{jti}`
+- Refresh token: `{tenant_id}:{app_id}:refresh:{jti}`
+- Session hash: `{tenant_id}:{app_id}:sessions:{session_id}`
+- User sessions set: `{tenant_id}:{app_id}:users:{subject}:sessions`
+
+The `store_name` prefix previously included in keys was removed; keys no longer
+carry a store-name component.
+
 See `RedisSessionStore` in `src/redis/auth.rs`.
 
 #### Scenario: Token added with correct TTL

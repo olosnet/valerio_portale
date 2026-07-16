@@ -19,10 +19,19 @@ pub mod common {
 
     /// Generates a random alphanumeric string with length between `min` and `max` inclusive.
     pub fn generate_random_string(min: usize, max: usize) -> String {
-        let length = rng().random_range(min..=max);
         let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
             .chars()
             .collect();
+        base_generate_random_string(min, max, chars)
+    }
+
+    /// Generates a random string of characters drawn from the given set,
+    /// with length between `min` and `max` inclusive.
+    ///
+    /// Unlike [`generate_random_string`], this allows callers to specify
+    /// the character set (e.g. digits-only for OTP codes).
+    pub fn base_generate_random_string(min: usize, max: usize, chars: Vec<char>) -> String {
+        let length = rng().random_range(min..=max);
         (0..length)
             .map(|_| chars[rng().random_range(0..chars.len())])
             .collect()
@@ -316,7 +325,10 @@ mod tests {
 
         #[test]
         fn apply_api_prefix_nested_path() {
-            assert_eq!(apply_api_prefix("api", "/users/123/details"), "/api/users/123/details");
+            assert_eq!(
+                apply_api_prefix("api", "/users/123/details"),
+                "/api/users/123/details"
+            );
         }
     }
 
