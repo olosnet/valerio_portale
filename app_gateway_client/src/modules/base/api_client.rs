@@ -3,12 +3,27 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use gloo_net::http::Request;
 use gloo_net::http::RequestBuilder;
+use wasm_bindgen::JsCast;
 
 use crate::modules::base::models::ApiError;
+
+fn get_cookie(name: &str) -> Option<String> {
+    let window = web_sys::window()?;
+    let doc = window.document()?;
+    let html_doc = doc.dyn_into::<web_sys::HtmlDocument>().ok()?;
+    let cookie_str = html_doc.cookie().ok()?;
+    for part in cookie_str.split("; ") {
+        if let Some(value) = part.strip_prefix(&format!("{}=", name)) {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
 
 #[derive(Clone)]
 pub struct ApiClient {
     pub base_url: String,
+    pub csrf_cookie_name: String,
     refreshing: Arc<AtomicBool>,
 }
 
@@ -16,6 +31,7 @@ impl ApiClient {
     pub fn new(base_url: &str) -> Self {
         Self {
             base_url: base_url.to_string(),
+            csrf_cookie_name: "csrf_access_token".to_string(),
             refreshing: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -65,6 +81,13 @@ impl ApiClient {
     ) -> Result<gloo_net::http::Response, ApiError> {
         let mut builder = Self::request_builder(method, url)?;
         builder = builder.credentials(web_sys::RequestCredentials::Include);
+
+        if matches!(method, "POST" | "PUT" | "DELETE") {
+            if let Some(csrf_token) = get_cookie(&self.csrf_cookie_name) {
+                builder = builder.header("X-CSRF-TOKEN", &csrf_token);
+            }
+        }
+
         if let Some(b) = body {
             builder = builder.header("Content-Type", "application/json");
             let request = builder

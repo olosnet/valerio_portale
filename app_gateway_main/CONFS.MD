@@ -57,6 +57,24 @@ Configurazioni di ambiente usate dal server API.
 | `AUTH_JWT_ISSUER` | Issuer del token | |
 | `AUTH_JWT_AUDIENCE` | Audience (array separato da `,`) | |
 | `AUTH_JWT_REFRESH_ENABLE` | Abilita refresh token | `true` |
+| `AUTH_JWT_SEARCH_IN_HEADERS` | Cerca JWT negli header HTTP (`Authorization: Bearer`) | `true` |
+| `AUTH_JWT_SEARCH_IN_COOKIES` | Cerca JWT nei cookie | `false` |
+| `AUTH_JWT_ACCESS_COOKIE_NAME` | Nome cookie access token | `access_token_cookie` |
+| `AUTH_JWT_ACCESS_COOKIE_PATH` | Path cookie access token | `/` |
+| `AUTH_JWT_ACCESS_COOKIE_SECURE` | Flag `Secure` sul cookie access token | `true` |
+| `AUTH_JWT_ACCESS_COOKIE_SAME_SITE` | SameSite cookie access token (`strict`, `lax`, `none`) | `strict` |
+| `AUTH_JWT_REFRESH_COOKIE_NAME` | Nome cookie refresh token | `refresh_token_cookie` |
+| `AUTH_JWT_REFRESH_COOKIE_PATH` | Path cookie refresh token | `/auth/refresh` |
+| `AUTH_JWT_REFRESH_COOKIE_SECURE` | Flag `Secure` sul cookie refresh token | `true` |
+| `AUTH_JWT_REFRESH_COOKIE_SAME_SITE` | SameSite cookie refresh token (`strict`, `lax`, `none`) | `strict` |
+| `AUTH_JWT_CSRF_COOKIE_ENABLE` | Abilita protezione CSRF via cookie | `false` |
+| `AUTH_JWT_CSRF_ACCESS_COOKIE_NAME` | Nome cookie CSRF access token | `csrf_access_token` |
+| `AUTH_JWT_CSRF_ACCESS_COOKIE_PATH` | Path cookie CSRF access token | `/` |
+| `AUTH_JWT_CSRF_REFRESH_COOKIE_NAME` | Nome cookie CSRF refresh token | `csrf_refresh_token` |
+| `AUTH_JWT_CSRF_REFRESH_COOKIE_PATH` | Path cookie CSRF refresh token | `/` |
+| `AUTH_JWT_CSRF_COOKIE_SAME_SITE` | SameSite cookie CSRF (`strict`, `lax`, `none`) | `strict` |
+| `AUTH_JWT_CSRF_CHECK_HEADER_NAME` | Nome header per verifica CSRF | `X-CSRF-TOKEN` |
+| `AUTH_JWT_CSRF_HTTP_METHODS` | Metodi HTTP che richiedono CSRF (separati da `,`) | `POST,PUT,PATCH,DELETE` |
 
 ### JWTStoreConf
 
