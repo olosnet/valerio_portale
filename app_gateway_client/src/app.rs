@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::*;
 use leptos_router::{
-    StaticSegment,
+    ParamSegment, StaticSegment,
     components::{Redirect, Route, Router, Routes},
 };
 
@@ -33,10 +33,10 @@ pub fn App() -> impl IntoView {
                 <Route path=StaticSegment("login") view=Login/>
                 <Route path=StaticSegment("") view=ProtectedDashboard/>
                 <Route path=StaticSegment("profile") view=ProtectedProfile/>
-                <Route path=StaticSegment("settings/users") view=ProtectedUsersList/>
-                <Route path=StaticSegment("settings/users/:id") view=ProtectedUserDetail/>
-                <Route path=StaticSegment("settings/groups") view=ProtectedGroupsList/>
-                <Route path=StaticSegment("settings/groups/:id") view=ProtectedGroupDetail/>
+                <Route path=(StaticSegment("settings"), StaticSegment("users")) view=ProtectedUsersList/>
+                <Route path=(StaticSegment("settings"), StaticSegment("users"), ParamSegment("id")) view=ProtectedUserDetail/>
+                <Route path=(StaticSegment("settings"), StaticSegment("groups")) view=ProtectedGroupsList/>
+                <Route path=(StaticSegment("settings"), StaticSegment("groups"), ParamSegment("id")) view=ProtectedGroupDetail/>
             </Routes>
         </Router>
     }
