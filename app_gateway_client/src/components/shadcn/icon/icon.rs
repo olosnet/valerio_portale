@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use leptos::prelude::*;
 
 macro_rules! icon_svg {
