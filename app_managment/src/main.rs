@@ -623,12 +623,13 @@ async fn cmd_admin_create() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(_uid) = existing._id {
             let mut gids = existing.groups_ids.clone();
             if !gids.contains(&group_id) { gids.push(group_id); }
-            users_repo.update(&_uid, UserUpdate {
+            let upd = UserUpdate {
                 name: existing.name.unwrap_or_default(),
                 surname: existing.surname.unwrap_or_default(),
                 enabled: true,
                 groups_ids: gids,
-            }).await.map_err(|e| format!("update user: {}", e.detail))?;
+            };
+            users_repo.update(&_uid, &upd).await.map_err(|e| format!("update user: {}", e.detail))?;
         }
         println!("Fatto.");
         return Ok(());

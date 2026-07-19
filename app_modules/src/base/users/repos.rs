@@ -26,7 +26,7 @@ pub const DEFAULT_PROFILE_IMAGE_FILE: &str = "1600059566.154145_yxxHw99e.png";
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoUserModel {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     pub _id: Option<CornettiObjectId>,
     pub name: Option<String>,
     pub surname: Option<String>,
@@ -141,9 +141,17 @@ impl From<MongoUserModel> for UserIdentity {
     }
 }
 
-impl From<UserCreate> for MongoUserModel {
-    fn from(dto: UserCreate) -> Self {
-        MongoUserModel {
+impl MongoUserModel {
+    pub fn from_create(dto: UserCreate) -> CornettiResult<Self> {
+        let group_ids = dto
+            .groups_ids
+            .iter()
+            .map(|id| {
+                CornettiObjectId::parse_str(id)
+                    .map_err(|_| errors::bad_request::invalid_object_id())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(MongoUserModel {
             _id: None,
             password: Some(hash_password(&random_pass(32, None))),
             name: Some(dto.name),
@@ -156,16 +164,10 @@ impl From<UserCreate> for MongoUserModel {
             default: false,
             enabled: dto.enabled,
             last_access: None,
-            groups_ids: dto
-                .groups_ids
-                .iter()
-                .map(|id| CornettiObjectId::from(id))
-                .collect(),
-        }
+            groups_ids: group_ids,
+        })
     }
-}
 
-impl MongoUserModel {
     pub fn apply_update(&mut self, update: &UserUpdate) -> CornettiResult<()> {
         self.name = Some(update.name.clone());
         self.surname = Some(update.surname.clone());
@@ -228,7 +230,7 @@ impl UsersRepository {
     }
 
     pub async fn create(&self, user_create: UserCreate) -> CornettiResult<User> {
-        let mut new_user: MongoUserModel = user_create.into();
+        let mut new_user: MongoUserModel = MongoUserModel::from_create(user_create)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 

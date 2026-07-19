@@ -22,7 +22,7 @@ use serde_with::serde_as;
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoGroupModel {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     pub _id: Option<CornettiObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
