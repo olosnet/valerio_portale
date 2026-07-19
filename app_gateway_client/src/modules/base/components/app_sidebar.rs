@@ -6,12 +6,9 @@ use leptos_router::hooks::use_navigate;
 
 use crate::stores::auth_store::use_auth;
 
-use super::{
-    Sidebar, SidebarHeader, SidebarContent, SidebarFooter,
-    SidebarGroup, SidebarGroupLabel,
-    SidebarMenu, SidebarMenuItem,
-    SidebarMenuSub, SidebarMenuSubItem,
-    SidebarRail,
+use crate::components::shadcn::sidebar::{
+    Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
+    SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail,
 };
 
 fn menu_btn_class() -> &'static str {
@@ -23,20 +20,21 @@ fn sub_btn_class() -> &'static str {
 }
 
 #[component]
-fn AdminSection(
-    can_see_users: Signal<bool>,
-    can_see_groups: Signal<bool>,
-) -> impl IntoView {
+fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> impl IntoView {
     let show = RwSignal::new(false);
     let navigate = Arc::new(use_navigate());
 
     let on_users = {
         let n = navigate.clone();
-        move |_| { n("/settings/users", Default::default()); }
+        move |_| {
+            n("/settings/users", Default::default());
+        }
     };
     let on_groups = {
         let n = navigate.clone();
-        move |_| { n("/settings/groups", Default::default()); }
+        move |_| {
+            n("/settings/groups", Default::default());
+        }
     };
 
     view! {
@@ -97,26 +95,45 @@ pub fn AppSidebar() -> impl IntoView {
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
 
     let user_name = Signal::derive(move || {
-        auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()
+        auth.user
+            .get()
+            .as_ref()
+            .and_then(|u| u.name.clone())
+            .unwrap_or_default()
     });
 
     let user_email = Signal::derive(move || {
-        auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()
+        auth.user
+            .get()
+            .as_ref()
+            .and_then(|u| u.email.clone())
+            .unwrap_or_default()
     });
 
     let user_initials = Signal::derive(move || {
-        auth.user.get().as_ref().and_then(|u| {
-            u.name.as_ref().and_then(|n| n.chars().next()).map(|c| c.to_uppercase().to_string())
-        }).unwrap_or_default()
+        auth.user
+            .get()
+            .as_ref()
+            .and_then(|u| {
+                u.name
+                    .as_ref()
+                    .and_then(|n| n.chars().next())
+                    .map(|c| c.to_uppercase().to_string())
+            })
+            .unwrap_or_default()
     });
 
     let on_dashboard = {
         let n = navigate.clone();
-        move |_| { n("/", Default::default()); }
+        move |_| {
+            n("/", Default::default());
+        }
     };
     let on_profile = {
         let n = navigate.clone();
-        move |_| { n("/profile", Default::default()); }
+        move |_| {
+            n("/profile", Default::default());
+        }
     };
     let on_logout = {
         let auth = auth.clone();
