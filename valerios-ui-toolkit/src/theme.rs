@@ -37,11 +37,19 @@ pub fn ThemeProvider(
     provide_context(ThemeContext { theme, dark });
 
     view! {
-        <div data-slot="theme-provider" class=move || {
-            let t = theme.get();
-            let d = if dark.get() { " dark" } else { "" };
-            format!("theme-{}{}", t, d)
-        }>
+        <div data-slot="theme-provider"
+            class="bg-background min-h-screen"
+            class:theme-default=move || theme.get() == "default"
+            class:theme-zinc=move || theme.get() == "zinc"
+            class:theme-stone=move || theme.get() == "stone"
+            class:theme-slate=move || theme.get() == "slate"
+            class:theme-gray=move || theme.get() == "gray"
+            class:theme-mauve=move || theme.get() == "mauve"
+            class:theme-olive=move || theme.get() == "olive"
+            class:theme-mist=move || theme.get() == "mist"
+            class:theme-taupe=move || theme.get() == "taupe"
+            class:dark=move || dark.get()
+        >
             {children()}
         </div>
     }

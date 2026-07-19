@@ -207,7 +207,19 @@ pub fn AppSidebar() -> impl IntoView {
                                 <span class="text-xs text-sidebar-foreground/70">"Tema colore"</span>
                                 <select
                                     prop:value=move || theme.theme.get()
-                                    on:change=move |ev| theme.set(event_target_value(&ev).leak())
+                                    on:change=move |ev| {
+                                        match event_target_value(&ev).as_str() {
+                                            "zinc" => theme.set("zinc"),
+                                            "stone" => theme.set("stone"),
+                                            "slate" => theme.set("slate"),
+                                            "gray" => theme.set("gray"),
+                                            "mauve" => theme.set("mauve"),
+                                            "olive" => theme.set("olive"),
+                                            "mist" => theme.set("mist"),
+                                            "taupe" => theme.set("taupe"),
+                                            _ => theme.set("default"),
+                                        }
+                                    }
                                     class="h-8 rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-sm text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                                 >
                                     <option value="default">"Neutral"</option>

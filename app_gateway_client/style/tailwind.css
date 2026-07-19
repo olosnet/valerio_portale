@@ -3,3 +3,11 @@
 @source "../../valerios-ui-toolkit/src/";
 @import "../../valerios-ui-toolkit/css/base.css";
 @import "../../valerios-ui-toolkit/css/themes/default.css";
+@import "../../valerios-ui-toolkit/css/themes/zinc.css";
+@import "../../valerios-ui-toolkit/css/themes/stone.css";
+@import "../../valerios-ui-toolkit/css/themes/slate.css";
+@import "../../valerios-ui-toolkit/css/themes/gray.css";
+@import "../../valerios-ui-toolkit/css/themes/mauve.css";
+@import "../../valerios-ui-toolkit/css/themes/olive.css";
+@import "../../valerios-ui-toolkit/css/themes/mist.css";
+@import "../../valerios-ui-toolkit/css/themes/taupe.css";
