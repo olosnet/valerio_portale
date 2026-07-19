@@ -178,7 +178,8 @@ impl GroupsRepository {
 
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
-        let document: bson::Document = group.to_bson().as_document().unwrap().clone();
+        let mut document: bson::Document = group.to_bson().as_document().unwrap().clone();
+        document.remove("default"); // Non sovrascrivere il flag default durante l'update
 
         match collection
             .find_one_and_update(

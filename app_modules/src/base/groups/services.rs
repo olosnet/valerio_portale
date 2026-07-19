@@ -1,5 +1,6 @@
 use cornetti::{
-    core::models::CornettiResult, mongo::services::MongoDBService, redis::services::RedisDBService,
+    core::{errors, models::CornettiResult},
+    mongo::services::MongoDBService, redis::services::RedisDBService,
 };
 use std::sync::Arc;
 use validator::Validate;
@@ -53,6 +54,18 @@ impl<'a> GroupService<'a> {
     ) -> CornettiResult<Group> {
         group_update.validate()?;
 
+        let existing = self.repository.get(group_id).await?;
+        let group_update = if existing.default {
+            // Gruppo predefinito: ignora modifiche ai permessi, permetti solo nome/descrizione
+            GroupUpdate {
+                name: group_update.name,
+                description: group_update.description,
+                permissions: existing.permissions.clone(),
+            }
+        } else {
+            group_update
+        };
+
         let result = self.repository.update(group_id, group_update).await;
 
         match result {
@@ -74,6 +87,11 @@ impl<'a> GroupService<'a> {
     }
 
     pub async fn delete_group(&self, group_id: &str) -> CornettiResult<()> {
+        let existing = self.repository.get(group_id).await?;
+        if existing.default {
+            return Err(errors::not_allowed::resource_deletion_not_allowed());
+        }
+
         let result = self.repository.delete(group_id).await;
         match result {
             Ok(_) => {

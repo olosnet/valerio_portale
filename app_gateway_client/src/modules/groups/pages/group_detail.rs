@@ -18,11 +18,14 @@ pub fn GroupDetail() -> impl IntoView {
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
     let group = RwSignal::new(None::<crate::modules::groups::models::Group>);
-    let permissions = RwSignal::new(Vec::<GroupPermission>::new());
 
     let name = RwSignal::new(String::new());
     let description = RwSignal::new(String::new());
     let permissions = RwSignal::new(Vec::<GroupPermission>::new());
+
+    let is_default = Signal::derive(move || {
+        group.get().as_ref().map(|g| g.default).unwrap_or(false)
+    });
 
     {
         let client = client.clone();
@@ -73,6 +76,7 @@ pub fn GroupDetail() -> impl IntoView {
                         });
                     }
                 }
+                    class:hidden=is_default
                     class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:bg-destructive/90 transition-colors">
                     "Elimina"
                 </button>
@@ -91,7 +95,17 @@ pub fn GroupDetail() -> impl IntoView {
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-foreground mb-2">"Permessi"</label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <label class="block text-sm font-medium text-foreground">"Permessi"</label>
+                        {move || if is_default.get() {
+                            view! {
+                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    "Permessi in sola lettura"
+                                </span>
+                            }.into_any()
+                        } else { ().into_any() }}
+                    </div>
                     <div class="border border-border rounded-md overflow-hidden">
                         <table class="w-full text-sm text-foreground">
                             <thead>
@@ -106,6 +120,7 @@ pub fn GroupDetail() -> impl IntoView {
                             <tbody>
                                 {move || {
                                     let perms = permissions.get();
+                                    let locked = is_default.get();
                                     perms.into_iter().map(|mut p| {
                                         let p_name = p.name.clone();
                                         view! {
@@ -121,6 +136,7 @@ pub fn GroupDetail() -> impl IntoView {
                                                     view! {
                                                         <td class="px-2 py-2 text-center">
                                                             <input type="checkbox" checked=checked
+                                                                disabled=locked
                                                                 on:change=move |e| {
                                                                     let val = event_target_checked(&e);
                                                                     permissions.update(|list| {

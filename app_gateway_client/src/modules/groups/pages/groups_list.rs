@@ -9,6 +9,7 @@ use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_succes
 use crate::modules::groups::models::{Group, GroupCreate};
 use crate::stores::auth_store::use_auth;
 
+use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::data_table::{ColumnDef, DataTable, DataTableSource};
 use valerios_ui_toolkit::dialog::{Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose};
 
@@ -38,15 +39,9 @@ fn CreateGroupDialog(
                         class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <DialogFooter>
-                    <button type="button" on:click=move |_| on_create.run(())
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                        "Crea"
-                    </button>
+                    <Button on_click=Arc::new(move || on_create.run(()))>"Crea"</Button>
                     <DialogClose>
-                        <button type="button"
-                            class="px-4 py-2 rounded-md border border-input bg-background text-foreground text-sm hover:bg-secondary transition-colors">
-                            "Annulla"
-                        </button>
+                        <Button variant=ButtonVariant::Outline>"Annulla"</Button>
                     </DialogClose>
                 </DialogFooter>
             </DialogContent>
@@ -138,7 +133,12 @@ pub fn GroupsList() -> impl IntoView {
             sortable: true,
             searchable: false,
             cell: Arc::new(|g: &Group| if g.default {
-                view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }.into_any()
+                view! {
+                    <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        "Predefinito"
+                    </span>
+                }.into_any()
             } else {
                 view! { <span class="text-muted-foreground text-xs">"No"</span> }.into_any()
             }),
