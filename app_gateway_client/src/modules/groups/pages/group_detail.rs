@@ -6,6 +6,7 @@ use leptos_router::hooks::{use_navigate, use_params_map};
 use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::groups::models::{GroupPermission, GroupUpdate};
 use crate::stores::auth_store::use_auth;
+use valerios_ui_toolkit::icon::Icon;
 
 #[component]
 pub fn GroupDetail() -> impl IntoView {
@@ -46,9 +47,15 @@ pub fn GroupDetail() -> impl IntoView {
 
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-foreground">
-                    {move || group.get().as_ref().and_then(|g| g.name.clone()).unwrap_or_default()}
-                </h2>
+                <div class="flex items-center gap-3">
+                    <a href="/settings/groups"
+                        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground h-8 w-8 border border-input bg-background">
+                        {Icon::ArrowLeft.render()}
+                    </a>
+                    <h2 class="text-xl font-semibold text-foreground">
+                        {move || group.get().as_ref().and_then(|g| g.name.clone()).unwrap_or_default()}
+                    </h2>
+                </div>
                 <button on:click={
                     let client = client.clone();
                     let navigate = navigate.clone();

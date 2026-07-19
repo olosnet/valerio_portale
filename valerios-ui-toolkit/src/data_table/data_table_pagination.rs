@@ -37,7 +37,7 @@ pub fn DataTablePagination(
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium">"Righe per pagina"</span>
+                    <span class="text-sm font-medium text-foreground">"Righe per pagina"</span>
                     <select
                         prop:value=move || page_size.get().to_string()
                         on:change=move |ev: leptos::ev::Event| {
@@ -45,7 +45,7 @@ pub fn DataTablePagination(
                             page_size.set(val);
                             page.set(0);
                         }
-                        class="flex h-8 w-[70px] rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        class="flex h-8 w-[70px] rounded-md border border-input bg-background text-foreground px-2 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                         {move || page_size_options.iter().map(|opt| {
                             let sel = *opt == page_size.get();
@@ -58,7 +58,7 @@ pub fn DataTablePagination(
                     </select>
                 </div>
 
-                <div class="text-sm font-medium">
+                <div class="text-sm font-medium text-foreground">
                     {move || {
                         let tp = total_pages.get();
                         if tp == 0 { "Pagina 0 di 0".to_string() } else { format!("Pagina {} di {}", page.get() + 1, tp) }

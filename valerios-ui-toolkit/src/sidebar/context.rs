@@ -1,9 +1,13 @@
 use leptos::prelude::*;
+use wasm_bindgen::prelude::*;
+
+// Breakpoint allineato a Tailwind `lg` (1024px)
+const MOBILE_BREAKPOINT: f64 = 1024.0;
 
 fn is_mobile_window() -> bool {
     web_sys::window()
         .and_then(|w| w.inner_width().ok())
-        .map(|w| w.as_f64().unwrap_or(1024.0) < 768.0)
+        .map(|w| w.as_f64().unwrap_or(1280.0) < MOBILE_BREAKPOINT)
         .unwrap_or(false)
 }
 
@@ -38,7 +42,23 @@ pub fn SidebarProvider(
     #[prop(default = true)] default_open: bool,
 ) -> impl IntoView {
     let ctx = SidebarContext::new(default_open);
-    provide_context(ctx);
+    provide_context(ctx.clone());
+
+    // Aggiorna is_mobile al resize della finestra
+    let is_mobile = ctx.is_mobile;
+    let open_mobile = ctx.open_mobile;
+    if let Some(window) = web_sys::window() {
+        let cb = Closure::<dyn Fn()>::new(move || {
+            let mobile = is_mobile_window();
+            is_mobile.set(mobile);
+            // Chiudi mobile sheet se torniamo a desktop
+            if !mobile {
+                open_mobile.set(false);
+            }
+        });
+        let _ = window.add_event_listener_with_callback("resize", cb.as_ref().unchecked_ref());
+        cb.forget(); // Vive per sempre (lifetime del SidebarProvider)
+    }
 
     view! {
         <div data-slot="sidebar-wrapper"

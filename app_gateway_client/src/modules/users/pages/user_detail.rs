@@ -7,6 +7,7 @@ use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_succes
 use crate::modules::groups::models::Group;
 use crate::modules::users::models::{SetPasswordBody, UserUpdate};
 use crate::stores::auth_store::use_auth;
+use valerios_ui_toolkit::icon::Icon;
 
 #[component]
 pub fn UserDetail() -> impl IntoView {
@@ -57,15 +58,21 @@ pub fn UserDetail() -> impl IntoView {
 
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="flex items-center justify-between">
-                <div>
-                    <h2 class="text-xl font-semibold text-foreground mb-1">
-                        {move || user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}
-                        " "
-                        {move || user.get().as_ref().and_then(|u| u.surname.clone()).unwrap_or_default()}
-                    </h2>
-                    <p class="text-sm text-muted-foreground">
-                        {move || user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}
-                    </p>
+                <div class="flex items-center gap-3">
+                    <a href="/settings/users"
+                        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground h-8 w-8 border border-input bg-background">
+                        {Icon::ArrowLeft.render()}
+                    </a>
+                    <div>
+                        <h2 class="text-xl font-semibold text-foreground mb-1">
+                            {move || user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}
+                            " "
+                            {move || user.get().as_ref().and_then(|u| u.surname.clone()).unwrap_or_default()}
+                        </h2>
+                        <p class="text-sm text-muted-foreground">
+                            {move || user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}
+                        </p>
+                    </div>
                 </div>
                 <button on:click={
                     let client = client.clone();

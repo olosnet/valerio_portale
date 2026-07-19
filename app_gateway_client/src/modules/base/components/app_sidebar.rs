@@ -157,7 +157,7 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
     view! {
         <Sheet open=sctx.open_mobile side=SheetSide::Left>
             <SheetContent>
-                <Sidebar>
+                <Sidebar variant="mobile">
                     <SidebarHeader>
                         <div class="flex items-center gap-2 px-2 py-1">
                             <div class="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shrink-0">"V"</div>

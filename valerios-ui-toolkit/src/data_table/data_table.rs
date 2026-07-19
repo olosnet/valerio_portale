@@ -140,8 +140,8 @@ pub fn DataTable<T: Clone + Send + Sync + 'static>(
                 }.into_any()
             } else { ().into_any() }}
 
-            <div class="rounded-md border overflow-hidden">
-                <table data-slot="table" class="w-full caption-bottom text-sm">
+            <div class="rounded-md border border-border overflow-hidden">
+                <table data-slot="table" class="w-full caption-bottom text-sm text-foreground">
                     <thead class="[&_tr]:border-b">
                         <tr class="border-b transition-colors hover:bg-muted/50">
                             {move || {
