@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use super::types::*;
 use super::toast_stack::ToastStack;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct ToastContext {
     pub add: Callback<ToastInput, usize>,
     pub dismiss: Callback<usize, ()>,

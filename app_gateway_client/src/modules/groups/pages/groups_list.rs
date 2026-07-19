@@ -3,12 +3,14 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::groups::models::{Group, GroupCreate};
 use crate::stores::auth_store::use_auth;
 
 #[component]
 pub fn GroupsList() -> impl IntoView {
     let auth = use_auth();
+    let toast = use_toast_ctx();
     let navigate = use_navigate();
     let client = auth.api_client.clone();
 
@@ -24,7 +26,7 @@ pub fn GroupsList() -> impl IntoView {
         spawn_local(async move {
             match crate::modules::groups::api::list_groups(&client).await {
                 Ok(list) => groups.set(list),
-                Err(_) => {}
+                Err(e) => toast_error(&toast, &e.to_string()),
             }
             loading.set(false);
         });
@@ -72,15 +74,20 @@ pub fn GroupsList() -> impl IntoView {
                                             name: Some(new_name.get()),
                                             description: Some(new_description.get()),
                                             permissions: Vec::new(),
-                                        };
-                                        spawn_local({
-                                            let client = client.clone();
-                                            async move {
-                                                if let Ok(g) = crate::modules::groups::api::create_group(&client, &body).await {
-                                                    groups.update(|list| list.push(g));
-                                                    show_create.set(false);
-                                                    new_name.set(String::new());
-                                                    new_description.set(String::new());
+                                            };
+                                            let toast = toast.clone();
+                                            spawn_local({
+                                                let client = client.clone();
+                                                async move {
+                                                    match crate::modules::groups::api::create_group(&client, &body).await {
+                                                    Ok(g) => {
+                                                        groups.update(|list| list.push(g));
+                                                        show_create.set(false);
+                                                        new_name.set(String::new());
+                                                        new_description.set(String::new());
+                                                        toast_success(&toast, "Gruppo creato");
+                                                    }
+                                                    Err(e) => toast_error(&toast, &e.to_string()),
                                                 }
                                             }
                                         });

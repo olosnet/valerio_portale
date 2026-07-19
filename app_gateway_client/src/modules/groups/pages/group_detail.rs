@@ -3,6 +3,7 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::groups::models::{GroupPermission, GroupUpdate};
 use crate::stores::auth_store::use_auth;
 
@@ -10,13 +11,13 @@ use crate::stores::auth_store::use_auth;
 pub fn GroupDetail() -> impl IntoView {
     let auth = use_auth();
     let navigate = use_navigate();
+    let toast = use_toast_ctx();
     let client = auth.api_client.clone();
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
     let group = RwSignal::new(None::<crate::modules::groups::models::Group>);
-    let error = RwSignal::new(None::<String>);
-    let saved = RwSignal::new(false);
+    let permissions = RwSignal::new(Vec::<GroupPermission>::new());
 
     let name = RwSignal::new(String::new());
     let description = RwSignal::new(String::new());
@@ -34,7 +35,7 @@ pub fn GroupDetail() -> impl IntoView {
                         permissions.set(g.permissions.clone());
                         group.set(Some(g));
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => toast_error(&toast, &e.to_string()),
                 }
             }
         });
@@ -42,10 +43,6 @@ pub fn GroupDetail() -> impl IntoView {
 
     view! {
         <Title text="Dettaglio gruppo - App Gateway"/>
-
-        {move || error.get().map(|e| view! {
-            <div class="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive text-sm text-destructive">{e}</div>
-        })}
 
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="flex items-center justify-between">
@@ -153,13 +150,14 @@ pub fn GroupDetail() -> impl IntoView {
                                 name: name.get(), description: Some(description.get()),
                                 permissions: permissions.get(),
                             };
+                            let toast = toast.clone();
                             spawn_local({
                                 let client = client.clone();
                                 async move {
                                     if let Some(ref id_val) = id {
                                         match crate::modules::groups::api::update_group(&client, id_val, &body).await {
-                                            Ok(g) => { group.set(Some(g)); saved.set(true); }
-                                            Err(e) => error.set(Some(e.to_string())),
+                                            Ok(g) => { group.set(Some(g)); toast_success(&toast, "Gruppo aggiornato"); }
+                                            Err(e) => toast_error(&toast, &e.to_string()),
                                         }
                                     }
                                 }
@@ -169,7 +167,6 @@ pub fn GroupDetail() -> impl IntoView {
                         class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                         "Salva modifiche"
                     </button>
-                    {move || saved.get().then(|| view! { <span class="text-sm text-green-600">"Salvato"</span> })}
                 </div>
             </div>
         </div>

@@ -1,12 +1,14 @@
 use leptos::prelude::*;
 use leptos_meta::Title;
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::identity::models::{UserIdentityUpdate, UserIdentityUpdatePassword};
 use crate::stores::auth_store::use_auth;
 
 #[component]
 pub fn Profile() -> impl IntoView {
     let auth = use_auth();
+    let toast = use_toast_ctx();
     let user = auth.user;
 
     let name = RwSignal::new(String::new());
@@ -14,10 +16,6 @@ pub fn Profile() -> impl IntoView {
     let old_password = RwSignal::new(String::new());
     let new_password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
-
-    let profile_saved = RwSignal::new(false);
-    let password_saved = RwSignal::new(false);
-    let error = RwSignal::new(None::<String>);
 
     let save_profile = {
         let auth = auth.clone();
@@ -27,13 +25,14 @@ pub fn Profile() -> impl IntoView {
                 name: Some(name.get()),
                 surname: Some(surname.get()),
             };
+            let toast = toast.clone();
             leptos::task::spawn_local(async move {
                 match crate::modules::identity::api::update_profile(&auth.api_client, &body).await {
                     Ok(u) => {
                         auth.user.set(Some(u));
-                        profile_saved.set(true);
+                        toast_success(&toast, "Profilo aggiornato");
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => toast_error(&toast, &e.to_string()),
                 }
             });
         }
@@ -48,15 +47,16 @@ pub fn Profile() -> impl IntoView {
                 new_password: new_password.get(),
                 confirm_password: confirm_password.get(),
             };
+            let toast = toast.clone();
             leptos::task::spawn_local(async move {
                 match crate::modules::identity::api::update_password(&auth.api_client, &body).await {
                     Ok(()) => {
                         old_password.set(String::new());
                         new_password.set(String::new());
                         confirm_password.set(String::new());
-                        password_saved.set(true);
+                        toast_success(&toast, "Password aggiornata");
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => toast_error(&toast, &e.to_string()),
                 }
             });
         }
@@ -64,10 +64,6 @@ pub fn Profile() -> impl IntoView {
 
     view! {
         <Title text="Il mio profilo - App Gateway"/>
-
-        {move || error.get().map(|e| view! {
-            <div class="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive text-sm text-destructive">{e}</div>
-        })}
 
         <div class="max-w-2xl mx-auto space-y-8">
             <div>
@@ -125,9 +121,6 @@ pub fn Profile() -> impl IntoView {
                     >
                         "Salva"
                     </button>
-                    {move || profile_saved.get().then(|| {
-                        view! { <span class="text-sm text-green-600">"Profilo aggiornato"</span> }
-                    })}
                 </div>
             </div>
 
@@ -158,9 +151,6 @@ pub fn Profile() -> impl IntoView {
                         class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                         "Aggiorna password"
                     </button>
-                    {move || password_saved.get().then(|| {
-                        view! { <span class="text-sm text-green-600">"Password aggiornata"</span> }
-                    })}
                 </div>
             </div>
 

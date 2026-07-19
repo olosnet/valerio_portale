@@ -3,6 +3,7 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::groups::models::Group;
 use crate::modules::users::models::{SetPasswordBody, UserUpdate};
 use crate::stores::auth_store::use_auth;
@@ -11,14 +12,14 @@ use crate::stores::auth_store::use_auth;
 pub fn UserDetail() -> impl IntoView {
     let auth = use_auth();
     let navigate = use_navigate();
+    let toast = use_toast_ctx();
     let client = auth.api_client.clone();
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
     let user = RwSignal::new(None::<crate::modules::users::models::User>);
     let groups = RwSignal::new(Vec::<Group>::new());
-    let error = RwSignal::new(None::<String>);
-    let saved = RwSignal::new(false);
+    let password_saved = RwSignal::new(false);
 
     let name = RwSignal::new(String::new());
     let surname = RwSignal::new(String::new());
@@ -27,7 +28,6 @@ pub fn UserDetail() -> impl IntoView {
 
     let password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
-    let password_saved = RwSignal::new(false);
 
     {
         let client = client.clone();
@@ -42,11 +42,11 @@ pub fn UserDetail() -> impl IntoView {
                         selected_groups.set(u.groups_ids.clone());
                         user.set(Some(u));
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => toast_error(&toast, &e.to_string()),
                 }
                 match crate::modules::groups::api::list_groups(&client).await {
                     Ok(g) => groups.set(g),
-                    Err(_) => {}
+                    Err(e) => toast_error(&toast, &e.to_string()),
                 }
             }
         });
@@ -54,10 +54,6 @@ pub fn UserDetail() -> impl IntoView {
 
     view! {
         <Title text="Dettaglio utente - App Gateway"/>
-
-        {move || error.get().map(|e| view! {
-            <div class="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive text-sm text-destructive">{e}</div>
-        })}
 
         <div class="max-w-2xl mx-auto space-y-8">
             <div class="flex items-center justify-between">
@@ -156,13 +152,14 @@ pub fn UserDetail() -> impl IntoView {
                                 name: name.get(), surname: surname.get(),
                                 enabled: enabled.get(), groups_ids: selected_groups.get(),
                             };
+                            let toast = toast.clone();
                             spawn_local({
                                 let client = client.clone();
                                 async move {
                                     if let Some(ref id_val) = id {
                                         match crate::modules::users::api::update_user(&client, id_val, &body).await {
-                                            Ok(u) => { user.set(Some(u)); saved.set(true); }
-                                            Err(e) => error.set(Some(e.to_string())),
+                                            Ok(u) => { user.set(Some(u)); toast_success(&toast, "Utente aggiornato"); }
+                                            Err(e) => toast_error(&toast, &e.to_string()),
                                         }
                                     }
                                 }
@@ -172,7 +169,6 @@ pub fn UserDetail() -> impl IntoView {
                         class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                         "Salva modifiche"
                     </button>
-                    {move || saved.get().then(|| view! { <span class="text-sm text-green-600">"Salvato"</span> })}
                 </div>
             </div>
 
@@ -198,6 +194,7 @@ pub fn UserDetail() -> impl IntoView {
                             let body = SetPasswordBody {
                                 password: password.get(), confirm_password: confirm_password.get(),
                             };
+                            let toast = toast.clone();
                             spawn_local({
                                 let client = client.clone();
                                 async move {
@@ -207,9 +204,9 @@ pub fn UserDetail() -> impl IntoView {
                                                 user.set(Some(u));
                                                 password.set(String::new());
                                                 confirm_password.set(String::new());
-                                                password_saved.set(true);
+                                                toast_success(&toast, "Password impostata");
                                             }
-                                            Err(e) => error.set(Some(e.to_string())),
+                                            Err(e) => toast_error(&toast, &e.to_string()),
                                         }
                                     }
                                 }
@@ -219,7 +216,6 @@ pub fn UserDetail() -> impl IntoView {
                         class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                         "Imposta password"
                     </button>
-                    {move || password_saved.get().then(|| view! { <span class="text-sm text-green-600">"Password impostata"</span> })}
                 </div>
             </div>
         </div>

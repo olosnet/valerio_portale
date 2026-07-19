@@ -8,6 +8,7 @@ use leptos_router::{
 
 use crate::modules::base::components::main_layout::with_layout;
 use crate::modules::auth::pages::login::Login;
+use crate::components::shadcn::sonner::Sonner;
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::components::not_found::NotFound;
 use crate::stores::auth_store::{provide_auth, use_auth};
@@ -28,17 +29,19 @@ pub fn App() -> impl IntoView {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Title text="App Gateway"/>
 
-        <Router>
-            <Routes fallback=|| view! { <NotFound/> }>
-                <Route path=StaticSegment("login") view=Login/>
-                <Route path=StaticSegment("") view=ProtectedDashboard/>
-                <Route path=StaticSegment("profile") view=ProtectedProfile/>
-                <Route path=(StaticSegment("settings"), StaticSegment("users")) view=ProtectedUsersList/>
-                <Route path=(StaticSegment("settings"), StaticSegment("users"), ParamSegment("id")) view=ProtectedUserDetail/>
-                <Route path=(StaticSegment("settings"), StaticSegment("groups")) view=ProtectedGroupsList/>
-                <Route path=(StaticSegment("settings"), StaticSegment("groups"), ParamSegment("id")) view=ProtectedGroupDetail/>
-            </Routes>
-        </Router>
+        <Sonner position="bottom-right" default_duration_ms=4000 max_visible=5>
+            <Router>
+                <Routes fallback=|| view! { <NotFound/> }>
+                    <Route path=StaticSegment("login") view=Login/>
+                    <Route path=StaticSegment("") view=ProtectedDashboard/>
+                    <Route path=StaticSegment("profile") view=ProtectedProfile/>
+                    <Route path=(StaticSegment("settings"), StaticSegment("users")) view=ProtectedUsersList/>
+                    <Route path=(StaticSegment("settings"), StaticSegment("users"), ParamSegment("id")) view=ProtectedUserDetail/>
+                    <Route path=(StaticSegment("settings"), StaticSegment("groups")) view=ProtectedGroupsList/>
+                    <Route path=(StaticSegment("settings"), StaticSegment("groups"), ParamSegment("id")) view=ProtectedGroupDetail/>
+                </Routes>
+            </Router>
+        </Sonner>
     }
 }
 

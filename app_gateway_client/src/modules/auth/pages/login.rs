@@ -4,17 +4,19 @@ use leptos_meta::Title;
 use leptos_router::components::Redirect;
 use leptos_router::hooks::use_navigate;
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error};
 use crate::stores::auth_store::use_auth;
 
 #[component]
 pub fn Login() -> impl IntoView {
     let auth = use_auth();
     let navigate = use_navigate();
+    let toast = use_toast_ctx();
 
     let username = RwSignal::new(String::new());
     let password = RwSignal::new(String::new());
-    let error = RwSignal::new(None::<String>);
     let loading = RwSignal::new(false);
+    let toast = toast.clone();
 
     move || {
         if !auth.initial_check_done.get() {
@@ -29,22 +31,23 @@ pub fn Login() -> impl IntoView {
             return view! { <Redirect path="/"/> }.into_any();
         }
 
+        let toast_submit = toast.clone();
         let on_submit = {
             let auth = auth.clone();
             let navigate = navigate.clone();
             move |_| {
                 let auth = auth.clone();
                 let navigate = navigate.clone();
+                let toast = toast_submit.clone();
                 spawn_local(async move {
                     loading.set(true);
-                    error.set(None);
 
                     match auth.login(&username.get(), &password.get()).await {
                         Ok(()) => {
                             let _ = navigate("/", Default::default());
                         }
                         Err(e) => {
-                            error.set(Some(e));
+                            toast_error(&toast, &e);
                         }
                     }
 
@@ -62,14 +65,6 @@ pub fn Login() -> impl IntoView {
                             <h1 class="text-2xl font-bold text-foreground">"App Gateway"</h1>
                             <p class="text-sm text-muted-foreground mt-1">"Accedi per continuare"</p>
                         </div>
-
-                        {move || error.get().map(|e| {
-                            view! {
-                                <div class="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive text-sm text-destructive">
-                                    {e}
-                                </div>
-                            }
-                        })}
 
                         <div class="space-y-4">
                             <div>

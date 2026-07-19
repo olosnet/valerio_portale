@@ -3,12 +3,14 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
 
+use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::users::models::{User, UserCreate};
 use crate::stores::auth_store::use_auth;
 
 #[component]
 pub fn UsersList() -> impl IntoView {
     let auth = use_auth();
+    let toast = use_toast_ctx();
     let navigate = use_navigate();
     let client = auth.api_client.clone();
 
@@ -26,7 +28,7 @@ pub fn UsersList() -> impl IntoView {
         spawn_local(async move {
             match crate::modules::users::api::list_users(&client).await {
                 Ok(list) => users.set(list),
-                Err(_) => {}
+                Err(e) => toast_error(&toast, &e.to_string()),
             }
             loading.set(false);
         });
@@ -91,16 +93,21 @@ pub fn UsersList() -> impl IntoView {
                                             enabled: new_enabled.get(),
                                             groups_ids: Vec::new(),
                                         };
+                                        let toast = toast.clone();
                                         spawn_local({
                                             let client = client.clone();
                                             async move {
-                                                if let Ok(u) = crate::modules::users::api::create_user(&client, &body).await {
-                                                    users.update(|list| list.push(u));
-                                                    show_create.set(false);
-                                                    new_name.set(String::new());
-                                                    new_surname.set(String::new());
-                                                    new_email.set(String::new());
-                                                    new_enabled.set(true);
+                                                match crate::modules::users::api::create_user(&client, &body).await {
+                                                    Ok(u) => {
+                                                        users.update(|list| list.push(u));
+                                                        show_create.set(false);
+                                                        new_name.set(String::new());
+                                                        new_surname.set(String::new());
+                                                        new_email.set(String::new());
+                                                        new_enabled.set(true);
+                                                        toast_success(&toast, "Utente creato");
+                                                    }
+                                                    Err(e) => toast_error(&toast, &e.to_string()),
                                                 }
                                             }
                                         });
