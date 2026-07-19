@@ -1,9 +1,8 @@
 use leptos::prelude::*;
 
-use crate::{
-    components::shadcn::sidebar::SidebarProvider,
-    modules::base::components::app_sidebar::AppSidebar,
-};
+use valerios_ui_toolkit::sidebar::SidebarProvider;
+
+use crate::modules::base::components::app_sidebar::AppSidebar;
 
 pub fn with_layout(content: impl IntoView + 'static) -> impl IntoView {
     view! {

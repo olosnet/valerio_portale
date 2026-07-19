@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use leptos::prelude::*;
-use crate::components::shadcn::sonner::{ToastContext, ToastInput, ToastType};
+use valerios_ui_toolkit::sonner::{ToastContext, ToastInput, ToastType};
 
 /// Recupera il contesto toast per mostrare notifiche.
 pub fn use_toast_ctx() -> ToastContext {
@@ -49,7 +49,7 @@ pub fn toast_error_with_action(ctx: &ToastContext, msg: &str, action_label: &'st
         title: msg.to_string(),
         description: None,
         toast_type: ToastType::Error,
-        action: Some(crate::components::shadcn::sonner::ToastAction {
+        action: Some(valerios_ui_toolkit::sonner::ToastAction {
             label: action_label,
             on_click: on_action,
         }),

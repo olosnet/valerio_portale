@@ -8,7 +8,7 @@ use leptos_router::{
 
 use crate::modules::base::components::main_layout::with_layout;
 use crate::modules::auth::pages::login::Login;
-use crate::components::shadcn::sonner::Sonner;
+use valerios_ui_toolkit::sonner::Sonner;
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::components::not_found::NotFound;
 use crate::stores::auth_store::{provide_auth, use_auth};

@@ -6,7 +6,7 @@ use leptos_router::hooks::use_navigate;
 
 use crate::stores::auth_store::use_auth;
 
-use crate::components::shadcn::sidebar::{
+use valerios_ui_toolkit::sidebar::{
     Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
     SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail,
 };

@@ -1,0 +1,83 @@
+[package]
+name = "valerios-ui-toolkit"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["full"]
+full = [
+    "accordion", "alert", "alert_dialog", "aspect_ratio", "avatar", "badge",
+    "breadcrumb", "button", "button_group", "calendar", "card", "checkbox",
+    "collapsible", "combobox", "command", "context_menu", "date_picker",
+    "data_table", "dialog", "direction", "drawer", "dropdown_menu", "empty",
+    "field", "hover_card", "icon", "input", "input_group", "item", "kbd",
+    "label", "menubar", "native_select", "navigation_menu", "pagination",
+    "popover", "progress", "radio_group", "resizable", "scroll_area",
+    "select", "separator", "sheet", "sidebar", "skeleton", "slider",
+    "sonner", "spinner", "switch", "table", "tabs", "textarea", "toggle",
+    "toggle_group", "tooltip", "typography",
+]
+
+accordion = []
+alert = []
+alert_dialog = ["shared", "button"]
+aspect_ratio = []
+avatar = []
+badge = []
+breadcrumb = []
+button = []
+button_group = []
+calendar = ["icon"]
+card = []
+checkbox = []
+collapsible = []
+combobox = ["popover", "button", "icon", "command"]
+command = ["icon"]
+context_menu = []
+date_picker = ["shared", "calendar"]
+data_table = ["table", "icon"]
+dialog = ["shared"]
+direction = []
+drawer = ["shared"]
+dropdown_menu = ["shared"]
+empty = []
+field = []
+hover_card = []
+icon = []
+input = []
+input_group = []
+item = []
+kbd = []
+label = []
+menubar = ["shared"]
+native_select = []
+navigation_menu = []
+pagination = ["icon"]
+popover = ["shared"]
+progress = []
+radio_group = []
+resizable = []
+scroll_area = []
+select = ["shared"]
+separator = []
+shared = []
+sheet = ["shared"]
+sidebar = []
+skeleton = []
+slider = []
+sonner = ["icon"]
+spinner = []
+switch = []
+table = []
+tabs = []
+textarea = []
+toggle = []
+toggle_group = []
+tooltip = ["shared"]
+typography = []
+
+[dependencies]
+leptos = { version = "0.8" }
+chrono = { version = "0.4", features = ["serde"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlDocument", "Location"] }
+wasm-bindgen = "0.2"

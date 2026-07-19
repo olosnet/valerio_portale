@@ -4,5 +4,6 @@ members = [
     "app_gateway_client",
     "app_gateway_main",
     "app_managment",
+    "valerios-ui-toolkit",
 ]
 default-members = ["app_gateway_main"]
