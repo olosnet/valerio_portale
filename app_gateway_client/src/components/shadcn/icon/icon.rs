@@ -27,6 +27,7 @@ pub enum Icon {
     ChevronDown,
     ChevronLeft,
     ChevronUp,
+    ChevronsUpDown,
     Menu,
     PanelLeft,
     PanelLeftOpen,
@@ -77,6 +78,7 @@ impl Icon {
             Self::ChevronDown => icon_chevron_down(),
             Self::ChevronLeft => icon_chevron_left(),
             Self::ChevronUp => icon_chevron_up(),
+            Self::ChevronsUpDown => icon_chevrons_up_down(),
             Self::Menu => icon_menu(),
             Self::PanelLeft => icon_panel_left(),
             Self::PanelLeftOpen => icon_panel_left_open(),
@@ -184,6 +186,12 @@ fn icon_chevron_left() -> AnyView {
 
 fn icon_chevron_up() -> AnyView {
     icon_svg!(<path d="m18 15-6-6-6 6"/>)
+}
+
+fn icon_chevrons_up_down() -> AnyView {
+    icon_svg!(
+        <path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>
+    )
 }
 
 fn icon_menu() -> AnyView {
