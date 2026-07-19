@@ -30,6 +30,10 @@ pub fn UserDetail() -> impl IntoView {
     let password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
 
+    let is_default = Signal::derive(move || {
+        user.get().as_ref().map(|u| u.default).unwrap_or(false)
+    });
+
     {
         let client = client.clone();
         let id = get_id();
@@ -91,6 +95,7 @@ pub fn UserDetail() -> impl IntoView {
                         });
                     }
                 }
+                    class:hidden=is_default
                     class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:bg-destructive/90 transition-colors">
                     "Elimina"
                 </button>
@@ -120,9 +125,20 @@ pub fn UserDetail() -> impl IntoView {
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-foreground mb-2">"Gruppi"</label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <label class="block text-sm font-medium text-foreground">"Gruppi"</label>
+                        {move || if is_default.get() {
+                            view! {
+                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    "Gruppi in sola lettura"
+                                </span>
+                            }.into_any()
+                        } else { ().into_any() }}
+                    </div>
                     <div class="space-y-2">
                         {move || {
+                            let locked = is_default.get();
                             let all_groups = groups.get();
                             let selected = selected_groups.get();
                             all_groups.into_iter().map(|g| {
@@ -132,6 +148,7 @@ pub fn UserDetail() -> impl IntoView {
                                 view! {
                                     <label class="flex items-center gap-2 text-sm">
                                         <input type="checkbox" checked=is_checked
+                                            disabled=locked
                                             on:change=move |e| {
                                                 let mut sel = selected_groups.get();
                                                 if event_target_checked(&e) {

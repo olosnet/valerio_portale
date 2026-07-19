@@ -1,5 +1,6 @@
 mod import_catalogs;
 mod import_images;
+mod redis_cache;
 mod tests;
 
 use app_modules::{
@@ -691,6 +692,7 @@ fn build_cli() -> Command {
             .subcommand(admin_create_cmd()))
 
         .subcommand(tests::tests_cmd())
+        .subcommand(redis_cache::redis_cmd())
 }
 
 // ===========================================================================
@@ -728,6 +730,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             _ => { let _ = cli.print_help(); Ok(()) }
         },
         Some(("test", sub)) => tests::dispatch(sub).await,
+        Some(("redis", sub)) => redis_cache::dispatch(sub).await,
         _ => { let _ = cli.print_help(); Ok(()) }
     }
 }

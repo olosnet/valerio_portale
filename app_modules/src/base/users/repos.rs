@@ -30,6 +30,7 @@ pub struct MongoUserModel {
     pub _id: Option<CornettiObjectId>,
     pub name: Option<String>,
     pub surname: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
@@ -164,19 +165,21 @@ impl From<UserCreate> for MongoUserModel {
     }
 }
 
-impl From<UserUpdate> for MongoUserModel {
-    fn from(value: UserUpdate) -> Self {
-        let mut model: MongoUserModel = MongoUserModel::new();
-        model.name = Some(value.name);
-        model.surname = Some(value.surname);
-        model.enabled = value.enabled;
-        model.groups_ids = value
+impl MongoUserModel {
+    pub fn apply_update(&mut self, update: &UserUpdate) -> CornettiResult<()> {
+        self.name = Some(update.name.clone());
+        self.surname = Some(update.surname.clone());
+        self.enabled = update.enabled;
+        self.groups_ids = update
             .groups_ids
             .iter()
-            .map(|id| CornettiObjectId::from(id))
-            .collect();
-        model.touch();
-        model
+            .map(|id| {
+                CornettiObjectId::parse_str(id)
+                    .map_err(|_| errors::bad_request::invalid_object_id())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.touch();
+        Ok(())
     }
 }
 
@@ -270,14 +273,20 @@ impl UsersRepository {
     pub async fn update(
         &self,
         user_id: &str,
-        user_update: UserUpdate,
+        user_update: &UserUpdate,
     ) -> CornettiResult<User> {
         let obj_id = CornettiObjectId::parse_str(user_id)?;
-
-        let user: MongoUserModel = user_update.into();
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
-        let document: bson::Document = user.to_bson().as_document().unwrap().clone();
+
+        let mut model = collection
+            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.apply_update(user_update)?;
+
+        let document: bson::Document = model.to_bson().as_document().unwrap().clone();
 
         match collection
             .find_one_and_update(

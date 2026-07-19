@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cornetti::{
-    core::models::CornettiResult,
+    core::{errors, models::CornettiResult},
     mongo::services::MongoDBService,
     redis::services::RedisDBService,
 };
@@ -50,7 +50,20 @@ impl<'a> UsersService<'a> {
         user_update: UserUpdate,
     ) -> CornettiResult<User> {
         user_update.validate()?;
-        let user_updated = self.repository.update(user_id, user_update).await?;
+
+        let existing = self.repository.get(user_id).await?;
+        let user_update = if existing.default {
+            UserUpdate {
+                name: user_update.name,
+                surname: user_update.surname,
+                enabled: user_update.enabled,
+                groups_ids: existing.groups_ids.clone(),
+            }
+        } else {
+            user_update
+        };
+
+        let user_updated = self.repository.update(user_id, &user_update).await?;
         if let Some(ref email) = user_updated.email {
             self.cache_repository
                 .remove_identity_permissions(self.app_namespace, email)
@@ -61,6 +74,10 @@ impl<'a> UsersService<'a> {
     }
 
     pub async fn delete_user(&self, user_id: &str) -> CornettiResult<()> {
+        let existing = self.repository.get(user_id).await?;
+        if existing.default {
+            return Err(errors::not_allowed::resource_deletion_not_allowed());
+        }
         let result = self.repository.delete(user_id, false).await?;
         Ok(result)
     }

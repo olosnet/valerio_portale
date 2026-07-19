@@ -99,14 +99,12 @@ impl From<GroupCreate> for MongoGroupModel {
     }
 }
 
-impl From<GroupUpdate> for MongoGroupModel {
-    fn from(dto: GroupUpdate) -> Self {
-        let mut model = MongoGroupModel::new();
-        model.name = Some(dto.name);
-        model.description = dto.description;
-        model.permissions = dto.permissions;
-        model.touch(); // Update modified time
-        model
+impl MongoGroupModel {
+    pub fn apply_update(&mut self, update: &GroupUpdate) {
+        self.name = Some(update.name.clone());
+        self.description = update.description.clone();
+        self.permissions = update.permissions.clone();
+        self.touch();
     }
 }
 
@@ -169,17 +167,20 @@ impl GroupsRepository {
     pub async fn update(
         &self,
         group_id: &str,
-        group_update: GroupUpdate,
+        group_update: &GroupUpdate,
     ) -> CornettiResult<Group> {
         let obj_id = CornettiObjectId::parse_str(group_id)?;
-
-        // Aggiornamento modified
-        let group: MongoGroupModel = group_update.into();
-
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
-        let mut document: bson::Document = group.to_bson().as_document().unwrap().clone();
-        document.remove("default"); // Non sovrascrivere il flag default durante l'update
+
+        let mut model = collection
+            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.apply_update(group_update);
+
+        let document: bson::Document = model.to_bson().as_document().unwrap().clone();
 
         match collection
             .find_one_and_update(

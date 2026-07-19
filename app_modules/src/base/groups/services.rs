@@ -66,7 +66,7 @@ impl<'a> GroupService<'a> {
             group_update
         };
 
-        let result = self.repository.update(group_id, group_update).await;
+        let result = self.repository.update(group_id, &group_update).await;
 
         match result {
             Ok(group) => {
