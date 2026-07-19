@@ -1,5 +1,6 @@
 pub mod alert;
 pub mod alert_dialog;
+pub mod avatar;
 pub mod badge;
 pub mod button;
 pub mod card;
@@ -13,5 +14,6 @@ pub mod shared;
 pub mod sheet;
 pub mod sidebar;
 pub mod r#switch;
+pub mod table;
 pub mod textarea;
 pub mod toggle;
