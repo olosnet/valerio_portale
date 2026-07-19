@@ -14,7 +14,7 @@ full = [
     "label", "menubar", "native_select", "navigation_menu", "pagination",
     "popover", "progress", "radio_group", "resizable", "scroll_area",
     "select", "separator", "sheet", "sidebar", "skeleton", "slider",
-    "sonner", "spinner", "switch", "table", "tabs", "textarea", "toggle",
+    "sonner", "spinner", "switch", "table", "tabs", "textarea", "theme", "toggle",
     "toggle_group", "tooltip", "typography",
 ]
 
@@ -71,6 +71,7 @@ switch = []
 table = []
 tabs = []
 textarea = []
+theme = []
 toggle = []
 toggle_group = []
 tooltip = ["shared"]

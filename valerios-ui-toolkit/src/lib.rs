@@ -50,6 +50,7 @@
 #[cfg(feature = "switch")] pub mod r#switch;
 #[cfg(feature = "table")] pub mod table;
 #[cfg(feature = "tabs")] pub mod tabs;
+#[cfg(feature = "theme")] pub mod theme;
 #[cfg(feature = "textarea")] pub mod textarea;
 #[cfg(feature = "toggle")] pub mod toggle;
 #[cfg(feature = "toggle_group")] pub mod toggle_group;
