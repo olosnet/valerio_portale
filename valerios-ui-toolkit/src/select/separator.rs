@@ -7,6 +7,6 @@ pub fn SelectSeparator(
     let extra = class.unwrap_or("");
 
     view! {
-        <div role="separator" data-slot="select-separator" class=format!("-mx-1 my-1 h-px bg-muted {}", extra) />
+        <div role="separator" data-slot="select-separator" class=format!("-mx-1 my-1 h-px bg-border {}", extra) />
     }
 }

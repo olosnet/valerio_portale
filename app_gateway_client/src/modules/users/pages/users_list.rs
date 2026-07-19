@@ -51,7 +51,7 @@ fn CreateUserDialog(
                 <div class="flex items-center gap-2">
                     <input type="checkbox" checked=new_enabled
                         on:change=move |e| new_enabled.set(event_target_checked(&e))
-                        class="rounded border-border"/>
+                        class="rounded border-primary"/>
                     <label class="text-sm text-foreground">"Abilitato"</label>
                 </div>
                 <DialogFooter>
@@ -155,7 +155,7 @@ pub fn UsersList() -> impl IntoView {
             sortable: true,
             searchable: false,
             cell: Arc::new(|u: &User| if u.enabled {
-                view! { <span class="text-green-600 text-xs font-medium">"S&igrave;"</span> }.into_any()
+                view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }.into_any()
             } else {
                 view! { <span class="text-destructive text-xs font-medium">"No"</span> }.into_any()
             }),
@@ -190,7 +190,7 @@ pub fn UsersList() -> impl IntoView {
                     <p class="text-sm text-muted-foreground">"Gestisci gli utenti della piattaforma"</p>
                 </div>
                 <button type="button" on:click=move |_| create_open.set(true)
-                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                     "Nuovo utente"
                 </button>
             </div>

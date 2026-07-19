@@ -13,7 +13,7 @@ pub fn Empty(
     view! {
         <div data-slot="empty" class=format!("flex flex-col items-center justify-center py-12 text-center {}", extra)>
             {icon_render}
-            <h3 class="mt-4 text-lg font-semibold">{title}</h3>
+            <h3 class="mt-4 text-lg font-semibold text-foreground">{title}</h3>
             {if !description.is_empty() {
                 view! { <p class="mt-2 text-sm text-muted-foreground">{description}</p> }.into_any()
             } else { ().into_any() }}

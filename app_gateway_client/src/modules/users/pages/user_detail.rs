@@ -91,7 +91,7 @@ pub fn UserDetail() -> impl IntoView {
                         });
                     }
                 }
-                    class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:opacity-90 transition-opacity">
+                    class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:bg-destructive/90 transition-colors">
                     "Elimina"
                 </button>
             </div>
@@ -103,19 +103,19 @@ pub fn UserDetail() -> impl IntoView {
                     <div>
                         <label class="block text-sm font-medium text-foreground mb-1">"Nome"</label>
                         <input type="text" prop:value=name on:input=move |e| name.set(event_target_value(&e))
-                            class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-foreground mb-1">"Cognome"</label>
                         <input type="text" prop:value=surname on:input=move |e| surname.set(event_target_value(&e))
-                            class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="enabled" checked=enabled
                         on:change=move |e| enabled.set(event_target_checked(&e))
-                        class="rounded border-border"/>
+                        class="rounded border-primary"/>
                     <label for="enabled" class="text-sm text-foreground">"Utente abilitato"</label>
                 </div>
 
@@ -141,7 +141,7 @@ pub fn UserDetail() -> impl IntoView {
                                                 }
                                                 selected_groups.set(sel);
                                             }
-                                            class="rounded border-border"/>
+                                            class="rounded border-primary"/>
                                         {g_name}
                                     </label>
                                 }
@@ -173,7 +173,7 @@ pub fn UserDetail() -> impl IntoView {
                             });
                         }
                     }
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                         "Salva modifiche"
                     </button>
                 </div>
@@ -185,13 +185,13 @@ pub fn UserDetail() -> impl IntoView {
                     <label class="block text-sm font-medium text-foreground mb-1">"Nuova password"</label>
                     <input type="password" prop:value=password
                         on:input=move |e| password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Conferma password"</label>
                     <input type="password" prop:value=confirm_password
                         on:input=move |e| confirm_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <div class="flex items-center justify-between">
                     <button on:click={
@@ -220,7 +220,7 @@ pub fn UserDetail() -> impl IntoView {
                             });
                         }
                     }
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                         "Imposta password"
                     </button>
                 </div>

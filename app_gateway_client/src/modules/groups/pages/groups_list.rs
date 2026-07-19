@@ -39,7 +39,7 @@ fn CreateGroupDialog(
                 </div>
                 <DialogFooter>
                     <button type="button" on:click=move |_| on_create.run(())
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                         "Crea"
                     </button>
                     <DialogClose>
@@ -138,7 +138,7 @@ pub fn GroupsList() -> impl IntoView {
             sortable: true,
             searchable: false,
             cell: Arc::new(|g: &Group| if g.default {
-                view! { <span class="text-green-600 text-xs font-medium">"S&igrave;"</span> }.into_any()
+                view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }.into_any()
             } else {
                 view! { <span class="text-muted-foreground text-xs">"No"</span> }.into_any()
             }),
@@ -173,7 +173,7 @@ pub fn GroupsList() -> impl IntoView {
                     <p class="text-sm text-muted-foreground">"Gestisci i gruppi e i relativi permessi"</p>
                 </div>
                 <button type="button" on:click=move |_| create_open.set(true)
-                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                     "Nuovo gruppo"
                 </button>
             </div>

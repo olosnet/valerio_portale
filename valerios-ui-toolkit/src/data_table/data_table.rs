@@ -134,7 +134,7 @@ pub fn DataTable<T: Clone + Send + Sync + 'static>(
                         <input type="text" placeholder="Cerca..."
                             prop:value=move || search.get()
                             on:input=move |ev: leptos::ev::Event| search.set(event_target_value(&ev))
-                            class="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            class="flex h-9 w-full max-w-sm rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         />
                     </div>
                 }.into_any()

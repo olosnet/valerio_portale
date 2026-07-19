@@ -38,7 +38,7 @@ pub fn ThemeProvider(
 
     view! {
         <div data-slot="theme-provider"
-            class="bg-background min-h-screen"
+            class="bg-background text-foreground min-h-screen"
             class:theme-default=move || theme.get() == "default"
             class:theme-zinc=move || theme.get() == "zinc"
             class:theme-stone=move || theme.get() == "stone"

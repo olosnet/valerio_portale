@@ -76,7 +76,7 @@ pub fn Login() -> impl IntoView {
                                     type="text"
                                     prop:value=username
                                     on:input=move |e| username.set(event_target_value(&e))
-                                    class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     placeholder="nome@esempio.it"
                                     disabled=move || loading.get()
                                 />
@@ -91,7 +91,7 @@ pub fn Login() -> impl IntoView {
                                     type="password"
                                     prop:value=password
                                     on:input=move |e| password.set(event_target_value(&e))
-                                    class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     placeholder="••••••••"
                                     disabled=move || loading.get()
                                 />
@@ -100,7 +100,7 @@ pub fn Login() -> impl IntoView {
                             <button
                                 on:click=on_submit
                                 disabled=move || loading.get()
-                                class="w-full px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                                class="w-full px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
                             >
                                 {move || if loading.get() { "Accesso in corso..." } else { "Accedi" }}
                             </button>

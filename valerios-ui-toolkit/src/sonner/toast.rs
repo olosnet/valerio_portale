@@ -112,7 +112,7 @@ pub fn Toast(
             } else { ().into_any() }}
 
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium">{item.title}</p>
+                <p class="text-sm font-medium text-foreground">{item.title}</p>
                 {move || item.description.clone().map(|desc| {
                     view! { <p class="text-sm text-muted-foreground mt-1">{desc}</p> }
                 })}

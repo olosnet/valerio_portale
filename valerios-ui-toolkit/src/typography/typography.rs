@@ -6,7 +6,7 @@ pub fn H1(
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    view! { <h1 data-slot="h1" class=format!("scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl {}", extra)>{children()}</h1> }
+    view! { <h1 data-slot="h1" class=format!("scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground lg:text-5xl {}", extra)>{children()}</h1> }
 }
 
 #[component]
@@ -15,7 +15,7 @@ pub fn H2(
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    view! { <h2 data-slot="h2" class=format!("scroll-m-20 text-3xl font-semibold tracking-tight first:mt-0 {}", extra)>{children()}</h2> }
+    view! { <h2 data-slot="h2" class=format!("scroll-m-20 text-3xl font-semibold tracking-tight text-foreground first:mt-0 {}", extra)>{children()}</h2> }
 }
 
 #[component]
@@ -24,7 +24,7 @@ pub fn H3(
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    view! { <h3 data-slot="h3" class=format!("scroll-m-20 text-2xl font-semibold tracking-tight {}", extra)>{children()}</h3> }
+    view! { <h3 data-slot="h3" class=format!("scroll-m-20 text-2xl font-semibold tracking-tight text-foreground {}", extra)>{children()}</h3> }
 }
 
 #[component]
@@ -33,7 +33,7 @@ pub fn H4(
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    view! { <h4 data-slot="h4" class=format!("scroll-m-20 text-xl font-semibold tracking-tight {}", extra)>{children()}</h4> }
+    view! { <h4 data-slot="h4" class=format!("scroll-m-20 text-xl font-semibold tracking-tight text-foreground {}", extra)>{children()}</h4> }
 }
 
 #[component]
@@ -51,7 +51,7 @@ pub fn Small(
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    view! { <small data-slot="small" class=format!("text-sm font-medium leading-none {}", extra)>{children()}</small> }
+    view! { <small data-slot="small" class=format!("text-sm font-medium leading-none text-foreground {}", extra)>{children()}</small> }
 }
 
 #[component]

@@ -90,7 +90,7 @@ pub fn Profile() -> impl IntoView {
                             type="text"
                             prop:value=name
                             on:input=move |e| name.set(event_target_value(&e))
-                            class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"
                         />
                     </div>
                     <div>
@@ -99,7 +99,7 @@ pub fn Profile() -> impl IntoView {
                             type="text"
                             prop:value=surname
                             on:input=move |e| surname.set(event_target_value(&e))
-                            class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"
                         />
                     </div>
                 </div>
@@ -117,7 +117,7 @@ pub fn Profile() -> impl IntoView {
                 <div class="flex items-center justify-between">
                     <button
                         on:click=save_profile
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
                     >
                         "Salva"
                     </button>
@@ -131,24 +131,24 @@ pub fn Profile() -> impl IntoView {
                     <label class="block text-sm font-medium text-foreground mb-1">"Password attuale"</label>
                     <input type="password" prop:value=old_password
                         on:input=move |e| old_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Nuova password"</label>
                     <input type="password" prop:value=new_password
                         on:input=move |e| new_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Conferma password"</label>
                     <input type="password" prop:value=confirm_password
                         on:input=move |e| confirm_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
 
                 <div class="flex items-center justify-between">
                     <button on:click=save_password
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                         "Aggiorna password"
                     </button>
                 </div>

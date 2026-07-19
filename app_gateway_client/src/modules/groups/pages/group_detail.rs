@@ -73,7 +73,7 @@ pub fn GroupDetail() -> impl IntoView {
                         });
                     }
                 }
-                    class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:opacity-90 transition-opacity">
+                    class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:bg-destructive/90 transition-colors">
                     "Elimina"
                 </button>
             </div>
@@ -82,18 +82,18 @@ pub fn GroupDetail() -> impl IntoView {
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Nome gruppo"</label>
                     <input type="text" prop:value=name on:input=move |e| name.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Descrizione"</label>
                     <input type="text" prop:value=description on:input=move |e| description.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-2">"Permessi"</label>
                     <div class="border border-border rounded-md overflow-hidden">
-                        <table class="w-full text-sm">
+                        <table class="w-full text-sm text-foreground">
                             <thead>
                                 <tr class="border-b border-border bg-muted/50">
                                     <th class="text-left px-4 py-2 font-medium text-foreground">"Modulo"</th>
@@ -135,7 +135,7 @@ pub fn GroupDetail() -> impl IntoView {
                                                                         }
                                                                     });
                                                                 }
-                                                                class="rounded border-border"/>
+                                                                class="rounded border-primary"/>
                                                         </td>
                                                     }
                                                 }).collect::<Vec<_>>()}
@@ -171,7 +171,7 @@ pub fn GroupDetail() -> impl IntoView {
                             });
                         }
                     }
-                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                        class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
                         "Salva modifiche"
                     </button>
                 </div>
