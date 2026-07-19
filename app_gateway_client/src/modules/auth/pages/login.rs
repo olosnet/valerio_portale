@@ -42,7 +42,7 @@ pub fn Login() -> impl IntoView {
                 spawn_local(async move {
                     loading.set(true);
 
-                    match auth.login(&username.get(), &password.get()).await {
+                    match auth.login(&username.get_untracked(), &password.get_untracked()).await {
                         Ok(()) => {
                             let _ = navigate("/", Default::default());
                         }

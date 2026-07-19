@@ -1,2 +1,5 @@
+@import "tailwindcss";
+@source "../src/";
+@source "../../valerios-ui-toolkit/src/";
 @import "../../valerios-ui-toolkit/css/base.css";
 @import "../../valerios-ui-toolkit/css/themes/default.css";

@@ -34,7 +34,7 @@ pub fn Sonner(
         });
 
         let add = Callback::new(move |input: ToastInput| {
-            let id = next_id.get();
+            let id = next_id.get_untracked();
             next_id.set(id + 1);
             let duration = if input.duration_ms > 0 { input.duration_ms } else { default_duration_ms };
 

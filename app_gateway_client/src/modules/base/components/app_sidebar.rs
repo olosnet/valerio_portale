@@ -6,6 +6,8 @@ use leptos_router::hooks::use_navigate;
 
 use crate::stores::auth_store::use_auth;
 
+use valerios_ui_toolkit::icon::Icon;
+use valerios_ui_toolkit::theme::use_theme;
 use valerios_ui_toolkit::sidebar::{
     Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
     SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail,
@@ -88,6 +90,7 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 #[component]
 pub fn AppSidebar() -> impl IntoView {
     let auth = use_auth();
+    let theme = use_theme();
     let navigate = Arc::new(use_navigate());
 
     let can_see_users = auth.can_read_signal("users");
@@ -182,6 +185,42 @@ pub fn AppSidebar() -> impl IntoView {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                 <span class="group-data-[collapsible=icon]:hidden">"Il mio profilo"</span>
                             </button>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                    <SidebarGroupLabel>"Aspetto"</SidebarGroupLabel>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <button on:click=move |_| theme.toggle_dark()
+                                class=menu_btn_class()
+                            >
+                                {move || if theme.dark.get() { Icon::Sun.render() } else { Icon::Moon.render() }}
+                                <span class="group-data-[collapsible=icon]:hidden">
+                                    {move || if theme.dark.get() { "Tema chiaro" } else { "Tema scuro" }}
+                                </span>
+                            </button>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <div class="flex flex-col gap-1 px-2 py-1 group-data-[collapsible=icon]:hidden">
+                                <span class="text-xs text-sidebar-foreground/70">"Tema colore"</span>
+                                <select
+                                    prop:value=move || theme.theme.get()
+                                    on:change=move |ev| theme.set(event_target_value(&ev).leak())
+                                    class="h-8 rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-sm text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                                >
+                                    <option value="default">"Neutral"</option>
+                                    <option value="zinc">"Zinc"</option>
+                                    <option value="stone">"Stone"</option>
+                                    <option value="slate">"Slate"</option>
+                                    <option value="gray">"Gray"</option>
+                                    <option value="mauve">"Mauve"</option>
+                                    <option value="olive">"Olive"</option>
+                                    <option value="mist">"Mist"</option>
+                                    <option value="taupe">"Taupe"</option>
+                                </select>
+                            </div>
                         </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroup>
