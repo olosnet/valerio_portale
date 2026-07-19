@@ -6,7 +6,7 @@ use leptos_router::{
     components::{Redirect, Route, Router, Routes},
 };
 
-use crate::components::sidebar::Sidebar;
+use crate::modules::base::components::main_layout::with_layout;
 use crate::modules::auth::pages::login::Login;
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::components::not_found::NotFound;
@@ -39,17 +39,6 @@ pub fn App() -> impl IntoView {
                 <Route path=(StaticSegment("settings"), StaticSegment("groups"), ParamSegment("id")) view=ProtectedGroupDetail/>
             </Routes>
         </Router>
-    }
-}
-
-fn with_layout(content: impl IntoView + 'static) -> impl IntoView {
-    view! {
-        <div class="flex min-h-screen bg-secondary">
-            <Sidebar/>
-            <main class="flex-1 p-8 overflow-auto">
-                {content}
-            </main>
-        </div>
     }
 }
 
