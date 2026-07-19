@@ -13,7 +13,7 @@ fn sheet_side_class(side: SheetSide) -> &'static str {
 
 #[component]
 pub fn SheetContent(
-    children: ChildrenFn,
+    children: Children,
 ) -> impl IntoView {
     let side = use_sheet_side();
 

@@ -13,6 +13,11 @@ pub fn DataTablePagination(
 ) -> impl IntoView {
     let btn_class = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8";
 
+    // NOTE: >= dentro view! macro rompe parser RSX (il > chiude il tag).
+    // Estrarre closure con > o >= fuori dal view!.
+    let is_first_page = move || page.get() == 0;
+    let is_last_page = move || page.get() + 1 >= total_pages.get();
+
     view! {
         <div data-slot="data-table-pagination" class="flex items-center justify-between px-2">
             <div class="text-sm text-muted-foreground">
@@ -62,27 +67,27 @@ pub fn DataTablePagination(
 
                 <div class="flex items-center gap-1">
                     <button type="button"
-                        disabled=move || page.get() == 0
+                        disabled=is_first_page
                         on:click=move |_| page.set(0)
-                        class=btn_class aria_label="Prima pagina">
+                        class=btn_class aria-label="Prima pagina">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
                     </button>
                     <button type="button"
-                        disabled=move || page.get() == 0
+                        disabled=is_first_page
                         on:click=move |_| { let p = page.get(); if p > 0 { page.set(p - 1); } }
-                        class=btn_class aria_label="Pagina precedente">
+                        class=btn_class aria-label="Pagina precedente">
                         {icon_chevron_left()}
                     </button>
                     <button type="button"
-                        disabled=move || page.get() + 1 >= total_pages.get()
+                        disabled=is_last_page
                         on:click=move |_| { let p = page.get(); let t = total_pages.get(); if p + 1 < t { page.set(p + 1); } }
-                        class=btn_class aria_label="Pagina successiva">
+                        class=btn_class aria-label="Pagina successiva">
                         {icon_chevron_right()}
                     </button>
                     <button type="button"
-                        disabled=move || page.get() + 1 >= total_pages.get()
+                        disabled=is_last_page
                         on:click=move |_| { let t = total_pages.get(); page.set(t.saturating_sub(1)); }
-                        class=btn_class aria_label="Ultima pagina">
+                        class=btn_class aria-label="Ultima pagina">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="m7 7 5 5-5 5"/><path d="m13 7 5 5-5 5"/></svg>
                     </button>
                 </div>

@@ -82,7 +82,7 @@ pub fn PaginationPrevious(
 
     view! {
         <button type="button" data-slot="pagination-previous" disabled=disabled on:click=handle
-            aria_label="Go to previous page"
+            aria-label="Go to previous page"
             class=format!("inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3 {}", extra)>
             {icon_chevron_left()}
             <span class="hidden sm:block">{text}</span>
@@ -103,7 +103,7 @@ pub fn PaginationNext(
 
     view! {
         <button type="button" data-slot="pagination-next" disabled=disabled on:click=handle
-            aria_label="Go to next page"
+            aria-label="Go to next page"
             class=format!("inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3 {}", extra)>
             <span class="hidden sm:block">{text}</span>
             {icon_chevron_right()}

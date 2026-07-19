@@ -11,7 +11,7 @@ pub enum SheetSide {
 
 #[component]
 pub fn Sheet(
-    children: ChildrenFn,
+    children: Children,
     open: RwSignal<bool>,
     #[prop(default = SheetSide::Right)] side: SheetSide,
 ) -> impl IntoView {

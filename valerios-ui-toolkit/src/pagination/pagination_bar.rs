@@ -55,13 +55,17 @@ pub fn PaginationBar(
 
     let btn_cls = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3";
 
+    // NOTE: >= dentro view! macro rompe parser RSX (il > chiude il tag).
+    let is_first_page = move || current_page.get() == 0;
+    let is_last_page = move || current_page.get() + 1 >= total_pages.get();
+
     view! {
         <Pagination>
             <PaginationContent>
                 <PaginationItem>
-                    <button type="button" disabled=move || current_page.get() == 0
+                    <button type="button" disabled=is_first_page
                         on:click=move |_| { let p = current_page.get(); if p > 0 { current_page.set(p - 1); } }
-                        class=btn_cls aria_label="Go to previous page">
+                        class=btn_cls aria-label="Go to previous page">
                         {icon_left}
                         <span class="hidden sm:block">"Precedente"</span>
                     </button>
@@ -99,9 +103,9 @@ pub fn PaginationBar(
                 />
 
                 <PaginationItem>
-                    <button type="button" disabled=move || current_page.get() + 1 >= total_pages.get()
+                    <button type="button" disabled=is_last_page
                         on:click=move |_| { let p = current_page.get(); let t = total_pages.get(); if p + 1 < t { current_page.set(p + 1); } }
-                        class=btn_cls aria_label="Go to next page">
+                        class=btn_cls aria-label="Go to next page">
                         <span class="hidden sm:block">"Successivo"</span>
                         {icon_right}
                     </button>

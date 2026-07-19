@@ -8,6 +8,11 @@ use leptos_router::{
 
 use crate::modules::base::components::main_layout::with_layout;
 use crate::modules::auth::pages::login::Login;
+use crate::modules::groups::pages::group_detail::GroupDetail;
+use crate::modules::groups::pages::groups_list::GroupsList;
+use crate::modules::identity::pages::profile::Profile;
+use crate::modules::users::pages::user_detail::UserDetail;
+use crate::modules::users::pages::users_list::UsersList;
 use valerios_ui_toolkit::sonner::Sonner;
 use valerios_ui_toolkit::theme::ThemeProvider;
 use crate::modules::base::api_client::ApiClient;
@@ -62,7 +67,7 @@ fn ProtectedDashboard() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { DashboardBody() }).into_any()
+        with_layout(view! { <DashboardBody/> }).into_any()
     }
 }
 
@@ -80,7 +85,7 @@ fn ProtectedProfile() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { ProfileBody() }).into_any()
+        with_layout(view! { <ProfileBody/> }).into_any()
     }
 }
 
@@ -98,7 +103,7 @@ fn ProtectedUsersList() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { crate::modules::users::pages::users_list::UsersList() }).into_any()
+        with_layout(view! { <UsersList/> }).into_any()
     }
 }
 
@@ -116,7 +121,7 @@ fn ProtectedUserDetail() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { crate::modules::users::pages::user_detail::UserDetail() }).into_any()
+        with_layout(view! { <UserDetail/> }).into_any()
     }
 }
 
@@ -134,7 +139,7 @@ fn ProtectedGroupsList() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { crate::modules::groups::pages::groups_list::GroupsList() }).into_any()
+        with_layout(view! { <GroupsList/> }).into_any()
     }
 }
 
@@ -152,7 +157,7 @@ fn ProtectedGroupDetail() -> impl IntoView {
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
         }
-        with_layout(view! { crate::modules::groups::pages::group_detail::GroupDetail() }).into_any()
+        with_layout(view! { <GroupDetail/> }).into_any()
     }
 }
 
@@ -206,5 +211,5 @@ fn DashboardBody() -> impl IntoView {
 
 #[component]
 fn ProfileBody() -> impl IntoView {
-    crate::modules::identity::pages::profile::Profile()
+    view! { <Profile/> }
 }

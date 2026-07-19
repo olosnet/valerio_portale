@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+use std::sync::Arc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::Title;
@@ -7,6 +9,62 @@ use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_succes
 use crate::modules::users::models::{User, UserCreate};
 use crate::stores::auth_store::use_auth;
 
+use valerios_ui_toolkit::button::{Button, ButtonVariant};
+use valerios_ui_toolkit::data_table::{ColumnDef, DataTable, DataTableSource};
+use valerios_ui_toolkit::dialog::{Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose};
+
+#[component]
+fn CreateUserDialog(
+    open: RwSignal<bool>,
+    new_name: RwSignal<String>,
+    new_surname: RwSignal<String>,
+    new_email: RwSignal<String>,
+    new_enabled: RwSignal<bool>,
+    on_create: Callback<()>,
+) -> impl IntoView {
+    view! {
+        <Dialog open=open>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>"Crea nuovo utente"</DialogTitle>
+                </DialogHeader>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">"Nome"</label>
+                        <input type="text" prop:value=new_name
+                            on:input=move |e| new_name.set(event_target_value(&e))
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">"Cognome"</label>
+                        <input type="text" prop:value=new_surname
+                            on:input=move |e| new_surname.set(event_target_value(&e))
+                            class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-foreground mb-1">"Email"</label>
+                    <input type="email" prop:value=new_email
+                        on:input=move |e| new_email.set(event_target_value(&e))
+                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" checked=new_enabled
+                        on:change=move |e| new_enabled.set(event_target_checked(&e))
+                        class="rounded border-border"/>
+                    <label class="text-sm text-foreground">"Abilitato"</label>
+                </div>
+                <DialogFooter>
+                    <Button on_click=Arc::new(move || on_create.run(()))>"Crea"</Button>
+                    <DialogClose>
+                        <Button variant=ButtonVariant::Outline>"Annulla"</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    }
+}
+
 #[component]
 pub fn UsersList() -> impl IntoView {
     let auth = use_auth();
@@ -14,9 +72,9 @@ pub fn UsersList() -> impl IntoView {
     let navigate = use_navigate();
     let client = auth.api_client.clone();
 
-    let users = RwSignal::new(Vec::<User>::new());
+    let users: RwSignal<Vec<User>> = RwSignal::new(Vec::new());
     let loading = RwSignal::new(true);
-    let show_create = RwSignal::new(false);
+    let create_open = RwSignal::new(false);
 
     let new_name = RwSignal::new(String::new());
     let new_surname = RwSignal::new(String::new());
@@ -34,6 +92,94 @@ pub fn UsersList() -> impl IntoView {
         });
     }
 
+    let on_create = Callback::new({
+        let client = client.clone();
+        let toast = toast;
+        let users = users;
+        move |_: ()| {
+            let body = UserCreate {
+                name: new_name.get(),
+                surname: new_surname.get(),
+                email: new_email.get(),
+                enabled: new_enabled.get(),
+                groups_ids: Vec::new(),
+            };
+            let t = toast;
+            spawn_local({
+                let client = client.clone();
+                let users = users;
+                async move {
+                    match crate::modules::users::api::create_user(&client, &body).await {
+                        Ok(u) => {
+                            users.update(|list| list.push(u));
+                            new_name.set(String::new());
+                            new_surname.set(String::new());
+                            new_email.set(String::new());
+                            new_enabled.set(true);
+                            toast_success(&t, "Utente creato");
+                        }
+                        Err(e) => toast_error(&t, &e.to_string()),
+                    }
+                }
+            });
+        }
+    });
+
+    let columns = vec![
+        ColumnDef {
+            title: "Nome",
+            sortable: true,
+            searchable: true,
+            cell: Arc::new(|u: &User| u.name.clone().unwrap_or_default().into_any()),
+            sort_key: Some(Arc::new(|u| u.name.clone().unwrap_or_default())),
+            search_key: Some(Arc::new(|u| u.name.clone().unwrap_or_default())),
+        },
+        ColumnDef {
+            title: "Cognome",
+            sortable: true,
+            searchable: true,
+            cell: Arc::new(|u: &User| u.surname.clone().unwrap_or_default().into_any()),
+            sort_key: Some(Arc::new(|u| u.surname.clone().unwrap_or_default())),
+            search_key: Some(Arc::new(|u| u.surname.clone().unwrap_or_default())),
+        },
+        ColumnDef {
+            title: "Email",
+            sortable: true,
+            searchable: true,
+            cell: Arc::new(|u: &User| u.email.clone().unwrap_or_default().into_any()),
+            sort_key: Some(Arc::new(|u| u.email.clone().unwrap_or_default())),
+            search_key: Some(Arc::new(|u| u.email.clone().unwrap_or_default())),
+        },
+        ColumnDef {
+            title: "Abilitato",
+            sortable: true,
+            searchable: false,
+            cell: Arc::new(|u: &User| if u.enabled {
+                view! { <span class="text-green-600 text-xs font-medium">"S&igrave;"</span> }.into_any()
+            } else {
+                view! { <span class="text-destructive text-xs font-medium">"No"</span> }.into_any()
+            }),
+            sort_key: Some(Arc::new(|u| u.enabled.to_string())),
+            search_key: None,
+        },
+    ];
+
+    let actions = {
+        let nav = navigate;
+        Arc::new(move |u: &User| {
+            let uid = u.id.clone().unwrap_or_default();
+            let nav = nav.clone();
+            view! {
+                <button type="button" on:click=move |_| {
+                    let _ = nav(&format!("/settings/users/{uid}"), Default::default());
+                }
+                    class="text-sm text-primary underline hover:no-underline">
+                    "Dettaglio"
+                </button>
+            }.into_any()
+        })
+    };
+
     view! {
         <Title text="Utenti - App Gateway"/>
 
@@ -43,145 +189,36 @@ pub fn UsersList() -> impl IntoView {
                     <h2 class="text-xl font-semibold text-foreground mb-1">"Utenti"</h2>
                     <p class="text-sm text-muted-foreground">"Gestisci gli utenti della piattaforma"</p>
                 </div>
-                <button
-                    on:click=move |_| show_create.set(true)
-                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-                >
+                <button type="button" on:click=move |_| create_open.set(true)
+                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                     "Nuovo utente"
                 </button>
             </div>
 
             {move || {
-                if show_create.get() {
-                    view! {
-                        <div class="bg-background rounded-lg border border-border shadow-sm p-6 space-y-4 mb-6">
-                            <h3 class="text-lg font-medium text-foreground">"Crea nuovo utente"</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-foreground mb-1">"Nome"</label>
-                                    <input type="text" prop:value=new_name
-                                        on:input=move |e| new_name.set(event_target_value(&e))
-                                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-foreground mb-1">"Cognome"</label>
-                                    <input type="text" prop:value=new_surname
-                                        on:input=move |e| new_surname.set(event_target_value(&e))
-                                        class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">"Email"</label>
-                                <input type="email" prop:value=new_email
-                                    on:input=move |e| new_email.set(event_target_value(&e))
-                                    class="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"/>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" checked=new_enabled
-                                    on:change=move |e| new_enabled.set(event_target_checked(&e))
-                                    class="rounded border-border"/>
-                                <label class="text-sm text-foreground">"Abilitato"</label>
-                            </div>
-                            <div class="flex gap-2">
-                                <button on:click={
-                                    let client = client.clone();
-                                    move |_| {
-                                        let body = UserCreate {
-                                            name: new_name.get(),
-                                            surname: new_surname.get(),
-                                            email: new_email.get(),
-                                            enabled: new_enabled.get(),
-                                            groups_ids: Vec::new(),
-                                        };
-                                        let toast = toast.clone();
-                                        spawn_local({
-                                            let client = client.clone();
-                                            async move {
-                                                match crate::modules::users::api::create_user(&client, &body).await {
-                                                    Ok(u) => {
-                                                        users.update(|list| list.push(u));
-                                                        show_create.set(false);
-                                                        new_name.set(String::new());
-                                                        new_surname.set(String::new());
-                                                        new_email.set(String::new());
-                                                        new_enabled.set(true);
-                                                        toast_success(&toast, "Utente creato");
-                                                    }
-                                                    Err(e) => toast_error(&toast, &e.to_string()),
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
-                                    class="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-                                    "Crea"
-                                </button>
-                                <button on:click=move |_| show_create.set(false)
-                                    class="px-4 py-2 rounded-md border border-border bg-background text-foreground text-sm hover:bg-secondary transition-colors">
-                                    "Annulla"
-                                </button>
-                            </div>
-                        </div>
-                    }.into_any()
-                } else {
-                    ().into_any()
-                }
-            }}
-
-            {move || {
                 if loading.get() {
                     view! { <p class="text-sm text-muted-foreground">"Caricamento..."</p> }.into_any()
-                } else if users.get().is_empty() {
-                    view! { <p class="text-sm text-muted-foreground">"Nessun utente trovato"</p> }.into_any()
                 } else {
-                    let items = users.get();
                     view! {
-                        <div class="bg-background rounded-lg border border-border shadow-sm overflow-hidden">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="border-b border-border bg-muted/50">
-                                        <th class="text-left px-4 py-3 font-medium text-foreground">"Nome"</th>
-                                        <th class="text-left px-4 py-3 font-medium text-foreground">"Cognome"</th>
-                                        <th class="text-left px-4 py-3 font-medium text-foreground">"Email"</th>
-                                        <th class="text-center px-4 py-3 font-medium text-foreground">"Abilitato"</th>
-                                        <th class="text-right px-4 py-3 font-medium text-foreground">"Azioni"</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {items.into_iter().map(|u| {
-                                        let uid = u.id.clone().unwrap_or_default();
-                                        let navigate = navigate.clone();
-                                        view! {
-                                            <tr class="border-b border-border hover:bg-muted/30 transition-colors">
-                                                <td class="px-4 py-3 text-foreground">{u.name.clone().unwrap_or_default()}</td>
-                                                <td class="px-4 py-3 text-foreground">{u.surname.clone().unwrap_or_default()}</td>
-                                                <td class="px-4 py-3 text-muted-foreground">{u.email.clone().unwrap_or_default()}</td>
-                                                <td class="px-4 py-3 text-center">
-                                                    {if u.enabled {
-                                                        view! { <span class="text-green-600 text-xs font-medium">"Sì"</span> }.into_any()
-                                                    } else {
-                                                        view! { <span class="text-destructive text-xs font-medium">"No"</span> }.into_any()
-                                                    }}
-                                                </td>
-                                                <td class="px-4 py-3 text-right">
-                                                    <button
-                                                        on:click=move |_| {
-                                                            let _ = navigate(&format!("/settings/users/{uid}"), Default::default());
-                                                        }
-                                                        class="text-sm text-primary underline hover:no-underline"
-                                                    >
-                                                        "Dettaglio"
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    }).collect::<Vec<_>>()}
-                                </tbody>
-                            </table>
-                        </div>
+                        <DataTable
+                            source=DataTableSource::Client(users.get())
+                            columns=columns.clone()
+                            initial_page_size=10
+                            show_search=true
+                            actions=actions.clone()
+                        />
                     }.into_any()
                 }
             }}
         </div>
+
+        <CreateUserDialog
+            open=create_open
+            new_name=new_name
+            new_surname=new_surname
+            new_email=new_email
+            new_enabled=new_enabled
+            on_create=on_create
+        />
     }
 }
