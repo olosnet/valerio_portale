@@ -1,7 +1,6 @@
 use std::io::Cursor;
 use std::sync::Arc;
 
-use image::GenericImageView;
 use image::ImageReader;
 use leptos::prelude::*;
 
@@ -60,7 +59,6 @@ pub fn ImageCropper(
     #[prop(default = 256)] output_size: u32,
     on_crop: Callback<Vec<u8>>,
 ) -> impl IntoView {
-    // Solo header, NON decodifica l'intera immagine (istantaneo vs secondi)
     let (natural_w, natural_h) = ImageReader::new(Cursor::new(&image_bytes))
         .with_guessed_format()
         .ok()
@@ -76,7 +74,6 @@ pub fn ImageCropper(
     let min_zoom = initial_zoom;
     let max_zoom = initial_zoom * 3.0;
 
-    // Rileva MIME dal magic number (evita re-encoding)
     let mime = if image_bytes.starts_with(&[0xFF, 0xD8]) {
         "image/jpeg"
     } else if image_bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
@@ -92,9 +89,6 @@ pub fn ImageCropper(
     let (drag_start_y, set_drag_start_y) = signal(0.0);
     let (drag_orig_x, set_drag_orig_x) = signal(0.0);
     let (drag_orig_y, set_drag_orig_y) = signal(0.0);
-
-    let preview_bytes_rw = RwSignal::new(Vec::<u8>::new());
-    let preview_data_url = StoredValue::new(String::new());
 
     let (interacted, set_interacted) = signal(false);
     let processing = RwSignal::new(false);
@@ -156,97 +150,53 @@ pub fn ImageCropper(
         }
     });
 
-    let handle_preview = Callback::new(move |_: ()| {
-        let bytes = image_bytes.read_value();
-        let z = zoom.get();
-        let ox = -offset_x.get();
-        let oy = -offset_y.get();
-        let crop_left = (ox / z).max(0.0) as u32;
-        let crop_top = (oy / z).max(0.0) as u32;
-        let crop_size = ((display_sz / z) as u32).min(natural_w).min(natural_h);
-
-        if let Ok(result) = crop_and_resize(&bytes, crop_left, crop_top, crop_size, 128) {
-            let url = to_data_url(&result, "image/png");
-            preview_data_url.set_value(url);
-            preview_bytes_rw.set(result);
-        }
-    });
-
     view! {
         <Dialog open=open>
             <DialogContent>
-                <div class="relative">
-                    <DialogHeader>
-                        <DialogTitle>"Ritaglia immagine profilo"</DialogTitle>
-                        <DialogDescription>
-                            "Trascina l'immagine per posizionarla. Usa lo zoom per ingrandire o rimpicciolire."
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>"Ritaglia immagine profilo"</DialogTitle>
+                    <DialogDescription>
+                        "Trascina l'immagine per posizionarla. Usa lo zoom per ingrandire o rimpicciolire."
+                    </DialogDescription>
+                </DialogHeader>
 
                 <div class="flex flex-col items-center gap-4">
-                    <div class="flex gap-6">
-                        <div
-                            class="relative rounded-full overflow-hidden border-2 border-border bg-muted shrink-0 select-none touch-none"
-                            style=move || format!("width:{}px;height:{}px;cursor:{}", display_sz, display_sz, if dragging.get() { "grabbing" } else { "grab" })
-                            on:pointerdown=move |ev| handle_ptr_down.run(ev)
-                            on:pointermove=move |ev| handle_ptr_move.run(ev)
-                            on:pointerup=move |ev| handle_ptr_up.run(ev)
-                        >
-                            <img
-                                src=image_data_url.read_value().clone()
-                                class="absolute max-w-none pointer-events-none"
-                                style:width=format!("{}px", natural_w)
-                                style:height=format!("{}px", natural_h)
-                                style:transform=move || format!(
-                                    "translate({:.1}px, {:.1}px) scale({:.4})",
-                                    offset_x.get(), offset_y.get(), zoom.get()
-                                )
-                                style="transform-origin:0 0"
-                                draggable="false"
-                                alt="Crop preview"
-                            />
-                            <div class="absolute inset-0 bg-black/25 pointer-events-none" style="z-index:5" />
-                            <div class="absolute inset-0 rounded-full border-[3px] border-dashed border-white/80 dark:border-white/60 pointer-events-none" style="z-index:10">
-                                <div class="absolute top-1/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
-                                <div class="absolute top-2/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
-                                <div class="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
-                                <div class="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
-                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border border-white/40 pointer-events-none" />
-                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white/70 pointer-events-none" />
-                            </div>
-                            {move || {
-                                if !interacted.get() && !processing.get() {
-                                    view! {
-                                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="z-index:15">
-                                            <span class="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full">"Trascina per posizionare"</span>
-                                        </div>
-                                    }.into_any()
-                                } else {
-                                    ().into_any()
-                                }
-                            }}
+                    <div
+                        class="relative rounded-full overflow-hidden border-2 border-border bg-muted shrink-0 select-none touch-none"
+                        style=move || format!("width:{}px;height:{}px;cursor:{}", display_sz, display_sz, if dragging.get() { "grabbing" } else { "grab" })
+                        on:pointerdown=move |ev| handle_ptr_down.run(ev)
+                        on:pointermove=move |ev| handle_ptr_move.run(ev)
+                        on:pointerup=move |ev| handle_ptr_up.run(ev)
+                    >
+                        <img
+                            src=image_data_url.read_value().clone()
+                            class="absolute max-w-none pointer-events-none"
+                            style:width=format!("{}px", natural_w)
+                            style:height=format!("{}px", natural_h)
+                            style:transform=move || format!(
+                                "translate({:.1}px, {:.1}px) scale({:.4})",
+                                offset_x.get(), offset_y.get(), zoom.get()
+                            )
+                            style="transform-origin:0 0"
+                            draggable="false"
+                            alt="Crop preview"
+                        />
+                        <div class="absolute inset-0 bg-black/25 pointer-events-none" style="z-index:5" />
+                        <div class="absolute inset-0 rounded-full border-[3px] border-dashed border-white/80 dark:border-white/60 pointer-events-none" style="z-index:10">
+                            <div class="absolute top-1/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
+                            <div class="absolute top-2/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
+                            <div class="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
+                            <div class="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border border-white/40 pointer-events-none" />
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white/70 pointer-events-none" />
                         </div>
-
-                        <div class="flex flex-col items-center gap-2">
-                            <span class="text-xs text-muted-foreground">"Anteprima"</span>
-                            {move || {
-                                let bytes = preview_bytes_rw.get();
-                                if bytes.is_empty() {
-                                    view! {
-                                        <div class="size-24 rounded-full bg-muted border border-border shrink-0" />
-                                    }.into_any()
-                                } else {
-                                    let url = to_data_url(&bytes, "image/png");
-                                    view! {
-                                        <img src=url class="size-24 rounded-full object-cover border border-border shrink-0" alt="Preview" />
-                                    }.into_any()
-                                }
-                            }}
-                            <Button
-                                variant=ButtonVariant::Outline
-                                on_click=Arc::new(move || handle_preview.run(()))
-                            >"Aggiorna anteprima"</Button>
-                        </div>
+                        {move || if !interacted.get() && !processing.get() {
+                            view! {
+                                <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="z-index:15">
+                                    <span class="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full">"Trascina per posizionare"</span>
+                                </div>
+                            }.into_any()
+                        } else { ().into_any() }}
                     </div>
 
                     <div class="w-full max-w-[256px] flex items-center gap-2">
@@ -269,19 +219,19 @@ pub fn ImageCropper(
                         <Button variant=ButtonVariant::Outline>"Annulla"</Button>
                     </DialogClose>
                 </DialogFooter>
-
-                    {move || if processing.get() {
-                        view! {
-                            <div class="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-lg bg-background/90 backdrop-blur-sm">
-                                <div class="size-10 animate-spin rounded-full border-3 border-muted border-t-primary" />
-                                <span class="text-sm font-medium text-foreground mt-3">"Attendere..."</span>
-                            </div>
-                        }.into_any()
-                    } else {
-                        ().into_any()
-                    }}
-                </div>
             </DialogContent>
+
+            {move || if processing.get() {
+                view! {
+                    <div class="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
+                        <svg class="animate-spin size-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-medium text-foreground mt-3">"Attendere..."</span>
+                    </div>
+                }.into_any()
+            } else { ().into_any() }}
         </Dialog>
     }
 }
