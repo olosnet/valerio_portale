@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::modules::base::models::AuthorizationPermission;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct User {
     pub id: Option<String>,
     pub name: Option<String>,

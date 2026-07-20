@@ -23,16 +23,10 @@ pub enum DataTableSource<T: Clone + 'static> {
     Client(Vec<T>),
 }
 
-#[derive(Clone)]
-pub struct DataTableResponse<T: Clone> {
+#[derive(Clone, PartialEq)]
+pub struct DataTableResponse<T: Clone + PartialEq> {
     pub data: Vec<T>,
     pub total_count: usize,
-}
-
-impl<T: Clone> PartialEq for DataTableResponse<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.data.len() == other.data.len() && self.total_count == other.total_count
-    }
 }
 
 pub struct DataTableSnapshot {

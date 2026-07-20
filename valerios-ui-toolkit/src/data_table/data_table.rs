@@ -35,7 +35,7 @@ fn DataTableRowActions<T: Clone + 'static>(
 }
 
 #[component]
-pub fn DataTable<T: Clone + Send + Sync + 'static>(
+pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
     columns: Vec<ColumnDef<T>>,
     source: DataTableSource<T>,
     #[prop(default = 10)] initial_page_size: usize,

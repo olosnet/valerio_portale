@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GroupPermission {
     pub name: String,
     pub read: bool,
@@ -9,7 +9,7 @@ pub struct GroupPermission {
     pub delete: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Group {
     pub id: Option<String>,
     pub created: String,
