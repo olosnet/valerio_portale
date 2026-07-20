@@ -3,6 +3,7 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::components::Redirect;
 use leptos_router::hooks::use_navigate;
+use valerios_ui_toolkit::password_input::PasswordInput;
 
 use crate::modules::base::toast_utils::{use_toast_ctx, toast_error};
 use crate::stores::auth_store::use_auth;
@@ -86,15 +87,7 @@ pub fn Login() -> impl IntoView {
                                 <label for="password" class="block text-sm font-medium text-foreground mb-1">
                                     "Password"
                                 </label>
-                                <input
-                                    id="password"
-                                    type="password"
-                                    prop:value=password
-                                    on:input=move |e| password.set(event_target_value(&e))
-                                    class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    placeholder="••••••••"
-                                    disabled=move || loading.get()
-                                />
+                                <PasswordInput value=password id="password" placeholder="••••••••" disabled=loading.into() />
                             </div>
 
                             <button

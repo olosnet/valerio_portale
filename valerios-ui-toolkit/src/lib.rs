@@ -32,6 +32,7 @@
 #[cfg(feature = "menubar")] pub mod menubar;
 #[cfg(feature = "native_select")] pub mod native_select;
 #[cfg(feature = "navigation_menu")] pub mod navigation_menu;
+#[cfg(feature = "password_input")] pub mod password_input;
 #[cfg(feature = "pagination")] pub mod pagination;
 #[cfg(feature = "popover")] pub mod popover;
 #[cfg(feature = "progress")] pub mod progress;

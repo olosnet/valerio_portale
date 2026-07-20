@@ -11,7 +11,7 @@ full = [
     "collapsible", "combobox", "command", "context_menu", "date_picker",
     "data_table", "dialog", "direction", "drawer", "dropdown_menu", "empty",
     "field", "hover_card", "icon", "input", "input_group", "item", "kbd",
-    "label", "menubar", "native_select", "navigation_menu", "pagination",
+    "label", "menubar", "native_select", "navigation_menu",     "pagination", "password_input",
     "popover", "progress", "radio_group", "resizable", "scroll_area",
     "select", "separator", "sheet", "sidebar", "skeleton", "slider",
     "sonner", "spinner", "switch", "table", "tabs", "textarea", "theme", "toggle",
@@ -53,6 +53,7 @@ menubar = ["shared"]
 native_select = []
 navigation_menu = []
 pagination = ["icon"]
+password_input = ["input", "icon"]
 popover = ["shared"]
 progress = []
 radio_group = []

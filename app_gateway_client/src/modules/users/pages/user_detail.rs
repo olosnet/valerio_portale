@@ -3,11 +3,12 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
+use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
 use crate::modules::groups::models::Group;
 use crate::modules::users::models::{SetPasswordBody, UserUpdate};
 use crate::stores::auth_store::use_auth;
 use valerios_ui_toolkit::icon::Icon;
+use valerios_ui_toolkit::password_input::PasswordInput;
 
 #[component]
 pub fn UserDetail() -> impl IntoView {
@@ -20,7 +21,6 @@ pub fn UserDetail() -> impl IntoView {
 
     let user = RwSignal::new(None::<crate::modules::users::models::User>);
     let groups = RwSignal::new(Vec::<Group>::new());
-    let password_saved = RwSignal::new(false);
 
     let name = RwSignal::new(String::new());
     let surname = RwSignal::new(String::new());
@@ -30,9 +30,8 @@ pub fn UserDetail() -> impl IntoView {
     let password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
 
-    let is_default = Signal::derive(move || {
-        user.get().as_ref().map(|u| u.default).unwrap_or(false)
-    });
+    let is_default =
+        Signal::derive(move || user.get().as_ref().map(|u| u.default).unwrap_or(false));
 
     {
         let client = client.clone();
@@ -200,15 +199,11 @@ pub fn UserDetail() -> impl IntoView {
                 <h3 class="text-lg font-medium text-foreground">"Imposta password"</h3>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Nuova password"</label>
-                    <input type="password" prop:value=password
-                        on:input=move |e| password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    <PasswordInput value=password placeholder="Nuova password" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Conferma password"</label>
-                    <input type="password" prop:value=confirm_password
-                        on:input=move |e| confirm_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    <PasswordInput value=confirm_password placeholder="Conferma password" />
                 </div>
                 <div class="flex items-center justify-between">
                     <button on:click={

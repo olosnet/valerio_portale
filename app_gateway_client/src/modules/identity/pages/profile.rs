@@ -4,6 +4,7 @@ use leptos_meta::Title;
 use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
 use crate::modules::identity::models::{UserIdentityUpdate, UserIdentityUpdatePassword};
 use crate::stores::auth_store::use_auth;
+use valerios_ui_toolkit::password_input::PasswordInput;
 
 #[component]
 pub fn Profile() -> impl IntoView {
@@ -129,21 +130,15 @@ pub fn Profile() -> impl IntoView {
 
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Password attuale"</label>
-                    <input type="password" prop:value=old_password
-                        on:input=move |e| old_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    <PasswordInput value=old_password placeholder="Password attuale" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Nuova password"</label>
-                    <input type="password" prop:value=new_password
-                        on:input=move |e| new_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    <PasswordInput value=new_password placeholder="Nuova password" />
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-foreground mb-1">"Conferma password"</label>
-                    <input type="password" prop:value=confirm_password
-                        on:input=move |e| confirm_password.set(event_target_value(&e))
-                        class="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"/>
+                    <PasswordInput value=confirm_password placeholder="Conferma password" />
                 </div>
 
                 <div class="flex items-center justify-between">

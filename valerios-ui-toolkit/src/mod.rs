@@ -32,6 +32,7 @@ pub mod label;
 pub mod menubar;
 pub mod native_select;
 pub mod navigation_menu;
+pub mod password_input;
 pub mod pagination;
 pub mod popover;
 pub mod progress;
