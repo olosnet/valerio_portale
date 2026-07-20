@@ -13,6 +13,7 @@ pub mod checkbox;
 pub mod collapsible;
 pub mod combobox;
 pub mod command;
+pub mod confirm_delete;
 pub mod context_menu;
 pub mod date_picker;
 pub mod data_table;

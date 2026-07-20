@@ -8,7 +8,7 @@ default = ["full"]
 full = [
     "accordion", "alert", "alert_dialog", "aspect_ratio", "avatar", "badge",
     "breadcrumb", "button", "button_group", "calendar", "card", "checkbox",
-    "collapsible", "combobox", "command", "context_menu", "date_picker",
+    "collapsible", "combobox", "command", "confirm_delete", "context_menu", "date_picker",
     "data_table", "dialog", "direction", "drawer", "dropdown_menu", "empty",
     "field", "hover_card", "icon", "input", "input_group", "item", "kbd",
     "label", "menubar", "native_select", "navigation_menu",     "pagination", "password_input",
@@ -33,6 +33,7 @@ checkbox = []
 collapsible = []
 combobox = ["popover", "button", "icon", "command"]
 command = ["icon"]
+confirm_delete = ["dialog", "button", "icon"]
 context_menu = []
 date_picker = ["shared", "calendar"]
 data_table = ["table", "icon"]

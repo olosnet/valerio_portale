@@ -13,6 +13,7 @@
 #[cfg(feature = "collapsible")] pub mod collapsible;
 #[cfg(feature = "combobox")] pub mod combobox;
 #[cfg(feature = "command")] pub mod command;
+#[cfg(feature = "confirm_delete")] pub mod confirm_delete;
 #[cfg(feature = "context_menu")] pub mod context_menu;
 #[cfg(feature = "date_picker")] pub mod date_picker;
 #[cfg(feature = "data_table")] pub mod data_table;

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::Title;
@@ -7,6 +9,8 @@ use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ct
 use crate::modules::groups::models::Group;
 use crate::modules::users::models::{SetPasswordBody, UserUpdate};
 use crate::stores::auth_store::use_auth;
+use valerios_ui_toolkit::button::{Button, ButtonVariant};
+use valerios_ui_toolkit::confirm_delete::ConfirmDeleteDialog;
 use valerios_ui_toolkit::icon::Icon;
 use valerios_ui_toolkit::password_input::PasswordInput;
 
@@ -29,6 +33,8 @@ pub fn UserDetail() -> impl IntoView {
 
     let password = RwSignal::new(String::new());
     let confirm_password = RwSignal::new(String::new());
+
+    let delete_open = RwSignal::new(false);
 
     let is_default =
         Signal::derive(move || user.get().as_ref().map(|u| u.default).unwrap_or(false));
@@ -56,6 +62,32 @@ pub fn UserDetail() -> impl IntoView {
         });
     }
 
+    let on_delete = {
+        let client = client.clone();
+        let toast = toast.clone();
+        let navigate = navigate.clone();
+        let get_id = get_id.clone();
+        Callback::new(move |_| {
+            let id = get_id();
+            let navigate = navigate.clone();
+            let toast = toast.clone();
+            spawn_local({
+                let client = client.clone();
+                async move {
+                    if let Some(ref id_val) = id {
+                        match crate::modules::users::api::delete_user(&client, id_val).await {
+                            Ok(()) => {
+                                toast_success(&toast, "Utente eliminato");
+                                let _ = navigate("/settings/users", Default::default());
+                            }
+                            Err(e) => toast_error(&toast, &e.to_string()),
+                        }
+                    }
+                }
+            });
+        })
+    };
+
     view! {
         <Title text="Dettaglio utente - App Gateway"/>
 
@@ -77,27 +109,15 @@ pub fn UserDetail() -> impl IntoView {
                         </p>
                     </div>
                 </div>
-                <button on:click={
-                    let client = client.clone();
-                    let navigate = navigate.clone();
-                    move |_| {
-                        let id = get_id();
-                        let navigate = navigate.clone();
-                        spawn_local({
-                            let client = client.clone();
-                            async move {
-                                if let Some(ref id_val) = id {
-                                    let _ = crate::modules::users::api::delete_user(&client, id_val).await;
-                                    let _ = navigate("/settings/users", Default::default());
-                                }
-                            }
-                        });
-                    }
-                }
-                    class:hidden=is_default
-                    class="px-3 py-2 rounded-md bg-destructive text-destructive-foreground text-sm hover:bg-destructive/90 transition-colors">
-                    "Elimina"
-                </button>
+                <div class:hidden=is_default>
+                    <Button
+                        variant=ButtonVariant::Destructive
+                        size=valerios_ui_toolkit::button::ButtonSize::Icon
+                        on_click=Arc::new(move || delete_open.set(true))
+                    >
+                        {Icon::Trash.render()}
+                    </Button>
+                </div>
             </div>
 
             <div class="bg-background rounded-lg border border-border shadow-sm p-6 space-y-4">
@@ -237,6 +257,7 @@ pub fn UserDetail() -> impl IntoView {
                     </button>
                 </div>
             </div>
+            <ConfirmDeleteDialog open=delete_open item_type="utente" on_confirm=on_delete />
         </div>
     }
 }
