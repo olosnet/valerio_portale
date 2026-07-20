@@ -1,4 +1,5 @@
 use super::services::MongoDBService;
+use crate::core::models::CornettiResult;
 use crate::core::traits::BaseModule;
 use bson::{Document, doc};
 use mongodb::{Collection, bson};
@@ -40,6 +41,33 @@ pub trait PartialMongoBaseModel {
 
     /// Updates the modification timestamp to now.
     fn touch(&mut self);
+}
+
+/// Merges an update DTO into a Mongo model loaded from the database.
+///
+/// Only fields present in the DTO are overwritten; fields not in the DTO
+/// (e.g. `_id`, `created`, `default`, `email`) are preserved from the
+/// DB-loaded model.
+///
+/// For infallible merges (no ObjectId parsing needed) simply return `Ok(())`.
+///
+/// # Example
+///
+/// ```ignore
+/// impl TryMergeFrom<GroupUpdate> for MongoGroupModel {
+///     fn try_merge_from(&mut self, update: &GroupUpdate) -> CornettiResult<()> {
+///         self.name = Some(update.name.clone());
+///         self.description = update.description.clone();
+///         if !self.default { self.permissions = update.permissions.clone(); }
+///         self.touch();
+///         Ok(())
+///     }
+/// }
+/// ```
+pub trait TryMergeFrom<T> {
+    /// Merge `source` into `self`. Returns `Ok(())` on success, or an error
+    /// if a field cannot be converted (e.g. invalid ObjectId hex string).
+    fn try_merge_from(&mut self, source: &T) -> CornettiResult<()>;
 }
 
 /// Trait for modules that manage their own MongoDB collections, indexes, and seed data.
