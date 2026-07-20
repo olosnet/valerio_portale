@@ -618,9 +618,9 @@ async fn cmd_admin_create() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- Controlla se utente gia' esiste ---
     if let Some(existing) = users_repo.get_by_email(&email).await.map_err(|e| format!("get_by_email: {}", e.detail))? {
-        let uid = existing._id.clone().unwrap_or_default();
+        let uid = existing.id.clone().unwrap_or_default();
         println!("Utente '{}' gia' esistente (id={}). Associazione al gruppo 'admins'.", email, uid);
-        if let Some(_uid) = existing._id {
+        if let Some(_uid) = existing.id {
             let mut gids = existing.groups_ids.clone();
             if !gids.contains(&group_id) { gids.push(group_id); }
             let upd = UserUpdate {
@@ -647,7 +647,7 @@ async fn cmd_admin_create() -> Result<(), Box<dyn std::error::Error>> {
     };
     uc.validate()?;
     let user = users_repo.create(uc).await.map_err(|e| format!("create user: {}", e.detail))?;
-    let uid = user._id.unwrap();
+    let uid = user.id.unwrap();
 
     let sp = SetPasswordBody { password: password.clone(), confirm_password: password.clone() };
     sp.validate()?;

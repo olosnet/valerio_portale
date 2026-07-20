@@ -4,14 +4,14 @@ use crate::base::groups::{
     GroupsModule,
     models::{Group, GroupCreate, GroupPermission, GroupUpdate},
 };
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::Collection;
@@ -23,7 +23,7 @@ use serde_with::serde_as;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoGroupModel {
     #[serde(skip_serializing)]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -36,7 +36,7 @@ pub struct MongoGroupModel {
 }
 
 impl MongoBaseModel for MongoGroupModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -74,7 +74,7 @@ impl BaseModel for MongoGroupModel {
 impl From<MongoGroupModel> for Group {
     fn from(model: MongoGroupModel) -> Self {
         Group {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             created: model.created.unwrap(),
             modified: model.modified,
             name: model.name,
@@ -134,14 +134,14 @@ impl GroupsRepository {
     }
 
     pub async fn get(&self, group_id: &str) -> CornettiResult<Group> {
-        let obj_id = CornettiObjectId::parse_str(group_id)
+        let obj_id = ObjectId::parse_str(group_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -156,9 +156,7 @@ impl GroupsRepository {
 
         match collection.insert_one(&new_group).await? {
             result => {
-                new_group._id = Some(CornettiObjectId::from(
-                    result.inserted_id.as_object_id().unwrap(),
-                ));
+                new_group._id = Some(result.inserted_id.as_object_id().unwrap().clone());
                 Ok(new_group.into())
             }
         }
@@ -169,12 +167,12 @@ impl GroupsRepository {
         group_id: &str,
         group_update: &GroupUpdate,
     ) -> CornettiResult<Group> {
-        let obj_id = CornettiObjectId::parse_str(group_id)?;
+        let obj_id = ObjectId::parse_str(group_id)?;
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
 
         let mut model = collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
             .ok_or_else(|| errors::not_found::item_not_found())?;
 
@@ -184,7 +182,7 @@ impl GroupsRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -196,14 +194,14 @@ impl GroupsRepository {
     }
 
     pub async fn delete(&self, group_id: &str) -> CornettiResult<()> {
-        let obj_id: CornettiObjectId = CornettiObjectId::parse_str(group_id)
+        let obj_id: ObjectId = ObjectId::parse_str(group_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name: &'static str = MongoGroupModel::collection_name();
         let collection: Collection<MongoGroupModel> = self.mongo.db().collection(collection_name);
 
         match collection
-            .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+            .delete_one(doc! { "_id": &obj_id })
             .await?
         {
             result if result.deleted_count > 0 => Ok(()),

@@ -1,13 +1,13 @@
 use std::{pin::Pin, sync::Arc};
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{errors, models::CornettiError, traits::BaseModule},
     filemanager::{
         models::images::{ImageFileManagerResizeMode, ImageFormat, ImagesFileManagerResizedRel},
         traits::images::ImageResizeRelRepositoryTrait,
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::Collection;
@@ -20,7 +20,7 @@ use crate::base::filemanager_images::FileManagerImagesModule;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoImageFileManagerResize {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     pub tenant_id: Option<String>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,7 +38,7 @@ pub struct MongoImageFileManagerResize {
 }
 
 impl MongoBaseModel for MongoImageFileManagerResize {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -113,9 +113,9 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
         Box::pin(async move {
             match collection.insert_one(&model).await? {
                 result => {
-                    model._id = Some(CornettiObjectId::from(
-                        result.inserted_id.as_object_id().unwrap(),
-                    ));
+                    model._id = Some(
+                        result.inserted_id.as_object_id().unwrap().clone(),
+                    );
 
                     Ok(model.into())
                 }

@@ -4,7 +4,7 @@ use validator::Validate;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct EnumItem {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub category: String,
     pub value: String,
 }

@@ -3,7 +3,6 @@ use crate::modules::base::models::AuthorizationPermission;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
-    #[serde(rename = "_id")]
     pub id: Option<String>,
     pub name: Option<String>,
     pub surname: Option<String>,

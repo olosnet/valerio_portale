@@ -4,7 +4,7 @@ use validator::{Validate, ValidationError};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct User {
-    pub _id: Option<String>, //La descrizione dei singoli campi attualmente non è supportata
+    pub id: Option<String>, //La descrizione dei singoli campi attualmente non è supportata
     pub name: Option<String>,
     pub surname: Option<String>,
     pub email: Option<String>,

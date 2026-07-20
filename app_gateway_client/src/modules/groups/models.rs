@@ -11,7 +11,6 @@ pub struct GroupPermission {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Group {
-    #[serde(rename = "_id")]
     pub id: Option<String>,
     pub created: String,
     pub modified: String,

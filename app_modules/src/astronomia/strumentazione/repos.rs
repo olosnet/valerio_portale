@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiError,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -23,7 +23,7 @@ use crate::astronomia::strumentazione::{
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoStrumentazioneModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -50,7 +50,7 @@ pub struct MongoStrumentazioneModel {
 }
 
 impl MongoBaseModel for MongoStrumentazioneModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -94,7 +94,7 @@ impl From<MongoStrumentazioneModel> for Strumentazione {
     fn from(model: MongoStrumentazioneModel) -> Self {
         let tipo = serde_json::from_str(&format!("\"{}\"", model.tipo)).unwrap_or_default();
         Self {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             tipo,
             marca: model.marca,
             modello: model.modello,
@@ -171,7 +171,7 @@ impl StrumentazioneRepository {
     }
 
     pub async fn get(&self, id: &str) -> Result<Strumentazione, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(id)
+        let obj_id = ObjectId::parse_str(id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoStrumentazioneModel::collection_name();
@@ -179,7 +179,7 @@ impl StrumentazioneRepository {
             self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -203,7 +203,7 @@ impl StrumentazioneRepository {
             )
         })?;
 
-        model._id = Some(CornettiObjectId::from(inserted_id));
+        model._id = Some(inserted_id.clone());
         Ok(model.into())
     }
 
@@ -212,7 +212,7 @@ impl StrumentazioneRepository {
         id: &str,
         update: StrumentazioneUpdate,
     ) -> Result<Strumentazione, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(id)
+        let obj_id = ObjectId::parse_str(id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let model: MongoStrumentazioneModel = update.into();
@@ -228,7 +228,7 @@ impl StrumentazioneRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -240,7 +240,7 @@ impl StrumentazioneRepository {
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(id)
+        let obj_id = ObjectId::parse_str(id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoStrumentazioneModel::collection_name();
@@ -248,7 +248,7 @@ impl StrumentazioneRepository {
             self.mongo.db().collection(collection_name);
 
         match collection
-            .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+            .delete_one(doc! { "_id": &obj_id })
             .await?
         {
             result if result.deleted_count > 0 => Ok(()),

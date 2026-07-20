@@ -575,7 +575,7 @@ pub struct DimensioniApparentiInput {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct OggettoAstronomico {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub tipo: TipoOggetto,
     pub nome_comune: String,
     pub abbr_costellazione: Costellazione,

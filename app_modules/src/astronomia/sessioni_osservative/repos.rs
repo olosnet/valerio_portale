@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiError,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -52,7 +52,7 @@ pub struct MongoStrumentazioneSessioneModel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoSessioneOsservativaModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -63,7 +63,7 @@ pub struct MongoSessioneOsservativaModel {
     pub data: chrono::DateTime<chrono::Utc>,
     pub intro: String,
     pub outro: String,
-    pub sito_osservativo_id: CornettiObjectId,
+    pub sito_osservativo_id: ObjectId,
     #[serde(default)]
     pub strumentazione: Vec<MongoStrumentazioneSessioneModel>,
     #[serde(default)]
@@ -71,7 +71,7 @@ pub struct MongoSessioneOsservativaModel {
 }
 
 impl MongoBaseModel for MongoSessioneOsservativaModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -101,7 +101,7 @@ impl BaseModel for MongoSessioneOsservativaModel {
             data: chrono::Utc::now(),
             intro: String::new(),
             outro: String::new(),
-            sito_osservativo_id: CornettiObjectId::default(),
+            sito_osservativo_id: ObjectId::new(),
             strumentazione: Vec::new(),
             misurazioni_sqm: Vec::new(),
         }
@@ -161,7 +161,7 @@ impl TryFrom<StrumentazioneSessioneInput> for MongoStrumentazioneSessioneModel {
 impl From<MongoSessioneOsservativaModel> for SessioneOsservativa {
     fn from(model: MongoSessioneOsservativaModel) -> Self {
         Self {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             data: model.data,
             intro: model.intro,
             outro: model.outro,
@@ -183,7 +183,7 @@ impl TryFrom<SessioneOsservativaCreate> for MongoSessioneOsservativaModel {
             data: value.data,
             intro: value.intro,
             outro: value.outro,
-            sito_osservativo_id: CornettiObjectId::parse_str(&value.sito_osservativo_id)?,
+            sito_osservativo_id: ObjectId::parse_str(&value.sito_osservativo_id)?,
             strumentazione: value
                 .strumentazione
                 .into_iter()
@@ -206,7 +206,7 @@ impl TryFrom<SessioneOsservativaUpdate> for MongoSessioneOsservativaModel {
         model.data = value.data;
         model.intro = value.intro;
         model.outro = value.outro;
-        model.sito_osservativo_id = CornettiObjectId::parse_str(&value.sito_osservativo_id)?;
+        model.sito_osservativo_id = ObjectId::parse_str(&value.sito_osservativo_id)?;
         model.strumentazione = value
             .strumentazione
             .into_iter()
@@ -246,14 +246,14 @@ impl SessioniOsservativeRepository {
     }
 
     pub async fn get(&self, sessione_id: &str) -> Result<SessioneOsservativa, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(sessione_id)?;
+        let obj_id = ObjectId::parse_str(sessione_id)?;
 
         let collection_name = MongoSessioneOsservativaModel::collection_name();
         let collection: Collection<MongoSessioneOsservativaModel> =
             self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -277,7 +277,7 @@ impl SessioniOsservativeRepository {
             )
         })?;
 
-        model._id = Some(CornettiObjectId::from(inserted_id));
+        model._id = Some(inserted_id.clone());
         Ok(model.into())
     }
 
@@ -286,7 +286,7 @@ impl SessioniOsservativeRepository {
         sessione_id: &str,
         sessione_update: SessioneOsservativaUpdate,
     ) -> Result<SessioneOsservativa, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(sessione_id)?;
+        let obj_id = ObjectId::parse_str(sessione_id)?;
         let model = MongoSessioneOsservativaModel::try_from(sessione_update)?;
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
@@ -300,7 +300,7 @@ impl SessioniOsservativeRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -312,14 +312,14 @@ impl SessioniOsservativeRepository {
     }
 
     pub async fn delete(&self, sessione_id: &str) -> Result<(), CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(sessione_id)?;
+        let obj_id = ObjectId::parse_str(sessione_id)?;
 
         let collection_name = MongoSessioneOsservativaModel::collection_name();
         let collection: Collection<MongoSessioneOsservativaModel> =
             self.mongo.db().collection(collection_name);
 
         match collection
-            .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+            .delete_one(doc! { "_id": &obj_id })
             .await?
         {
             result if result.deleted_count > 0 => Ok(()),

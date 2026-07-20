@@ -1,5 +1,5 @@
 use crate::base::filemanager::FileManagerModule;
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
@@ -10,7 +10,7 @@ use cornetti::{
         models::{FileManager, FileManagerCreate},
         traits::FileManagerRepositoryTrait,
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use mongodb::Collection;
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ use std::pin::Pin;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoFileManagerModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     pub tenant_id: Option<String>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -35,14 +35,14 @@ pub struct MongoFileManagerModel {
     pub filesize: Option<usize>,
     pub filetype: Option<String>,
     pub extension: Option<String>,
-    pub uploader_id: Option<CornettiObjectId>,
+    pub uploader_id: Option<ObjectId>,
     pub uploader_identity: Option<String>,
     pub resource_type_id: Option<usize>,
     pub default: bool,
 }
 
 impl MongoBaseModel for MongoFileManagerModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -120,7 +120,7 @@ impl From<FileManagerCreate> for MongoFileManagerModel {
             filesize: Some(create.filesize),
             filetype: Some(create.filetype),
             extension: Some(create.extension),
-            uploader_id: create.uploader_id.map(|id| CornettiObjectId::from(&id)),
+            uploader_id: create.uploader_id.map(|id| ObjectId::parse_str(&id).unwrap_or_default()),
             uploader_identity: create.uploader_identity,
             resource_type_id: Some(create.resource_type_id),
             default: false,
@@ -157,9 +157,9 @@ impl FileManagerRepositoryTrait for FileManagerRepository {
             filemanager_model.tenant_id = Some(tenant_id);
 
             let result = collection.insert_one(&filemanager_model).await?;
-            filemanager_model._id = Some(CornettiObjectId::from(
-                result.inserted_id.as_object_id().unwrap(),
-            ));
+            filemanager_model._id = Some(
+                result.inserted_id.as_object_id().unwrap().clone(),
+            );
             Ok(filemanager_model.into())
         })
     }
@@ -196,14 +196,14 @@ impl FileManagerRepositoryTrait for FileManagerRepository {
         let mongo = self.mongo.clone();
 
         Box::pin(async move {
-            let obj_id: CornettiObjectId = CornettiObjectId::parse_str(&file_id)?;
+            let obj_id: ObjectId = ObjectId::parse_str(&file_id)?;
 
             let collection_name: &'static str = MongoFileManagerModel::collection_name();
             let collection: Collection<MongoFileManagerModel> =
                 mongo.db().collection(collection_name);
 
             match collection
-                .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+                .delete_one(doc! { "_id": &obj_id })
                 .await?
             {
                 r => {

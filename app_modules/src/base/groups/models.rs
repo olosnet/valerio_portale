@@ -13,7 +13,7 @@ pub struct GroupPermission {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Group {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub created: chrono::DateTime<chrono::Utc>,
     pub modified: chrono::DateTime<chrono::Utc>,
     pub name: Option<String>,

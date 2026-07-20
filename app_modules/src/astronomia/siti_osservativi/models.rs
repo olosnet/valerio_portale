@@ -4,7 +4,7 @@ use validator::Validate;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SitoOsservativo {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub nome: String,
     pub longitudine: f64,
     pub latitudine: f64,

@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiError,
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, IndexModel, options::{IndexOptions, ReturnDocument}};
@@ -19,24 +19,24 @@ use crate::astronomia::sessioni_osservative::models::{Osservazione, Osservazione
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoOsservazioneModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
     #[serde_as(as = "bson::serde_helpers::datetime::FromChrono04DateTime")]
     #[serde(default = "chrono::Utc::now")]
     pub modified: chrono::DateTime<chrono::Utc>,
-    pub sessione_id: CornettiObjectId,
+    pub sessione_id: ObjectId,
     #[serde_as(as = "bson::serde_helpers::datetime::FromChrono04DateTime")]
     pub osservato_il: chrono::DateTime<chrono::Utc>,
     pub note_osservazione: String,
     pub miglior_ingrandimento: i32,
     #[serde(default)]
-    pub oggetti_id: Vec<CornettiObjectId>,
+    pub oggetti_id: Vec<ObjectId>,
 }
 
 impl MongoBaseModel for MongoOsservazioneModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -109,10 +109,10 @@ impl OsservazioneRepository {
         &self,
         sessione_id: &str,
     ) -> Result<Vec<Osservazione>, CornettiError> {
-        let sessione_obj_id = CornettiObjectId::parse_str(sessione_id)?;
+        let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
         let cursor = self
             .collection()
-            .find(doc! { "sessione_id": sessione_obj_id.to_bson_oid() })
+            .find(doc! { "sessione_id": &sessione_obj_id })
             .await?;
         let items: Vec<MongoOsservazioneModel> = cursor
             .try_collect()
@@ -125,10 +125,10 @@ impl OsservazioneRepository {
         &self,
         oggetto_id: &str,
     ) -> Result<Vec<Osservazione>, CornettiError> {
-        let oggetto_obj_id = CornettiObjectId::parse_str(oggetto_id)?;
+        let oggetto_obj_id = ObjectId::parse_str(oggetto_id)?;
         let cursor = self
             .collection()
-            .find(doc! { "oggetti_id": oggetto_obj_id.to_bson_oid() })
+            .find(doc! { "oggetti_id": &oggetto_obj_id })
             .await?;
         let items: Vec<MongoOsservazioneModel> = cursor
             .try_collect()
@@ -142,13 +142,13 @@ impl OsservazioneRepository {
         sessione_id: &str,
         osservazione_id: &str,
     ) -> Result<Osservazione, CornettiError> {
-        let sessione_obj_id = CornettiObjectId::parse_str(sessione_id)?;
-        let osservazione_obj_id = CornettiObjectId::parse_str(osservazione_id)?;
+        let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
+        let osservazione_obj_id = ObjectId::parse_str(osservazione_id)?;
         match self
             .collection()
             .find_one(doc! {
-                "_id": osservazione_obj_id.to_bson_oid(),
-                "sessione_id": sessione_obj_id.to_bson_oid(),
+                "_id": &osservazione_obj_id,
+                "sessione_id": &sessione_obj_id,
             })
             .await?
         {
@@ -162,11 +162,11 @@ impl OsservazioneRepository {
         sessione_id: &str,
         input: OsservazioneInput,
     ) -> Result<Osservazione, CornettiError> {
-        let sessione_obj_id = CornettiObjectId::parse_str(sessione_id)?;
+        let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
         let oggetti_id = input
             .oggetti_id
             .iter()
-            .map(|id| CornettiObjectId::parse_str(id))
+            .map(|id| ObjectId::parse_str(id))
             .collect::<Result<Vec<_>, _>>()?;
         let mut model = MongoOsservazioneModel {
             _id: None,
@@ -184,7 +184,7 @@ impl OsservazioneRepository {
                 "Unable to resolve inserted osservazione ObjectId".to_string(),
             )
         })?;
-        model._id = Some(CornettiObjectId::from(inserted_id));
+        model._id = Some(inserted_id.clone());
         Ok(model.into())
     }
 
@@ -194,12 +194,12 @@ impl OsservazioneRepository {
         osservazione_id: &str,
         input: OsservazioneInput,
     ) -> Result<Osservazione, CornettiError> {
-        let sessione_obj_id = CornettiObjectId::parse_str(sessione_id)?;
-        let osservazione_obj_id = CornettiObjectId::parse_str(osservazione_id)?;
+        let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
+        let osservazione_obj_id = ObjectId::parse_str(osservazione_id)?;
         let oggetti_id = input
             .oggetti_id
             .iter()
-            .map(|id| CornettiObjectId::parse_str(id))
+            .map(|id| ObjectId::parse_str(id))
             .collect::<Result<Vec<_>, _>>()?;
 
         let model = MongoOsservazioneModel {
@@ -222,8 +222,8 @@ impl OsservazioneRepository {
             .collection()
             .find_one_and_update(
                 doc! {
-                    "_id": osservazione_obj_id.to_bson_oid(),
-                    "sessione_id": sessione_obj_id.to_bson_oid(),
+                    "_id": &osservazione_obj_id,
+                    "sessione_id": &sessione_obj_id,
                 },
                 doc! { "$set": document },
             )
@@ -240,14 +240,14 @@ impl OsservazioneRepository {
         sessione_id: &str,
         osservazione_id: &str,
     ) -> Result<(), CornettiError> {
-        let sessione_obj_id = CornettiObjectId::parse_str(sessione_id)?;
-        let osservazione_obj_id = CornettiObjectId::parse_str(osservazione_id)?;
+        let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
+        let osservazione_obj_id = ObjectId::parse_str(osservazione_id)?;
 
         match self
             .collection()
             .delete_one(doc! {
-                "_id": osservazione_obj_id.to_bson_oid(),
-                "sessione_id": sessione_obj_id.to_bson_oid(),
+                "_id": &osservazione_obj_id,
+                "sessione_id": &sessione_obj_id,
             })
             .await?
         {

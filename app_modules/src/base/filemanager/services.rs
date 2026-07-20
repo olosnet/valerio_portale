@@ -56,7 +56,7 @@ impl<'a> FileManagerService<'a> {
         if let Some(c) = claims {
             let user = self.user_repository.get_identity(&c.sub).await?;
             identity = user.email.unwrap();
-            identity_id = user._id.unwrap();
+            identity_id = user.id.unwrap();
         }
 
         self.base_service

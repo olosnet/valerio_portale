@@ -63,7 +63,7 @@ impl<'de> Deserialize<'de> for Tipo {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Strumentazione {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub tipo: Tipo,
     pub marca: Option<String>,
     pub modello: Option<String>,

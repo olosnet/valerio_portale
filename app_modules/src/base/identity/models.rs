@@ -7,7 +7,7 @@ use validator::{Validate, ValidationError};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct UserIdentity {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub name: Option<String>,
     pub surname: Option<String>,
     pub email: Option<String>,
@@ -28,7 +28,7 @@ impl UserIdentity {
         permissions: HashMap<String, AuthorizationPermission>,
     ) -> Self {
         Self {
-            _id: user._id,
+            id: user.id,
             name: user.name,
             surname: user.surname,
             email: user.email,

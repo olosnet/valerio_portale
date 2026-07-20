@@ -1,6 +1,6 @@
 use crate::base::identity::models::UserIdentity;
 use crate::base::users::models::{User, UserCreate, UserUpdate};
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::auth::models::AuthorizationPermission;
 use cornetti::core::errors;
 use cornetti::core::helpers::sec::{hash_password, random_pass, verify_password};
@@ -8,7 +8,6 @@ use cornetti::core::models::CornettiResult;
 use cornetti::core::traits::{BaseModel, BaseModule};
 use cornetti::mongo::services::MongoDBService;
 use cornetti::mongo::traits::MongoBaseModel;
-use cornetti::mongo::types::CornettiObjectId;
 use cornetti::redis::services::RedisDBService;
 use futures::TryStreamExt;
 use mongodb::Collection;
@@ -27,7 +26,7 @@ pub const DEFAULT_PROFILE_IMAGE_FILE: &str = "1600059566.154145_yxxHw99e.png";
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoUserModel {
     #[serde(skip_serializing)]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     pub name: Option<String>,
     pub surname: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,7 +47,7 @@ pub struct MongoUserModel {
 
     pub default: bool,
     pub user_type: u8,
-    pub groups_ids: Vec<CornettiObjectId>,
+    pub groups_ids: Vec<ObjectId>,
 }
 
 impl MongoUserModel {
@@ -61,7 +60,7 @@ impl MongoUserModel {
 }
 
 impl MongoBaseModel for MongoUserModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -105,7 +104,7 @@ impl BaseModel for MongoUserModel {
 impl From<MongoUserModel> for User {
     fn from(model: MongoUserModel) -> Self {
         User {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             name: model.name,
             surname: model.surname,
             email: model.email,
@@ -124,7 +123,7 @@ impl From<MongoUserModel> for User {
 impl From<MongoUserModel> for UserIdentity {
     fn from(model: MongoUserModel) -> Self {
         UserIdentity {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             name: model.name,
             surname: model.surname,
             email: model.email,
@@ -147,7 +146,7 @@ impl MongoUserModel {
             .groups_ids
             .iter()
             .map(|id| {
-                CornettiObjectId::parse_str(id)
+                ObjectId::parse_str(id)
                     .map_err(|_| errors::bad_request::invalid_object_id())
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -176,7 +175,7 @@ impl MongoUserModel {
             .groups_ids
             .iter()
             .map(|id| {
-                CornettiObjectId::parse_str(id)
+                ObjectId::parse_str(id)
                     .map_err(|_| errors::bad_request::invalid_object_id())
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -205,13 +204,13 @@ impl UsersRepository {
     }
 
     pub async fn get(&self, user_id: &str) -> CornettiResult<User> {
-        let obj_id = CornettiObjectId::parse_str(user_id)?;
+        let obj_id = ObjectId::parse_str(user_id)?;
 
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -236,9 +235,7 @@ impl UsersRepository {
 
         match collection.insert_one(&new_user).await? {
             result => {
-                new_user._id = Some(CornettiObjectId::from(
-                    result.inserted_id.as_object_id().unwrap(),
-                ));
+                new_user._id = Some(result.inserted_id.as_object_id().unwrap().clone());
                 Ok(new_user.into())
             }
         }
@@ -249,14 +246,14 @@ impl UsersRepository {
         user_id: &str,
         is_default: bool,
     ) -> CornettiResult<User> {
-        let obj_id = CornettiObjectId::parse_str(user_id)?;
+        let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
         let modified = chrono::Utc::now();
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! {
                     "$set": {
                         "default": is_default,
@@ -277,12 +274,12 @@ impl UsersRepository {
         user_id: &str,
         user_update: &UserUpdate,
     ) -> CornettiResult<User> {
-        let obj_id = CornettiObjectId::parse_str(user_id)?;
+        let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
         let mut model = collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
             .ok_or_else(|| errors::not_found::item_not_found())?;
 
@@ -292,7 +289,7 @@ impl UsersRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -304,15 +301,15 @@ impl UsersRepository {
     }
 
     pub async fn delete(&self, user_id: &str, delete_default: bool) -> CornettiResult<()> {
-        let obj_id = CornettiObjectId::parse_str(user_id)?;
+        let obj_id = ObjectId::parse_str(user_id)?;
 
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
         let filter = if delete_default {
-            doc! { "_id": obj_id.to_bson_oid() }
+            doc! { "_id": &obj_id }
         } else {
-            doc! { "_id": obj_id.to_bson_oid(), "default": false }
+            doc! { "_id": &obj_id, "default": false }
         };
 
         match collection.delete_one(filter).await? {
@@ -326,14 +323,14 @@ impl UsersRepository {
         user_id: &str,
         password: &String,
     ) -> CornettiResult<User> {
-        let obj_id = CornettiObjectId::parse_str(user_id)?;
+        let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
         let modified = chrono::Utc::now();
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": {"password" : hash_password(&password),
                 "modified" : bson::DateTime::from_chrono(modified)} },
             )
@@ -368,13 +365,13 @@ impl UsersRepository {
         user_id: &str,
         group_id: &str,
     ) -> CornettiResult<bool> {
-        let obj_user_id = CornettiObjectId::parse_str(user_id)?;
-        let obj_group_id = CornettiObjectId::parse_str(group_id)?;
+        let obj_user_id = ObjectId::parse_str(user_id)?;
+        let obj_group_id = ObjectId::parse_str(group_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
         let current_user = match collection
-            .find_one(doc! { "_id": obj_user_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_user_id })
             .await?
         {
             Some(user) => user,
@@ -392,9 +389,9 @@ impl UsersRepository {
         let modified = chrono::Utc::now();
         collection
             .update_one(
-                doc! { "_id": obj_user_id.to_bson_oid() },
+                doc! { "_id": &obj_user_id },
                 doc! {
-                    "$addToSet": { "groups_ids": obj_group_id.to_bson_oid() },
+                    "$addToSet": { "groups_ids": &obj_group_id },
                     "$set": { "modified": bson::DateTime::from_chrono(modified) }
                 },
             )
@@ -546,12 +543,12 @@ impl UsersRepository {
         &self,
         group_id: &str,
     ) -> CornettiResult<Vec<MongoUserModel>> {
-        let obj_id = CornettiObjectId::parse_str(group_id)?;
+        let obj_id = ObjectId::parse_str(group_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
         let cursor = collection
-            .find(doc! { "groups_ids": obj_id.to_bson_oid() })
+            .find(doc! { "groups_ids": &obj_id })
             .await?;
 
         Ok(cursor.try_collect().await?)

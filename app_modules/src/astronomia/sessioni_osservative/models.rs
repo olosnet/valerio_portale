@@ -53,7 +53,7 @@ pub struct StrumentazioneSessioneInput {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SessioneOsservativa {
-    pub _id: Option<String>,
+    pub id: Option<String>,
     pub data: chrono::DateTime<chrono::Utc>,
     pub intro: String,
     pub outro: String,

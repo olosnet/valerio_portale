@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -23,7 +23,7 @@ use crate::base::enums::{
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoEnumModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -35,7 +35,7 @@ pub struct MongoEnumModel {
 }
 
 impl MongoBaseModel for MongoEnumModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -71,7 +71,7 @@ impl BaseModel for MongoEnumModel {
 impl From<MongoEnumModel> for EnumItem {
     fn from(model: MongoEnumModel) -> Self {
         Self {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             category: model.category,
             value: model.value,
         }
@@ -131,14 +131,14 @@ impl EnumsRepository {
     }
 
     pub async fn get(&self, enum_id: &str) -> CornettiResult<EnumItem> {
-        let obj_id = CornettiObjectId::parse_str(enum_id)
+        let obj_id = ObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoEnumModel::collection_name();
         let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -158,7 +158,7 @@ impl EnumsRepository {
             )
         })?;
 
-        model._id = Some(CornettiObjectId::from(inserted_id));
+        model._id = Some(inserted_id.clone());
         Ok(model.into())
     }
 
@@ -167,7 +167,7 @@ impl EnumsRepository {
         enum_id: &str,
         enum_update: EnumUpdate,
     ) -> CornettiResult<EnumItem> {
-        let obj_id = CornettiObjectId::parse_str(enum_id)
+        let obj_id = ObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let model: MongoEnumModel = enum_update.into();
@@ -182,7 +182,7 @@ impl EnumsRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -194,14 +194,14 @@ impl EnumsRepository {
     }
 
     pub async fn delete(&self, enum_id: &str) -> CornettiResult<()> {
-        let obj_id = CornettiObjectId::parse_str(enum_id)
+        let obj_id = ObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoEnumModel::collection_name();
         let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
 
         match collection
-            .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+            .delete_one(doc! { "_id": &obj_id })
             .await?
         {
             result if result.deleted_count > 0 => Ok(()),

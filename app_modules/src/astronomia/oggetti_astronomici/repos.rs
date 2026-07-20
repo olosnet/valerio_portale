@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use bson::doc;
+use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
         models::CornettiError,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel, types::CornettiObjectId},
+    mongo::{services::MongoDBService, traits::MongoBaseModel},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -74,7 +74,7 @@ pub struct MongoDimensioniApparentiModel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MongoOggettoAstronomicoModel {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub _id: Option<CornettiObjectId>,
+    pub _id: Option<ObjectId>,
     #[serde_as(as = "Option<bson::serde_helpers::datetime::FromChrono04DateTime>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<chrono::DateTime<chrono::Utc>>,
@@ -111,7 +111,7 @@ pub struct MongoOggettoAstronomicoModel {
 }
 
 impl MongoBaseModel for MongoOggettoAstronomicoModel {
-    fn _id(&self) -> &Option<CornettiObjectId> {
+    fn _id(&self) -> &Option<ObjectId> {
         &self._id
     }
 
@@ -210,7 +210,7 @@ impl From<DimensioniApparentiInput> for MongoDimensioniApparentiModel {
 impl From<MongoOggettoAstronomicoModel> for OggettoAstronomico {
     fn from(model: MongoOggettoAstronomicoModel) -> Self {
         Self {
-            _id: model._id.map(|id| id.to_string()),
+            id: model._id.map(|id| id.to_string()),
             tipo: model.tipo,
             nome_comune: model.nome_comune,
             abbr_costellazione: model.abbr_costellazione,
@@ -348,7 +348,7 @@ impl OggettiAstronomiciRepository {
     }
 
     pub async fn get(&self, oggetto_id: &str) -> Result<OggettoAstronomico, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(oggetto_id)
+        let obj_id = ObjectId::parse_str(oggetto_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoOggettoAstronomicoModel::collection_name();
@@ -356,7 +356,7 @@ impl OggettiAstronomiciRepository {
             self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one(doc! { "_id": obj_id.to_bson_oid() })
+            .find_one(doc! { "_id": &obj_id })
             .await?
         {
             Some(item) => Ok(item.into()),
@@ -380,7 +380,7 @@ impl OggettiAstronomiciRepository {
             )
         })?;
 
-        model._id = Some(CornettiObjectId::from(inserted_id));
+        model._id = Some(inserted_id.clone());
         Ok(model.into())
     }
 
@@ -389,7 +389,7 @@ impl OggettiAstronomiciRepository {
         oggetto_id: &str,
         oggetto_update: OggettoAstronomicoUpdate,
     ) -> Result<OggettoAstronomico, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(oggetto_id)
+        let obj_id = ObjectId::parse_str(oggetto_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let model: MongoOggettoAstronomicoModel = oggetto_update.into();
@@ -405,7 +405,7 @@ impl OggettiAstronomiciRepository {
 
         match collection
             .find_one_and_update(
-                doc! { "_id": obj_id.to_bson_oid() },
+                doc! { "_id": &obj_id },
                 doc! { "$set": document },
             )
             .return_document(ReturnDocument::After)
@@ -423,7 +423,7 @@ impl OggettiAstronomiciRepository {
         image_caption: Option<&str>,
         image_fov: Option<f64>,
     ) -> Result<OggettoAstronomico, CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(oggetto_id)
+        let obj_id = ObjectId::parse_str(oggetto_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let mut set_document = doc! {
@@ -455,7 +455,7 @@ impl OggettiAstronomiciRepository {
             self.mongo.db().collection(collection_name);
 
         match collection
-            .find_one_and_update(doc! { "_id": obj_id.to_bson_oid() }, update_document)
+            .find_one_and_update(doc! { "_id": &obj_id }, update_document)
             .return_document(ReturnDocument::After)
             .await?
         {
@@ -465,7 +465,7 @@ impl OggettiAstronomiciRepository {
     }
 
     pub async fn delete(&self, oggetto_id: &str) -> Result<(), CornettiError> {
-        let obj_id = CornettiObjectId::parse_str(oggetto_id)
+        let obj_id = ObjectId::parse_str(oggetto_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
         let collection_name = MongoOggettoAstronomicoModel::collection_name();
@@ -473,7 +473,7 @@ impl OggettiAstronomiciRepository {
             self.mongo.db().collection(collection_name);
 
         match collection
-            .delete_one(doc! { "_id": obj_id.to_bson_oid() })
+            .delete_one(doc! { "_id": &obj_id })
             .await?
         {
             result if result.deleted_count > 0 => Ok(()),
