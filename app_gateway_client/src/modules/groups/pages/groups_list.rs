@@ -81,6 +81,7 @@ pub fn GroupsList() -> impl IntoView {
         let client = client.clone();
         let toast = toast;
         let groups = groups;
+        let create_open = create_open;
         move |_: ()| {
             let body = GroupCreate {
                 name: Some(new_name.get()),
@@ -98,6 +99,7 @@ pub fn GroupsList() -> impl IntoView {
                             new_name.set(String::new());
                             new_description.set(String::new());
                             toast_success(&t, "Gruppo creato");
+                            create_open.set(false);
                         }
                         Err(e) => toast_error(&t, &e.to_string()),
                     }

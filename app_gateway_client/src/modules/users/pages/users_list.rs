@@ -96,6 +96,7 @@ pub fn UsersList() -> impl IntoView {
         let client = client.clone();
         let toast = toast;
         let users = users;
+        let create_open = create_open;
         move |_: ()| {
             let body = UserCreate {
                 name: new_name.get(),
@@ -117,6 +118,7 @@ pub fn UsersList() -> impl IntoView {
                             new_email.set(String::new());
                             new_enabled.set(true);
                             toast_success(&t, "Utente creato");
+                            create_open.set(false);
                         }
                         Err(e) => toast_error(&t, &e.to_string()),
                     }
