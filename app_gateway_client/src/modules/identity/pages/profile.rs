@@ -87,6 +87,7 @@ pub fn Profile() -> impl IntoView {
                     Ok(identity) => {
                         auth.user.set(Some(identity));
                         toast_success(&toast, "Immagine profilo aggiornata");
+                        crop_open.set(false);
                     }
                     Err(e) => toast_error(&toast, &e.to_string()),
                 }
