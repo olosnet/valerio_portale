@@ -1,17 +1,20 @@
 #![allow(dead_code)]
-use std::sync::Arc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
+use std::sync::Arc;
 
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
+use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
 use crate::modules::groups::models::{Group, GroupCreate};
 use crate::stores::auth_store::use_auth;
 
+use valerios_ui_toolkit::badge::Badge;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::data_table::{ColumnDef, DataTable, DataTableSource};
-use valerios_ui_toolkit::dialog::{Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose};
+use valerios_ui_toolkit::dialog::{
+    Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+};
 
 #[component]
 fn CreateGroupDialog(
@@ -132,15 +135,21 @@ pub fn GroupsList() -> impl IntoView {
             title: "Default",
             sortable: true,
             searchable: false,
-            cell: Arc::new(|g: &Group| if g.default {
-                view! {
-                    <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        "Predefinito"
-                    </span>
-                }.into_any()
-            } else {
-                view! { <span class="text-muted-foreground text-xs">"No"</span> }.into_any()
+            cell: Arc::new(|g: &Group| {
+                if g.default {
+                    view! {
+                        <Badge variant=valerios_ui_toolkit::badge::BadgeVariant::Secondary>"Predefinito"</Badge>
+                    }
+                    .into_any()
+                    // view! {
+                    //     <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                    //         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    //         "Predefinito"
+                    //     </span>
+                    // }.into_any()
+                } else {
+                    view! { <span class="text-muted-foreground text-xs">"No"</span> }.into_any()
+                }
             }),
             sort_key: Some(Arc::new(|g| g.default.to_string())),
             search_key: None,
@@ -159,7 +168,8 @@ pub fn GroupsList() -> impl IntoView {
                     class="text-sm text-primary underline hover:no-underline">
                     "Dettaglio"
                 </button>
-            }.into_any()
+            }
+            .into_any()
         })
     };
 
