@@ -1,4 +1,4 @@
-use super::{services::MongoDBService, types::CornettiObjectId};
+use super::services::MongoDBService;
 use crate::core::traits::BaseModule;
 use bson::{Document, doc};
 use mongodb::{Collection, bson};
@@ -7,7 +7,7 @@ use serde::Serialize;
 /// Base trait for MongoDB models providing collection metadata and touch semantics.
 pub trait MongoBaseModel {
     /// The document's MongoDB `_id`.
-    fn _id(&self) -> &Option<CornettiObjectId>;
+    fn _id(&self) -> &Option<bson::oid::ObjectId>;
     /// The creation timestamp.
     fn created(&self) -> &Option<chrono::DateTime<chrono::Utc>>;
     /// The last modification timestamp.

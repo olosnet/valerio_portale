@@ -2,10 +2,10 @@
 pub mod optional_objectid_as_human_readable {
     use serde::{Deserialize, Deserializer, Serializer};
 
-    use crate::mongo::types::CornettiObjectId;
+    use bson::oid::ObjectId;
 
-    /// Serializes `Option<CornettiObjectId>` as a hex string, or `None` as JSON null.
-    pub fn serialize<S>(value: &Option<CornettiObjectId>, serializer: S) -> Result<S::Ok, S::Error>
+    /// Serializes `Option<ObjectId>` as a hex string, or `None` as JSON null.
+    pub fn serialize<S>(value: &Option<ObjectId>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -16,14 +16,14 @@ pub mod optional_objectid_as_human_readable {
     }
 
     /// Deserializes an optional ObjectId from a hex string. Returns an error on invalid input.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<CornettiObjectId>, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<ObjectId>, D::Error>
     where
         D: Deserializer<'de>,
     {
         use serde::de::Error;
 
         match Option::<String>::deserialize(deserializer)? {
-            Some(s) => CornettiObjectId::parse_str(&s)
+            Some(s) => ObjectId::parse_str(&s)
                 .map(Some)
                 .map_err(|e| D::Error::custom(format!("Invalid ObjectId: {}", e))),
             None => Ok(None),
@@ -31,14 +31,13 @@ pub mod optional_objectid_as_human_readable {
     }
 }
 
-/// Serde helpers for serializing `Vec<CornettiObjectId>` as hex strings in human-readable formats.
+/// Serde helpers for serializing `Vec<ObjectId>` as hex strings in human-readable formats.
 pub mod vec_objectid_as_human_readable {
-
-    use crate::mongo::types::CornettiObjectId;
+    use bson::oid::ObjectId;
     use serde::{Deserialize, Deserializer, Serializer, ser::SerializeSeq};
 
     /// Serializes a vector of ObjectIds as an array of hex strings.
-    pub fn serialize<S>(value: &Vec<CornettiObjectId>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(value: &Vec<ObjectId>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -49,8 +48,8 @@ pub mod vec_objectid_as_human_readable {
         seq.end()
     }
 
-    /// Deserializes an array of hex strings into `Vec<CornettiObjectId>`.
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<CornettiObjectId>, D::Error>
+    /// Deserializes an array of hex strings into `Vec<ObjectId>`.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<ObjectId>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -58,7 +57,7 @@ pub mod vec_objectid_as_human_readable {
 
         Vec::<String>::deserialize(deserializer)?
             .into_iter()
-            .map(|id| CornettiObjectId::parse_str(&id).map_err(D::Error::custom))
+            .map(|id| ObjectId::parse_str(&id).map_err(D::Error::custom))
             .collect()
     }
 }
