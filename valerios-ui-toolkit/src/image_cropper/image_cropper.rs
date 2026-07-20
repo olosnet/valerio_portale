@@ -2,6 +2,7 @@ use std::io::Cursor;
 use std::sync::Arc;
 
 use image::GenericImageView;
+use image::ImageReader;
 use leptos::prelude::*;
 
 use crate::button::{Button, ButtonVariant};
@@ -59,10 +60,12 @@ pub fn ImageCropper(
     #[prop(default = 256)] output_size: u32,
     on_crop: Callback<Vec<u8>>,
 ) -> impl IntoView {
-    let (natural_w, natural_h) = match image::load_from_memory(&image_bytes) {
-        Ok(img) => (img.width(), img.height()),
-        Err(_) => (1, 1),
-    };
+    // Solo header, NON decodifica l'intera immagine (istantaneo vs secondi)
+    let (natural_w, natural_h) = ImageReader::new(Cursor::new(&image_bytes))
+        .with_guessed_format()
+        .ok()
+        .and_then(|r| r.into_dimensions().ok())
+        .unwrap_or((1, 1));
 
     let display_sz: f64 = 256.0;
     let initial_zoom = (display_sz / natural_w as f64).max(display_sz / natural_h as f64);
@@ -73,7 +76,15 @@ pub fn ImageCropper(
     let min_zoom = initial_zoom;
     let max_zoom = initial_zoom * 3.0;
 
-    let image_data_url = StoredValue::new(to_data_url(&image_bytes, "image/png"));
+    // Rileva MIME dal magic number (evita re-encoding)
+    let mime = if image_bytes.starts_with(&[0xFF, 0xD8]) {
+        "image/jpeg"
+    } else if image_bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+        "image/png"
+    } else {
+        "image/png"
+    };
+    let image_data_url = StoredValue::new(to_data_url(&image_bytes, mime));
     let image_bytes = StoredValue::new(image_bytes);
 
     let (dragging, set_dragging) = signal(false);
@@ -85,18 +96,23 @@ pub fn ImageCropper(
     let preview_bytes_rw = RwSignal::new(Vec::<u8>::new());
     let preview_data_url = StoredValue::new(String::new());
 
+    let (interacted, set_interacted) = signal(false);
+    let processing = RwSignal::new(false);
+
     let handle_ptr_down = Callback::new({
         let set_drag_start_x = set_drag_start_x;
         let set_drag_start_y = set_drag_start_y;
         let set_drag_orig_x = set_drag_orig_x;
         let set_drag_orig_y = set_drag_orig_y;
         let set_dragging = set_dragging;
+        let set_interacted = set_interacted;
         move |ev: leptos::ev::PointerEvent| {
             set_drag_start_x.set(ev.client_x() as f64);
             set_drag_start_y.set(ev.client_y() as f64);
             set_drag_orig_x.set(offset_x.get());
             set_drag_orig_y.set(offset_y.get());
             set_dragging.set(true);
+            set_interacted.set(true);
         }
     });
 
@@ -119,6 +135,8 @@ pub fn ImageCropper(
     });
 
     let handle_confirm = Callback::new(move |_: ()| {
+        if processing.get() { return; }
+        processing.set(true);
         let bytes = image_bytes.read_value();
         let z = zoom.get();
         let ox = -offset_x.get();
@@ -132,6 +150,7 @@ pub fn ImageCropper(
                 on_crop.run(result);
             }
             Err(e) => {
+                processing.set(false);
                 leptos::logging::warn!("Crop failed: {e}");
             }
         }
@@ -156,12 +175,13 @@ pub fn ImageCropper(
     view! {
         <Dialog open=open>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>"Ritaglia immagine profilo"</DialogTitle>
-                    <DialogDescription>
-                        "Trascina l'immagine per posizionarla. Usa lo zoom per ingrandire o rimpicciolire."
-                    </DialogDescription>
-                </DialogHeader>
+                <div class="relative">
+                    <DialogHeader>
+                        <DialogTitle>"Ritaglia immagine profilo"</DialogTitle>
+                        <DialogDescription>
+                            "Trascina l'immagine per posizionarla. Usa lo zoom per ingrandire o rimpicciolire."
+                        </DialogDescription>
+                    </DialogHeader>
 
                 <div class="flex flex-col items-center gap-4">
                     <div class="flex gap-6">
@@ -171,11 +191,10 @@ pub fn ImageCropper(
                             on:pointerdown=move |ev| handle_ptr_down.run(ev)
                             on:pointermove=move |ev| handle_ptr_move.run(ev)
                             on:pointerup=move |ev| handle_ptr_up.run(ev)
-                            on:pointerleave=move |ev| handle_ptr_up.run(ev)
                         >
                             <img
                                 src=image_data_url.read_value().clone()
-                                class="absolute max-w-none"
+                                class="absolute max-w-none pointer-events-none"
                                 style:width=format!("{}px", natural_w)
                                 style:height=format!("{}px", natural_h)
                                 style:transform=move || format!(
@@ -186,7 +205,26 @@ pub fn ImageCropper(
                                 draggable="false"
                                 alt="Crop preview"
                             />
-                            <div class="absolute inset-0 rounded-full border-4 border-white/50 dark:border-white/30 pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
+                            <div class="absolute inset-0 bg-black/25 pointer-events-none" style="z-index:5" />
+                            <div class="absolute inset-0 rounded-full border-[3px] border-dashed border-white/80 dark:border-white/60 pointer-events-none" style="z-index:10">
+                                <div class="absolute top-1/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
+                                <div class="absolute top-2/3 left-0 right-0 h-0.5 bg-white/60 pointer-events-none" />
+                                <div class="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
+                                <div class="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/60 pointer-events-none" />
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border border-white/40 pointer-events-none" />
+                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white/70 pointer-events-none" />
+                            </div>
+                            {move || {
+                                if !interacted.get() && !processing.get() {
+                                    view! {
+                                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="z-index:15">
+                                            <span class="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full">"Trascina per posizionare"</span>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    ().into_any()
+                                }
+                            }}
                         </div>
 
                         <div class="flex flex-col items-center gap-2">
@@ -231,6 +269,18 @@ pub fn ImageCropper(
                         <Button variant=ButtonVariant::Outline>"Annulla"</Button>
                     </DialogClose>
                 </DialogFooter>
+
+                    {move || if processing.get() {
+                        view! {
+                            <div class="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-lg bg-background/90 backdrop-blur-sm">
+                                <div class="size-10 animate-spin rounded-full border-3 border-muted border-t-primary" />
+                                <span class="text-sm font-medium text-foreground mt-3">"Attendere..."</span>
+                            </div>
+                        }.into_any()
+                    } else {
+                        ().into_any()
+                    }}
+                </div>
             </DialogContent>
         </Dialog>
     }
