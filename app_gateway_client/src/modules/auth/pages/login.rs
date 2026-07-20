@@ -63,6 +63,7 @@ pub fn Login() -> impl IntoView {
                 <div class="w-full max-w-sm mx-4">
                     <div class="bg-background rounded-lg border border-border shadow-sm p-6">
                         <div class="text-center mb-6">
+                            <img src="/static/logo.svg" class="mx-auto h-16 w-16 mb-3" alt="Vita" />
                             <h1 class="text-2xl font-bold text-foreground">"App Gateway"</h1>
                             <p class="text-sm text-muted-foreground mt-1">"Accedi per continuare"</p>
                         </div>

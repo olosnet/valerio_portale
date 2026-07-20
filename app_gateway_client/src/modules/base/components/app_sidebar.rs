@@ -7,7 +7,6 @@ use leptos_router::hooks::use_navigate;
 use crate::stores::auth_store::use_auth;
 
 use valerios_ui_toolkit::icon::Icon;
-use valerios_ui_toolkit::theme::use_theme;
 use valerios_ui_toolkit::sidebar::{
     use_sidebar, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
     SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail,
@@ -66,7 +65,6 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 
 #[component]
 fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
-    let theme = use_theme();
     let nav = Arc::new(use_navigate());
     let sctx = use_sidebar();
     let can_see_users = auth.can_read_signal("users");
@@ -81,7 +79,7 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
         <Sidebar collapsible="icon">
             <SidebarHeader>
                 <div class="flex items-center gap-2 px-2 py-1">
-                    <div class="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shrink-0">"V"</div>
+                    <img src="/static/logo.svg" class="size-8 shrink-0" alt="Vita" />
                     <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden group-data-[collapsible=icon]:hidden"><span class="truncate font-medium">"Vita"</span></div>
                 </div>
             </SidebarHeader>
@@ -97,17 +95,6 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
                         <SidebarMenuItem>
                             <button on:click=move |_| { let _ = n2("/profile", Default::default()); } class=menu_btn_class()>
                                 {Icon::User.render()}<span>"Il mio profilo"</span>
-                            </button>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarGroup>
-                <SidebarGroup>
-                    <SidebarGroupLabel>"Aspetto"</SidebarGroupLabel>
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <button on:click=move |_| theme.toggle_dark() class=menu_btn_class()>
-                                {move || if theme.dark.get() { Icon::Sun.render() } else { Icon::Moon.render() }}
-                                <span>{move || if theme.dark.get() { "Tema chiaro" } else { "Tema scuro" }}</span>
                             </button>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -143,7 +130,6 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
 
 #[component]
 fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
-    let theme = use_theme();
     let nav = Arc::new(use_navigate());
     let sctx = use_sidebar();
     let can_see_users = auth.can_read_signal("users");
@@ -160,7 +146,7 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                 <Sidebar variant="mobile">
                     <SidebarHeader>
                         <div class="flex items-center gap-2 px-2 py-1">
-                            <div class="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm shrink-0">"V"</div>
+                            <img src="/static/logo.svg" class="size-8 shrink-0" alt="Vita" />
                             <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden"><span class="truncate font-medium">"Vita"</span></div>
                         </div>
                     </SidebarHeader>
@@ -176,17 +162,6 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                                 <SidebarMenuItem>
                                     <button on:click=move |_| { let _ = n2("/profile", Default::default()); sctx.open_mobile.set(false); } class=menu_btn_class()>
                                         {Icon::User.render()}<span>"Il mio profilo"</span>
-                                    </button>
-                                </SidebarMenuItem>
-                            </SidebarMenu>
-                        </SidebarGroup>
-                        <SidebarGroup>
-                            <SidebarGroupLabel>"Aspetto"</SidebarGroupLabel>
-                            <SidebarMenu>
-                                <SidebarMenuItem>
-                                    <button on:click=move |_| theme.toggle_dark() class=menu_btn_class()>
-                                        {move || if theme.dark.get() { Icon::Sun.render() } else { Icon::Moon.render() }}
-                                        <span>{move || if theme.dark.get() { "Tema chiaro" } else { "Tema scuro" }}</span>
                                     </button>
                                 </SidebarMenuItem>
                             </SidebarMenu>

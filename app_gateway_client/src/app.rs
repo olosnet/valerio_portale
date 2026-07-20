@@ -33,10 +33,25 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Stylesheet id="leptos" href="/pkg/app_gateway_client.css"/>
-        <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
+        <Link rel="icon" type_="image/x-icon" href="/static/favicon.ico"/>
+        <Link rel="icon" type_="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
+        <Link rel="icon" type_="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
+        <Link rel="icon" type_="image/png" sizes="96x96" href="/static/favicon-96x96.png"/>
+        <Link rel="apple-touch-icon" sizes="57x57" href="/static/apple-icon-57x57.png"/>
+        <Link rel="apple-touch-icon" sizes="60x60" href="/static/apple-icon-60x60.png"/>
+        <Link rel="apple-touch-icon" sizes="72x72" href="/static/apple-icon-72x72.png"/>
+        <Link rel="apple-touch-icon" sizes="76x76" href="/static/apple-icon-76x76.png"/>
+        <Link rel="apple-touch-icon" sizes="114x114" href="/static/apple-icon-114x114.png"/>
+        <Link rel="apple-touch-icon" sizes="120x120" href="/static/apple-icon-120x120.png"/>
+        <Link rel="apple-touch-icon" sizes="144x144" href="/static/apple-icon-144x144.png"/>
+        <Link rel="apple-touch-icon" sizes="152x152" href="/static/apple-icon-152x152.png"/>
+        <Link rel="apple-touch-icon" sizes="180x180" href="/static/apple-icon-180x180.png"/>
+        <Link rel="apple-touch-icon-precomposed" href="/static/apple-icon-precomposed.png"/>
+        <Meta name="msapplication-TileColor" content="#ffffff"/>
+        <Meta name="msapplication-TileImage" content="/static/ms-icon-144x144.png"/>
         <Title text="App Gateway"/>
 
-        <ThemeProvider initial_theme="default" default_dark=false>
+        <ThemeProvider initial_theme="olive" default_dark=false>
             <Sonner position="bottom-right" default_duration_ms=4000 max_visible=5>
                 <Router>
                     <SessionExpiredHandler/>
