@@ -13,5 +13,7 @@ serde_json = "1"
 gloo-net = { version = "0.6", features = ["http"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Window", "Document", "HtmlDocument", "Location"] }
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window", "Document", "HtmlDocument", "HtmlInputElement", "HtmlElement", "Element", "Location", "FileReader", "FileList", "FormData", "File", "Blob", "BlobPropertyBag", "ProgressEvent"] }
 valerios-ui-toolkit = { path = "../valerios-ui-toolkit", features = ["full"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
 
+use crate::modules::identity::api::profile_image_url;
 use crate::stores::auth_store::use_auth;
 
 use valerios_ui_toolkit::icon::Icon;
@@ -66,14 +67,28 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 #[component]
 fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
     let nav = Arc::new(use_navigate());
-    let sctx = use_sidebar();
     let can_see_users = auth.can_read_signal("users");
     let can_see_groups = auth.can_read_signal("groups");
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
-    let n1 = nav.clone();
-    let n2 = nav.clone();
-    let a1 = auth.clone();
-    let a2 = auth.clone();
+    let n = nav.clone();
+    let a = auth.clone();
+    let n_profile = nav.clone();
+    let n_logout = nav.clone();
+
+    fn avatar_view(user: Option<&crate::modules::identity::models::UserIdentity>) -> AnyView {
+        let img = user.map(|u| u.profile_image.clone()).unwrap_or_default();
+        let url = profile_image_url("/api", &img);
+        if url.is_empty() {
+            let initial = user.and_then(|u| u.name.as_ref().and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))).unwrap_or_default();
+            view! {
+                <div class="flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground font-medium text-sm shrink-0">{initial}</div>
+            }.into_any()
+        } else {
+            view! {
+                <img src=url class="size-8 rounded-md object-cover shrink-0" alt="Avatar" />
+            }.into_any()
+        }
+    }
 
     view! {
         <Sidebar collapsible="icon">
@@ -88,13 +103,8 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
                     <SidebarGroupLabel>"Navigazione"</SidebarGroupLabel>
                     <SidebarMenu>
                         <SidebarMenuItem>
-                            <button on:click=move |_| { let _ = n1("/", Default::default()); } class=menu_btn_class()>
+                            <button on:click=move |_| { let _ = n("/", Default::default()); } class=menu_btn_class()>
                                 {Icon::LayoutDashboard.render()}<span>"Dashboard"</span>
-                            </button>
-                        </SidebarMenuItem>
-                        <SidebarMenuItem>
-                            <button on:click=move |_| { let _ = n2("/profile", Default::default()); } class=menu_btn_class()>
-                                {Icon::User.render()}<span>"Il mio profilo"</span>
                             </button>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -106,20 +116,26 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <button on:click=move |_| {
-                            let x = a1.clone();
-                            spawn_local(async move { x.logout().await; });
-                            let _ = nav("/login", Default::default());
-                        } class=menu_btn_class()>
-                            <div class="flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground font-medium text-sm shrink-0">
-                                {move || a2.user.get().as_ref().and_then(|u| u.name.as_ref().and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))).unwrap_or_default()}
-                            </div>
-                            <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden">
-                                <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
-                                <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                        </button>
+                        <div class="flex items-center gap-1">
+                            <button on:click=move |_| { let _ = n_profile("/profile", Default::default()); }
+                                class="peer/menu-button flex flex-1 items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate">
+                                {move || avatar_view(auth.user.get().as_ref())}
+                                <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden group-data-[collapsible=icon]:hidden">
+                                    <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
+                                    <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
+                                </div>
+                            </button>
+                            <button on:click=move |_| {
+                                let x = a.clone();
+                                spawn_local(async move { x.logout().await; });
+                                let _ = n_logout("/login", Default::default());
+                            }
+                                class="inline-flex items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 w-8 shrink-0 transition-colors group-data-[collapsible=icon]:hidden"
+                                title="Esci"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                            </button>
+                        </div>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
@@ -135,10 +151,10 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
     let can_see_users = auth.can_read_signal("users");
     let can_see_groups = auth.can_read_signal("groups");
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
-    let n1 = nav.clone();
-    let n2 = nav.clone();
-    let a1 = auth.clone();
-    let a2 = auth.clone();
+    let n = nav.clone();
+    let a = auth.clone();
+    let n_profile = nav.clone();
+    let n_logout = nav.clone();
 
     view! {
         <Sheet open=sctx.open_mobile side=SheetSide::Left>
@@ -155,13 +171,8 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                             <SidebarGroupLabel>"Navigazione"</SidebarGroupLabel>
                             <SidebarMenu>
                                 <SidebarMenuItem>
-                                    <button on:click=move |_| { let _ = n1("/", Default::default()); sctx.open_mobile.set(false); } class=menu_btn_class()>
+                                    <button on:click=move |_| { let _ = n("/", Default::default()); sctx.open_mobile.set(false); } class=menu_btn_class()>
                                         {Icon::LayoutDashboard.render()}<span>"Dashboard"</span>
-                                    </button>
-                                </SidebarMenuItem>
-                                <SidebarMenuItem>
-                                    <button on:click=move |_| { let _ = n2("/profile", Default::default()); sctx.open_mobile.set(false); } class=menu_btn_class()>
-                                        {Icon::User.render()}<span>"Il mio profilo"</span>
                                     </button>
                                 </SidebarMenuItem>
                             </SidebarMenu>
@@ -173,21 +184,41 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                     <SidebarFooter>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <button on:click=move |_| {
-                                    let x = a1.clone();
-                                    spawn_local(async move { x.logout().await; });
-                                    let _ = nav("/login", Default::default());
-                                    sctx.open_mobile.set(false);
-                                } class=menu_btn_class()>
-                                    <div class="flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground font-medium text-sm shrink-0">
-                                        {move || a2.user.get().as_ref().and_then(|u| u.name.as_ref().and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))).unwrap_or_default()}
-                                    </div>
-                                    <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden">
-                                        <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
-                                        <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button on:click=move |_| { let _ = n_profile("/profile", Default::default()); sctx.open_mobile.set(false); }
+                                        class="flex flex-1 items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate">
+                                        {move || {
+                                            let user = auth.user.get();
+                                            let img = user.as_ref().map(|u| u.profile_image.clone()).unwrap_or_default();
+                                            let url = profile_image_url("/api", &img);
+                                            if url.is_empty() {
+                                                let initial = user.as_ref().and_then(|u| u.name.as_ref().and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))).unwrap_or_default();
+                                                view! {
+                                                    <div class="flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground font-medium text-sm shrink-0">{initial}</div>
+                                                }.into_any()
+                                            } else {
+                                                view! {
+                                                    <img src=url class="size-8 rounded-md object-cover shrink-0" alt="Avatar" />
+                                                }.into_any()
+                                            }
+                                        }}
+                                        <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden">
+                                            <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
+                                            <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
+                                        </div>
+                                    </button>
+                                    <button on:click=move |_| {
+                                        let x = a.clone();
+                                        spawn_local(async move { x.logout().await; });
+                                        let _ = n_logout("/login", Default::default());
+                                        sctx.open_mobile.set(false);
+                                    }
+                                        class="inline-flex items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 w-8 shrink-0 transition-colors"
+                                        title="Esci"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                                    </button>
+                                </div>
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarFooter>

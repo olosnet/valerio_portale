@@ -153,4 +153,63 @@ impl ApiClient {
             }
         }
     }
+
+    pub async fn upload_file(
+        &self,
+        path: &str,
+        bytes: Vec<u8>,
+        file_name: &str,
+        mime_type: &str,
+    ) -> Result<String, ApiError> {
+        let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+        let mut body = Vec::new();
+
+        body.extend_from_slice(b"--");
+        body.extend_from_slice(boundary.as_bytes());
+        body.extend_from_slice(b"\r\n");
+
+        body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"; filename=\"");
+        body.extend_from_slice(file_name.as_bytes());
+        body.extend_from_slice(b"\"\r\n");
+
+        body.extend_from_slice(b"Content-Type: ");
+        body.extend_from_slice(mime_type.as_bytes());
+        body.extend_from_slice(b"\r\n\r\n");
+
+        body.extend_from_slice(&bytes);
+        body.extend_from_slice(b"\r\n");
+
+        body.extend_from_slice(b"--");
+        body.extend_from_slice(boundary.as_bytes());
+        body.extend_from_slice(b"--\r\n");
+
+        let url = format!("{}{}", self.base_url, path);
+        let req_builder = Self::request_builder("POST", &url)?;
+        let mut builder = req_builder.credentials(web_sys::RequestCredentials::Include);
+
+        if let Some(csrf_token) = get_cookie(&self.csrf_cookie_name) {
+            builder = builder.header("X-CSRF-TOKEN", &csrf_token);
+        }
+        builder = builder.header("Content-Type", &format!("multipart/form-data; boundary={boundary}"));
+
+        let resp = builder
+            .body(body)
+            .map_err(|e| ApiError::Network(e.to_string()))?
+            .send()
+            .await
+            .map_err(|e| ApiError::Network(e.to_string()))?;
+
+        if resp.ok() {
+            return resp.text().await.map_err(|e| ApiError::Network(e.to_string()));
+        }
+
+        if resp.status() == 401 {
+            trigger_on_session_expired();
+            return Err(ApiError::RefreshFailed);
+        }
+
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        Err(ApiError::Http(status, text))
+    }
 }

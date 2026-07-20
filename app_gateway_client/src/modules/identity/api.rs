@@ -24,3 +24,19 @@ pub async fn update_password(
     client.request("POST", "/identity/password", Some(&json)).await?;
     Ok(())
 }
+
+pub async fn upload_profile_image(
+    client: &ApiClient,
+    image_data: Vec<u8>,
+) -> Result<UserIdentity, ApiError> {
+    let resp = client.upload_file("/identity/image", image_data, "profile.png", "image/png").await?;
+    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+}
+
+pub fn profile_image_url(base_url: &str, filename: &str) -> String {
+    if filename.is_empty() {
+        String::new()
+    } else {
+        format!("{base_url}/filemanager/images/{filename}/resized/128")
+    }
+}
