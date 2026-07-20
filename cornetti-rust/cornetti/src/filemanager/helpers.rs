@@ -33,8 +33,16 @@ pub fn is_allowed_file_type(extension: &str, allowed_types: &[String]) -> bool {
         .any(|t| t.eq_ignore_ascii_case(extension))
 }
 
-pub fn gen_fs_directory(upload_directory: &str, tenant_id: &str, app_source: &str, user_id: &str) -> String {
-    format!("{}/{}/{}/{}", upload_directory, tenant_id, app_source, user_id)
+pub fn gen_fs_directory(
+    upload_directory: &str,
+    tenant_id: &str,
+    app_source: &str,
+    user_id: &str,
+) -> String {
+    format!(
+        "{}/{}/{}/{}",
+        upload_directory, tenant_id, app_source, user_id
+    )
 }
 
 pub fn generate_random_filepathbuf(
@@ -91,7 +99,8 @@ pub async fn retrieve_file_entry_path(
     filename: &str,
     conf: &FileManagerConf,
 ) -> CornettiResult<std::path::PathBuf> {
-    let upload_directory = gen_fs_directory(&conf.upload_directory, tenant_id, app_source, uploader_id);
+    let upload_directory =
+        gen_fs_directory(&conf.upload_directory, tenant_id, app_source, uploader_id);
 
     let file_path: std::path::PathBuf = std::path::Path::new(&upload_directory).join(filename);
     if !file_path.exists() {
@@ -152,8 +161,8 @@ pub fn upload_file_from_path(
         filesize,
         filetype: filetype.to_string(),
         extension,
-        uploader_id: Some(identity.to_string()),
-        uploader_identity: Some(identity_id.to_string()),
+        uploader_id: Some(identity_id.to_string()),
+        uploader_identity: Some(identity.to_string()),
         resource_type_id: resource_type.unwrap_or(RESOURCE_TYPE_GENERIC),
     })
 }
@@ -698,14 +707,8 @@ pub mod images {
             let mut binding = vec![0u8; new_width * new_height * 3];
             let resized = binding.as_rgb_mut();
 
-            let mut resizer = resize::new(
-                src_width,
-                src_height,
-                new_width,
-                new_height,
-                RGB8,
-                Lanczos3,
-            )?;
+            let mut resizer =
+                resize::new(src_width, src_height, new_width, new_height, RGB8, Lanczos3)?;
 
             resizer.resize(src.as_rgb(), resized)?;
 
@@ -773,14 +776,8 @@ pub mod images {
             let mut binding = vec![0u8; new_width * new_height * 3];
             let resized = binding.as_rgb_mut();
 
-            let mut resizer = resize::new(
-                src_width,
-                src_height,
-                new_width,
-                new_height,
-                RGB8,
-                Lanczos3,
-            )?;
+            let mut resizer =
+                resize::new(src_width, src_height, new_width, new_height, RGB8, Lanczos3)?;
 
             resizer.resize(src.as_rgb(), resized)?;
 
@@ -846,12 +843,7 @@ pub mod images {
             let resized = binding.as_rgba_mut();
 
             let mut resizer = resize::new(
-                src_width,
-                src_height,
-                new_width,
-                new_height,
-                RGBA8,
-                Lanczos3,
+                src_width, src_height, new_width, new_height, RGBA8, Lanczos3,
             )?;
 
             resizer.resize(src.as_rgba(), resized)?;
@@ -922,12 +914,7 @@ pub mod images {
             let resized = binding.as_rgba_mut();
 
             let mut resizer = resize::new(
-                src_width,
-                src_height,
-                new_width,
-                new_height,
-                RGBA8,
-                Lanczos3,
+                src_width, src_height, new_width, new_height, RGBA8, Lanczos3,
             )?;
 
             resizer.resize(src.as_rgba(), resized)?;
