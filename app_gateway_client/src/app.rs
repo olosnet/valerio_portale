@@ -4,6 +4,7 @@ use leptos_meta::*;
 use leptos_router::{
     ParamSegment, StaticSegment,
     components::{Redirect, Route, Router, Routes},
+    hooks::use_navigate,
 };
 
 use crate::modules::base::components::main_layout::with_layout;
@@ -15,7 +16,7 @@ use crate::modules::users::pages::user_detail::UserDetail;
 use crate::modules::users::pages::users_list::UsersList;
 use valerios_ui_toolkit::sonner::Sonner;
 use valerios_ui_toolkit::theme::ThemeProvider;
-use crate::modules::base::api_client::ApiClient;
+use crate::modules::base::api_client::{ApiClient, set_on_session_expired};
 use crate::modules::base::components::not_found::NotFound;
 use crate::stores::auth_store::{provide_auth, use_auth};
 
@@ -38,6 +39,7 @@ pub fn App() -> impl IntoView {
         <ThemeProvider initial_theme="default" default_dark=false>
             <Sonner position="bottom-right" default_duration_ms=4000 max_visible=5>
                 <Router>
+                    <SessionExpiredHandler/>
                     <Routes fallback=|| view! { <NotFound/> }>
                         <Route path=StaticSegment("login") view=Login/>
                         <Route path=StaticSegment("") view=ProtectedDashboard/>
@@ -212,4 +214,17 @@ fn DashboardBody() -> impl IntoView {
 #[component]
 fn ProfileBody() -> impl IntoView {
     view! { <Profile/> }
+}
+
+#[component]
+fn SessionExpiredHandler() -> impl IntoView {
+    let auth = use_auth();
+    let navigate = use_navigate();
+
+    set_on_session_expired(Box::new(move || {
+        auth.user.set(None);
+        navigate("/login", Default::default());
+    }));
+
+    view! {}
 }

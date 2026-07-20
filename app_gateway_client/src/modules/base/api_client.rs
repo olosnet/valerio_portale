@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -6,6 +7,24 @@ use gloo_net::http::RequestBuilder;
 use wasm_bindgen::JsCast;
 
 use crate::modules::base::models::ApiError;
+
+thread_local! {
+    static ON_SESSION_EXPIRED: RefCell<Option<Box<dyn Fn()>>> = const { RefCell::new(None) };
+}
+
+pub fn set_on_session_expired(callback: Box<dyn Fn()>) {
+    ON_SESSION_EXPIRED.with(|cell| {
+        *cell.borrow_mut() = Some(callback);
+    });
+}
+
+fn trigger_on_session_expired() {
+    ON_SESSION_EXPIRED.with(|cell| {
+        if let Some(cb) = cell.borrow().as_ref() {
+            (cb)();
+        }
+    });
+}
 
 fn get_cookie(name: &str) -> Option<String> {
     let window = web_sys::window()?;
@@ -106,6 +125,7 @@ impl ApiClient {
         body: Option<&str>,
     ) -> Result<gloo_net::http::Response, ApiError> {
         if self.refreshing.swap(true, Ordering::SeqCst) {
+            trigger_on_session_expired();
             return Err(ApiError::RefreshFailed);
         }
 
@@ -115,7 +135,10 @@ impl ApiClient {
 
         match refresh_resp {
             Ok(r) if r.ok() => self.fetch(method, url, body).await,
-            _ => Err(ApiError::RefreshFailed),
+            _ => {
+                trigger_on_session_expired();
+                Err(ApiError::RefreshFailed)
+            }
         }
     }
 }
