@@ -187,7 +187,6 @@ impl SitiOsservativiRepository {
             .ok_or_else(|| errors::not_found::item_not_found())?;
 
         model.try_merge_from(sito_update)?;
-        model._id = None;
 
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
