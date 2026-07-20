@@ -37,6 +37,6 @@ pub fn profile_image_url(base_url: &str, filename: &str) -> String {
     if filename.is_empty() {
         String::new()
     } else {
-        format!("{base_url}/filemanager/images/{filename}/resized/128")
+        format!("{base_url}/filemanager/{filename}")
     }
 }

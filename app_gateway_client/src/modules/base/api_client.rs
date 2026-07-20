@@ -161,6 +161,27 @@ impl ApiClient {
         file_name: &str,
         mime_type: &str,
     ) -> Result<String, ApiError> {
+        let url = format!("{}{}", self.base_url, path);
+        let resp = self.send_upload("POST", &url, &bytes, file_name, mime_type).await?;
+
+        if resp.ok() {
+            return resp.text().await.map_err(|e| ApiError::Network(e.to_string()));
+        }
+
+        if resp.status() == 401 {
+            let new_resp = self.try_refresh_and_retry_upload(&url, &bytes, file_name, mime_type).await?;
+            return new_resp
+                .text()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()));
+        }
+
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        Err(ApiError::Http(status, text))
+    }
+
+    fn build_multipart_body(bytes: &[u8], file_name: &str, mime_type: &str) -> (String, Vec<u8>) {
         let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
         let mut body = Vec::new();
 
@@ -176,15 +197,27 @@ impl ApiClient {
         body.extend_from_slice(mime_type.as_bytes());
         body.extend_from_slice(b"\r\n\r\n");
 
-        body.extend_from_slice(&bytes);
+        body.extend_from_slice(bytes);
         body.extend_from_slice(b"\r\n");
 
         body.extend_from_slice(b"--");
         body.extend_from_slice(boundary.as_bytes());
         body.extend_from_slice(b"--\r\n");
 
-        let url = format!("{}{}", self.base_url, path);
-        let req_builder = Self::request_builder("POST", &url)?;
+        (boundary.to_string(), body)
+    }
+
+    async fn send_upload(
+        &self,
+        method: &str,
+        url: &str,
+        bytes: &[u8],
+        file_name: &str,
+        mime_type: &str,
+    ) -> Result<gloo_net::http::Response, ApiError> {
+        let (boundary, body) = Self::build_multipart_body(bytes, file_name, mime_type);
+
+        let req_builder = Self::request_builder(method, url)?;
         let mut builder = req_builder.credentials(web_sys::RequestCredentials::Include);
 
         if let Some(csrf_token) = get_cookie(&self.csrf_cookie_name) {
@@ -192,24 +225,36 @@ impl ApiClient {
         }
         builder = builder.header("Content-Type", &format!("multipart/form-data; boundary={boundary}"));
 
-        let resp = builder
+        builder
             .body(body)
             .map_err(|e| ApiError::Network(e.to_string()))?
             .send()
             .await
-            .map_err(|e| ApiError::Network(e.to_string()))?;
+            .map_err(|e| ApiError::Network(e.to_string()))
+    }
 
-        if resp.ok() {
-            return resp.text().await.map_err(|e| ApiError::Network(e.to_string()));
-        }
-
-        if resp.status() == 401 {
+    async fn try_refresh_and_retry_upload(
+        &self,
+        url: &str,
+        bytes: &[u8],
+        file_name: &str,
+        mime_type: &str,
+    ) -> Result<gloo_net::http::Response, ApiError> {
+        if self.refreshing.swap(true, Ordering::SeqCst) {
             trigger_on_session_expired();
             return Err(ApiError::RefreshFailed);
         }
 
-        let status = resp.status();
-        let text = resp.text().await.unwrap_or_default();
-        Err(ApiError::Http(status, text))
+        let refresh_url = format!("{}/auth/refresh", self.base_url);
+        let refresh_resp = self.fetch_inner("POST", &refresh_url, None, &self.csrf_refresh_cookie_name).await;
+        self.refreshing.store(false, Ordering::SeqCst);
+
+        match refresh_resp {
+            Ok(r) if r.ok() => self.send_upload("POST", url, bytes, file_name, mime_type).await,
+            _ => {
+                trigger_on_session_expired();
+                Err(ApiError::RefreshFailed)
+            }
+        }
     }
 }
