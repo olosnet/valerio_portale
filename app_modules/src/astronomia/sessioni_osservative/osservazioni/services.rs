@@ -57,7 +57,7 @@ impl OsservazioneService {
         input: OsservazioneInput,
     ) -> Result<Osservazione, CornettiError> {
         input.validate()?;
-        self.repository.update(sessione_id, osservazione_id, input).await
+        self.repository.update(sessione_id, osservazione_id, &input).await
     }
 
     pub async fn delete_osservazione(

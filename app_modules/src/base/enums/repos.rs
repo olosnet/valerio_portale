@@ -7,7 +7,7 @@ use cornetti::{
         models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -90,13 +90,12 @@ impl From<EnumCreate> for MongoEnumModel {
     }
 }
 
-impl From<EnumUpdate> for MongoEnumModel {
-    fn from(dto: EnumUpdate) -> Self {
-        let mut model = MongoEnumModel::new();
-        model.category = dto.category;
-        model.value = dto.value;
-        model.touch();
-        model
+impl TryMergeFrom<EnumUpdate> for MongoEnumModel {
+    fn try_merge_from(&mut self, update: &EnumUpdate) -> CornettiResult<()> {
+        self.category = update.category.clone();
+        self.value = update.value.clone();
+        self.touch();
+        Ok(())
     }
 }
 
@@ -165,20 +164,26 @@ impl EnumsRepository {
     pub async fn update(
         &self,
         enum_id: &str,
-        enum_update: EnumUpdate,
+        enum_update: &EnumUpdate,
     ) -> CornettiResult<EnumItem> {
         let obj_id = ObjectId::parse_str(enum_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
-        let model: MongoEnumModel = enum_update.into();
+        let collection_name = MongoEnumModel::collection_name();
+        let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
+
+        let mut model = collection
+            .find_one(doc! { "_id": &obj_id })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(enum_update)?;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize enum update payload".to_string(),
             )
         })?;
-
-        let collection_name = MongoEnumModel::collection_name();
-        let collection: Collection<MongoEnumModel> = self.mongo.db().collection(collection_name);
 
         match collection
             .find_one_and_update(

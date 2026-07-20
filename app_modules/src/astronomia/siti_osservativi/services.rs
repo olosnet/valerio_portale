@@ -44,7 +44,7 @@ impl SitiOsservativiService {
         sito_update: SitoOsservativoUpdate,
     ) -> Result<SitoOsservativo, CornettiError> {
         sito_update.validate()?;
-        self.repository.update(sito_id, sito_update).await
+        self.repository.update(sito_id, &sito_update).await
     }
 
     pub async fn delete_sito_osservativo(&self, sito_id: &str) -> Result<(), CornettiError> {

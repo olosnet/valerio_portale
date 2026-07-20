@@ -62,7 +62,7 @@ impl OggettiAstronomiciService {
         oggetto_update: OggettoAstronomicoUpdate,
     ) -> Result<OggettoAstronomico, CornettiError> {
         oggetto_update.validate()?;
-        self.repository.update(oggetto_id, oggetto_update).await
+        self.repository.update(oggetto_id, &oggetto_update).await
     }
 
     pub async fn delete_oggetto_astronomico(&self, oggetto_id: &str) -> Result<(), CornettiError> {

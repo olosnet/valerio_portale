@@ -51,18 +51,6 @@ impl<'a> UsersService<'a> {
     ) -> CornettiResult<User> {
         user_update.validate()?;
 
-        let existing = self.repository.get(user_id).await?;
-        let user_update = if existing.default {
-            UserUpdate {
-                name: user_update.name,
-                surname: user_update.surname,
-                enabled: user_update.enabled,
-                groups_ids: existing.groups_ids.clone(),
-            }
-        } else {
-            user_update
-        };
-
         let user_updated = self.repository.update(user_id, &user_update).await?;
         if let Some(ref email) = user_updated.email {
             self.cache_repository

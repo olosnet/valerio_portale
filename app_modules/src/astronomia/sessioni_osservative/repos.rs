@@ -4,10 +4,10 @@ use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::{CornettiError, CornettiResult},
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -198,27 +198,39 @@ impl TryFrom<SessioneOsservativaCreate> for MongoSessioneOsservativaModel {
     }
 }
 
-impl TryFrom<SessioneOsservativaUpdate> for MongoSessioneOsservativaModel {
-    type Error = CornettiError;
-
-    fn try_from(value: SessioneOsservativaUpdate) -> Result<Self, Self::Error> {
-        let mut model = MongoSessioneOsservativaModel::new();
-        model.data = value.data;
-        model.intro = value.intro;
-        model.outro = value.outro;
-        model.sito_osservativo_id = ObjectId::parse_str(&value.sito_osservativo_id)?;
-        model.strumentazione = value
+impl TryMergeFrom<SessioneOsservativaUpdate> for MongoSessioneOsservativaModel {
+    fn try_merge_from(&mut self, update: &SessioneOsservativaUpdate) -> CornettiResult<()> {
+        self.data = update.data;
+        self.intro = update.intro.clone();
+        self.outro = update.outro.clone();
+        self.sito_osservativo_id = ObjectId::parse_str(&update.sito_osservativo_id)?;
+        self.strumentazione = update
             .strumentazione
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-        model.misurazioni_sqm = value
+            .iter()
+            .map(|s| {
+                Ok(MongoStrumentazioneSessioneModel {
+                    uuid: generate_uuid(),
+                    tipo: s.tipo.clone(),
+                    marca: s.marca.clone(),
+                    modello: s.modello.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, CornettiError>>()?;
+        self.misurazioni_sqm = update
             .misurazioni_sqm
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-        model.touch();
-        Ok(model)
+            .iter()
+            .map(|m| {
+                Ok(MongoMisurazioneSqmModel {
+                    uuid: generate_uuid(),
+                    sqm: m.sqm,
+                    temperatura: m.temperatura,
+                    umidita: m.umidita,
+                    dataora_rilievo: m.dataora_rilievo,
+                })
+            })
+            .collect::<Result<Vec<_>, CornettiError>>()?;
+        self.touch();
+        Ok(())
     }
 }
 
@@ -284,19 +296,27 @@ impl SessioniOsservativeRepository {
     pub async fn update(
         &self,
         sessione_id: &str,
-        sessione_update: SessioneOsservativaUpdate,
+        sessione_update: &SessioneOsservativaUpdate,
     ) -> Result<SessioneOsservativa, CornettiError> {
         let obj_id = ObjectId::parse_str(sessione_id)?;
-        let model = MongoSessioneOsservativaModel::try_from(sessione_update)?;
+
+        let collection_name = MongoSessioneOsservativaModel::collection_name();
+        let collection: Collection<MongoSessioneOsservativaModel> =
+            self.mongo.db().collection(collection_name);
+
+        let mut model = collection
+            .find_one(doc! { "_id": &obj_id })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(sessione_update)?;
+        model._id = None;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize observing session update payload".to_string(),
             )
         })?;
-
-        let collection_name = MongoSessioneOsservativaModel::collection_name();
-        let collection: Collection<MongoSessioneOsservativaModel> =
-            self.mongo.db().collection(collection_name);
 
         match collection
             .find_one_and_update(

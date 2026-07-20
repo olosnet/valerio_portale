@@ -7,7 +7,7 @@ use cornetti::core::helpers::sec::{hash_password, random_pass, verify_password};
 use cornetti::core::models::CornettiResult;
 use cornetti::core::traits::{BaseModel, BaseModule};
 use cornetti::mongo::services::MongoDBService;
-use cornetti::mongo::traits::MongoBaseModel;
+use cornetti::mongo::traits::{MongoBaseModel, TryMergeFrom};
 use cornetti::redis::services::RedisDBService;
 use futures::TryStreamExt;
 use mongodb::Collection;
@@ -140,8 +140,10 @@ impl From<MongoUserModel> for UserIdentity {
     }
 }
 
-impl MongoUserModel {
-    pub fn from_create(dto: UserCreate) -> CornettiResult<Self> {
+impl TryFrom<UserCreate> for MongoUserModel {
+    type Error = cornetti::core::models::CornettiError;
+
+    fn try_from(dto: UserCreate) -> CornettiResult<Self> {
         let group_ids = dto
             .groups_ids
             .iter()
@@ -166,19 +168,23 @@ impl MongoUserModel {
             groups_ids: group_ids,
         })
     }
+}
 
-    pub fn apply_update(&mut self, update: &UserUpdate) -> CornettiResult<()> {
+impl TryMergeFrom<UserUpdate> for MongoUserModel {
+    fn try_merge_from(&mut self, update: &UserUpdate) -> CornettiResult<()> {
         self.name = Some(update.name.clone());
         self.surname = Some(update.surname.clone());
         self.enabled = update.enabled;
-        self.groups_ids = update
-            .groups_ids
-            .iter()
-            .map(|id| {
-                ObjectId::parse_str(id)
-                    .map_err(|_| errors::bad_request::invalid_object_id())
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        if !self.default {
+            self.groups_ids = update
+                .groups_ids
+                .iter()
+                .map(|id| {
+                    ObjectId::parse_str(id)
+                        .map_err(|_| errors::bad_request::invalid_object_id())
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+        }
         self.touch();
         Ok(())
     }
@@ -229,7 +235,7 @@ impl UsersRepository {
     }
 
     pub async fn create(&self, user_create: UserCreate) -> CornettiResult<User> {
-        let mut new_user: MongoUserModel = MongoUserModel::from_create(user_create)?;
+        let mut new_user: MongoUserModel = user_create.try_into()?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
@@ -283,7 +289,7 @@ impl UsersRepository {
             .await?
             .ok_or_else(|| errors::not_found::item_not_found())?;
 
-        model.apply_update(user_update)?;
+        model.try_merge_from(user_update)?;
 
         let document: bson::Document = model.to_bson().as_document().unwrap().clone();
 

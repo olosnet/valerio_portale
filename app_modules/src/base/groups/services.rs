@@ -54,18 +54,6 @@ impl<'a> GroupService<'a> {
     ) -> CornettiResult<Group> {
         group_update.validate()?;
 
-        let existing = self.repository.get(group_id).await?;
-        let group_update = if existing.default {
-            // Gruppo predefinito: ignora modifiche ai permessi, permetti solo nome/descrizione
-            GroupUpdate {
-                name: group_update.name,
-                description: group_update.description,
-                permissions: existing.permissions.clone(),
-            }
-        } else {
-            group_update
-        };
-
         let result = self.repository.update(group_id, &group_update).await;
 
         match result {

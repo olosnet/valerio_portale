@@ -4,10 +4,10 @@ use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::{CornettiError, CornettiResult},
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -127,20 +127,19 @@ impl From<StrumentazioneCreate> for MongoStrumentazioneModel {
     }
 }
 
-impl From<StrumentazioneUpdate> for MongoStrumentazioneModel {
-    fn from(value: StrumentazioneUpdate) -> Self {
-        let mut model = MongoStrumentazioneModel::new();
-        model.tipo = value.tipo.to_string();
-        model.marca = value.marca;
-        model.modello = value.modello;
-        model.altro_tipo_personalizzato = value.altro_tipo_personalizzato;
-        model.altro_descr_estesa = value.altro_descr_estesa;
-        model.diametro = value.diametro;
-        model.focale = value.focale;
-        model.fattore_ingrandimento = value.fattore_ingrandimento;
-        model.fov = value.fov;
-        model.touch();
-        model
+impl TryMergeFrom<StrumentazioneUpdate> for MongoStrumentazioneModel {
+    fn try_merge_from(&mut self, update: &StrumentazioneUpdate) -> CornettiResult<()> {
+        self.tipo = update.tipo.to_string();
+        self.marca = update.marca.clone();
+        self.modello = update.modello.clone();
+        self.altro_tipo_personalizzato = update.altro_tipo_personalizzato.clone();
+        self.altro_descr_estesa = update.altro_descr_estesa.clone();
+        self.diametro = update.diametro;
+        self.focale = update.focale;
+        self.fattore_ingrandimento = update.fattore_ingrandimento;
+        self.fov = update.fov;
+        self.touch();
+        Ok(())
     }
 }
 
@@ -210,21 +209,28 @@ impl StrumentazioneRepository {
     pub async fn update(
         &self,
         id: &str,
-        update: StrumentazioneUpdate,
+        update: &StrumentazioneUpdate,
     ) -> Result<Strumentazione, CornettiError> {
         let obj_id = ObjectId::parse_str(id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
-        let model: MongoStrumentazioneModel = update.into();
+        let collection_name = MongoStrumentazioneModel::collection_name();
+        let collection: Collection<MongoStrumentazioneModel> =
+            self.mongo.db().collection(collection_name);
+
+        let mut model = collection
+            .find_one(doc! { "_id": &obj_id })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(update)?;
+        model._id = None;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize strumentazione update payload".to_string(),
             )
         })?;
-
-        let collection_name = MongoStrumentazioneModel::collection_name();
-        let collection: Collection<MongoStrumentazioneModel> =
-            self.mongo.db().collection(collection_name);
 
         match collection
             .find_one_and_update(

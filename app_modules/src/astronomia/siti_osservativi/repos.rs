@@ -4,10 +4,10 @@ use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::{CornettiError, CornettiResult},
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -98,15 +98,14 @@ impl From<SitoOsservativoCreate> for MongoSitoOsservativoModel {
     }
 }
 
-impl From<SitoOsservativoUpdate> for MongoSitoOsservativoModel {
-    fn from(value: SitoOsservativoUpdate) -> Self {
-        let mut model = MongoSitoOsservativoModel::new();
-        model.nome = value.nome;
-        model.longitudine = value.longitudine;
-        model.latitudine = value.latitudine;
-        model.altitudine = value.altitudine;
-        model.touch();
-        model
+impl TryMergeFrom<SitoOsservativoUpdate> for MongoSitoOsservativoModel {
+    fn try_merge_from(&mut self, update: &SitoOsservativoUpdate) -> CornettiResult<()> {
+        self.nome = update.nome.clone();
+        self.longitudine = update.longitudine;
+        self.latitudine = update.latitudine;
+        self.altitudine = update.altitudine;
+        self.touch();
+        Ok(())
     }
 }
 
@@ -173,21 +172,28 @@ impl SitiOsservativiRepository {
     pub async fn update(
         &self,
         sito_id: &str,
-        sito_update: SitoOsservativoUpdate,
+        sito_update: &SitoOsservativoUpdate,
     ) -> Result<SitoOsservativo, CornettiError> {
         let obj_id = ObjectId::parse_str(sito_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
-        let model: MongoSitoOsservativoModel = sito_update.into();
+        let collection_name = MongoSitoOsservativoModel::collection_name();
+        let collection: Collection<MongoSitoOsservativoModel> =
+            self.mongo.db().collection(collection_name);
+
+        let mut model = collection
+            .find_one(doc! { "_id": &obj_id })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(sito_update)?;
+        model._id = None;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize observing site update payload".to_string(),
             )
         })?;
-
-        let collection_name = MongoSitoOsservativoModel::collection_name();
-        let collection: Collection<MongoSitoOsservativoModel> =
-            self.mongo.db().collection(collection_name);
 
         match collection
             .find_one_and_update(

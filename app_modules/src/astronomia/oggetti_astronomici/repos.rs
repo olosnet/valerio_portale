@@ -4,10 +4,10 @@ use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::{CornettiError, CornettiResult},
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, options::ReturnDocument};
@@ -253,22 +253,21 @@ impl From<OggettoAstronomicoCreate> for MongoOggettoAstronomicoModel {
     }
 }
 
-impl From<OggettoAstronomicoUpdate> for MongoOggettoAstronomicoModel {
-    fn from(value: OggettoAstronomicoUpdate) -> Self {
-        let mut model = MongoOggettoAstronomicoModel::new();
-        model.tipo = value.tipo;
-        model.nome_comune = value.nome_comune;
-        model.abbr_costellazione = value.abbr_costellazione;
-        model.coord_ar = value.coord_ar;
-        model.coord_dec = value.coord_dec;
-        model.mag_apparente = value.mag_apparente;
-        model.dim_apparenti = value.dim_apparenti.map(Into::into);
-        model.note = value.note;
-        model.multi = value.multi;
-        model.imported = value.imported;
-        model.cataloghi = value.cataloghi.into_iter().map(Into::into).collect();
-        model.touch();
-        model
+impl TryMergeFrom<OggettoAstronomicoUpdate> for MongoOggettoAstronomicoModel {
+    fn try_merge_from(&mut self, update: &OggettoAstronomicoUpdate) -> CornettiResult<()> {
+        self.tipo = update.tipo.clone();
+        self.nome_comune = update.nome_comune.clone();
+        self.abbr_costellazione = update.abbr_costellazione.clone();
+        self.coord_ar = update.coord_ar.clone();
+        self.coord_dec = update.coord_dec.clone();
+        self.mag_apparente = update.mag_apparente;
+        self.dim_apparenti = update.dim_apparenti.clone().map(Into::into);
+        self.note = update.note.clone();
+        self.multi = update.multi;
+        self.imported = update.imported;
+        self.cataloghi = update.cataloghi.iter().cloned().map(Into::into).collect();
+        self.touch();
+        Ok(())
     }
 }
 
@@ -387,21 +386,28 @@ impl OggettiAstronomiciRepository {
     pub async fn update(
         &self,
         oggetto_id: &str,
-        oggetto_update: OggettoAstronomicoUpdate,
+        oggetto_update: &OggettoAstronomicoUpdate,
     ) -> Result<OggettoAstronomico, CornettiError> {
         let obj_id = ObjectId::parse_str(oggetto_id)
             .map_err(|_| errors::bad_request::invalid_object_id())?;
 
-        let model: MongoOggettoAstronomicoModel = oggetto_update.into();
+        let collection_name = MongoOggettoAstronomicoModel::collection_name();
+        let collection: Collection<MongoOggettoAstronomicoModel> =
+            self.mongo.db().collection(collection_name);
+
+        let mut model = collection
+            .find_one(doc! { "_id": &obj_id })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(oggetto_update)?;
+        model._id = None;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize astronomical object update payload".to_string(),
             )
         })?;
-
-        let collection_name = MongoOggettoAstronomicoModel::collection_name();
-        let collection: Collection<MongoOggettoAstronomicoModel> =
-            self.mongo.db().collection(collection_name);
 
         match collection
             .find_one_and_update(

@@ -130,7 +130,7 @@ impl StrumentazioneService {
             &update.fattore_ingrandimento,
             &update.fov,
         )?;
-        self.repository.update(id, update).await
+        self.repository.update(id, &update).await
     }
 
     pub async fn delete_strumentazione(&self, id: &str) -> Result<(), CornettiError> {

@@ -38,7 +38,7 @@ impl EnumsService {
         enum_update: EnumUpdate,
     ) -> CornettiResult<EnumItem> {
         enum_update.validate()?;
-        self.repository.update(enum_id, enum_update).await
+        self.repository.update(enum_id, &enum_update).await
     }
 
     pub async fn delete_enum(&self, enum_id: &str) -> CornettiResult<()> {

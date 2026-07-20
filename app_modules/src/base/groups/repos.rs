@@ -11,7 +11,7 @@ use cornetti::{
         models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::Collection;
@@ -99,12 +99,15 @@ impl From<GroupCreate> for MongoGroupModel {
     }
 }
 
-impl MongoGroupModel {
-    pub fn apply_update(&mut self, update: &GroupUpdate) {
+impl TryMergeFrom<GroupUpdate> for MongoGroupModel {
+    fn try_merge_from(&mut self, update: &GroupUpdate) -> CornettiResult<()> {
         self.name = Some(update.name.clone());
         self.description = update.description.clone();
-        self.permissions = update.permissions.clone();
+        if !self.default {
+            self.permissions = update.permissions.clone();
+        }
         self.touch();
+        Ok(())
     }
 }
 
@@ -176,7 +179,7 @@ impl GroupsRepository {
             .await?
             .ok_or_else(|| errors::not_found::item_not_found())?;
 
-        model.apply_update(group_update);
+        model.try_merge_from(group_update)?;
 
         let document: bson::Document = model.to_bson().as_document().unwrap().clone();
 

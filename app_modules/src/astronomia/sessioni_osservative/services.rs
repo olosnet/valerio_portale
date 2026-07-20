@@ -48,7 +48,7 @@ impl SessioniOsservativeService {
         sessione_update: SessioneOsservativaUpdate,
     ) -> Result<SessioneOsservativa, CornettiError> {
         sessione_update.validate()?;
-        self.repository.update(sessione_id, sessione_update).await
+        self.repository.update(sessione_id, &sessione_update).await
     }
 
     pub async fn delete_sessione_osservativa(

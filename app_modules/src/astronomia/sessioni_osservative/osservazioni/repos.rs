@@ -4,9 +4,9 @@ use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
         errors,
-        models::CornettiError,
+        models::{CornettiError, CornettiResult},
     },
-    mongo::{services::MongoDBService, traits::MongoBaseModel},
+    mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
 use mongodb::{Collection, IndexModel, options::{IndexOptions, ReturnDocument}};
@@ -54,6 +54,24 @@ impl MongoBaseModel for MongoOsservazioneModel {
 
     fn collection_name() -> &'static str {
         "osservazioni"
+    }
+}
+
+impl TryMergeFrom<OsservazioneInput> for MongoOsservazioneModel {
+    fn try_merge_from(&mut self, input: &OsservazioneInput) -> CornettiResult<()> {
+        self.osservato_il = input.osservato_il;
+        self.note_osservazione = input.note_osservazione.clone();
+        self.miglior_ingrandimento = input.miglior_ingrandimento;
+        self.oggetti_id = input
+            .oggetti_id
+            .iter()
+            .map(|id| {
+                ObjectId::parse_str(id)
+                    .map_err(|_| errors::bad_request::invalid_object_id())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.touch();
+        Ok(())
     }
 }
 
@@ -192,26 +210,23 @@ impl OsservazioneRepository {
         &self,
         sessione_id: &str,
         osservazione_id: &str,
-        input: OsservazioneInput,
+        input: &OsservazioneInput,
     ) -> Result<Osservazione, CornettiError> {
         let sessione_obj_id = ObjectId::parse_str(sessione_id)?;
         let osservazione_obj_id = ObjectId::parse_str(osservazione_id)?;
-        let oggetti_id = input
-            .oggetti_id
-            .iter()
-            .map(|id| ObjectId::parse_str(id))
-            .collect::<Result<Vec<_>, _>>()?;
 
-        let model = MongoOsservazioneModel {
-            _id: Some(osservazione_obj_id.clone()),
-            created: None,
-            modified: chrono::Utc::now(),
-            sessione_id: sessione_obj_id.clone(),
-            osservato_il: input.osservato_il,
-            note_osservazione: input.note_osservazione,
-            miglior_ingrandimento: input.miglior_ingrandimento,
-            oggetti_id,
-        };
+        let mut model = self
+            .collection()
+            .find_one(doc! {
+                "_id": &osservazione_obj_id,
+                "sessione_id": &sessione_obj_id,
+            })
+            .await?
+            .ok_or_else(|| errors::not_found::item_not_found())?;
+
+        model.try_merge_from(input)?;
+        model._id = None;
+
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
             errors::internal_server_error::generic_error(
                 "Unable to serialize osservazione update payload".to_string(),
