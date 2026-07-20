@@ -37,12 +37,7 @@ pub struct JwtDefaultToken {
 }
 
 impl BaseJwtToken for JwtDefaultToken {
-    fn new(
-        conf: JwtAuthConf,
-        subject: String,
-        session_id: String,
-        refresh: bool,
-    ) -> Self {
+    fn new(conf: JwtAuthConf, subject: String, session_id: String, refresh: bool) -> Self {
         let iat: usize = chrono::Utc::now().timestamp() as usize;
         let exp = if refresh {
             iat + conf.jwt_refresh_expire_minutes * 60
@@ -151,7 +146,7 @@ pub struct DefaultLoginResponse<T> {
 
 /// Response for a token refresh request.
 #[derive(Serialize, ToSchema)]
-pub struct RefreshAuthResponseDto<T> {
+pub struct RefreshAuthResponse<T> {
     /// Encoded access token.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub access_token: Option<String>,
@@ -399,7 +394,8 @@ mod tests {
             csrf: None,
             session_id: "session-xyz".into(),
         };
-        let data = SessionStoreData::new(claims.clone(), "192.168.1.1".into(), "Mozilla/5.0".into());
+        let data =
+            SessionStoreData::new(claims.clone(), "192.168.1.1".into(), "Mozilla/5.0".into());
         assert_eq!(data.sub, "user123");
         assert_eq!(data.jti, "jti-abc");
         assert_eq!(data.session_id, "session-xyz");
@@ -412,8 +408,14 @@ mod tests {
     #[test]
     fn session_store_data_refresh_token() {
         let claims = JwtDefaultClaims {
-            exp: 88888, iat: 88880, iss: None, sub: "u1".into(),
-            jti: "j1".into(), aud: vec![], refresh: true, csrf: None,
+            exp: 88888,
+            iat: 88880,
+            iss: None,
+            sub: "u1".into(),
+            jti: "j1".into(),
+            aud: vec![],
+            refresh: true,
+            csrf: None,
             session_id: "s1".into(),
         };
         let data = SessionStoreData::new(claims, "10.0.0.1".into(), "curl/8.0".into());
@@ -422,7 +424,12 @@ mod tests {
 
     #[test]
     fn authorization_permission_all_false() {
-        let p = AuthorizationPermission { read: false, create: false, modify: false, delete: false };
+        let p = AuthorizationPermission {
+            read: false,
+            create: false,
+            modify: false,
+            delete: false,
+        };
         assert!(!p.read);
         assert!(!p.create);
         assert!(!p.modify);
@@ -431,7 +438,12 @@ mod tests {
 
     #[test]
     fn authorization_permission_all_true() {
-        let p = AuthorizationPermission { read: true, create: true, modify: true, delete: true };
+        let p = AuthorizationPermission {
+            read: true,
+            create: true,
+            modify: true,
+            delete: true,
+        };
         assert!(p.read);
         assert!(p.create);
         assert!(p.modify);
@@ -440,7 +452,12 @@ mod tests {
 
     #[test]
     fn authorization_permission_read_only() {
-        let p = AuthorizationPermission { read: true, create: false, modify: false, delete: false };
+        let p = AuthorizationPermission {
+            read: true,
+            create: false,
+            modify: false,
+            delete: false,
+        };
         assert!(p.read);
         assert!(!p.delete);
     }
@@ -448,9 +465,15 @@ mod tests {
     #[test]
     fn jwt_default_claims_serialization() {
         let claims = JwtDefaultClaims {
-            exp: 100, iat: 90, iss: Some("issuer".into()), sub: "sub".into(),
-            jti: "jti".into(), aud: vec!["aud1".into()], refresh: false,
-            csrf: Some("csrf-token".into()), session_id: "sid".into(),
+            exp: 100,
+            iat: 90,
+            iss: Some("issuer".into()),
+            sub: "sub".into(),
+            jti: "jti".into(),
+            aud: vec!["aud1".into()],
+            refresh: false,
+            csrf: Some("csrf-token".into()),
+            session_id: "sid".into(),
         };
         let json = serde_json::to_string(&claims).unwrap();
         let deserialized: JwtDefaultClaims = serde_json::from_str(&json).unwrap();
@@ -462,12 +485,7 @@ mod tests {
     #[test]
     fn jwt_default_token_new_access() {
         let conf = dummy_jwt_conf();
-        let token = JwtDefaultToken::new(
-            conf,
-            "user1".into(),
-            "session1".into(),
-            false,
-        );
+        let token = JwtDefaultToken::new(conf, "user1".into(), "session1".into(), false);
         assert!(!token.claims.refresh);
         assert_eq!(token.claims.sub, "user1");
         assert_eq!(token.claims.session_id, "session1");
@@ -476,12 +494,7 @@ mod tests {
     #[test]
     fn jwt_default_token_new_refresh() {
         let conf = dummy_jwt_conf();
-        let token = JwtDefaultToken::new(
-            conf,
-            "user2".into(),
-            "session2".into(),
-            true,
-        );
+        let token = JwtDefaultToken::new(conf, "user2".into(), "session2".into(), true);
         assert!(token.claims.refresh);
     }
 
@@ -504,10 +517,7 @@ mod tests {
     fn jwt_default_token_no_csrf_when_disabled() {
         let mut conf = dummy_jwt_conf();
         conf.jwt_csrf_cookie_enable = false;
-        let token = JwtDefaultToken::new(
-            conf,
-            "u".into(), "s".into(), false,
-        );
+        let token = JwtDefaultToken::new(conf, "u".into(), "s".into(), false);
         assert!(token.claims.csrf.is_none());
     }
 
@@ -515,10 +525,7 @@ mod tests {
     fn jwt_default_token_with_csrf_when_enabled() {
         let mut conf = dummy_jwt_conf();
         conf.jwt_csrf_cookie_enable = true;
-        let token = JwtDefaultToken::new(
-            conf,
-            "u".into(), "s".into(), false,
-        );
+        let token = JwtDefaultToken::new(conf, "u".into(), "s".into(), false);
         assert!(token.claims.csrf.is_some());
         assert!(!token.claims.csrf.unwrap().is_empty());
     }
@@ -595,7 +602,7 @@ mod tests {
         struct FakeUser {
             id: String,
         }
-        let resp: RefreshAuthResponseDto<FakeUser> = RefreshAuthResponseDto {
+        let resp: RefreshAuthResponse<FakeUser> = RefreshAuthResponse {
             access_token: Some("new_access".into()),
             expires_in: Some(3600),
             identity: FakeUser { id: "u1".into() },

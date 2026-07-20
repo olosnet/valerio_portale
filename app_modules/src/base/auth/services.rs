@@ -45,15 +45,13 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         &self,
         login: cornetti::auth::models::DefaultLoginBody,
         req: actix_web::HttpRequest,
-    ) -> CornettiResult<
-        (
-            cornetti::auth::models::DefaultLoginResponse<crate::base::users::models::User>,
-            Option<actix_web::cookie::Cookie<'_>>,
-            Option<actix_web::cookie::Cookie<'_>>,
-            Option<actix_web::cookie::Cookie<'_>>,
-            Option<actix_web::cookie::Cookie<'_>>,
-        ),
-    > {
+    ) -> CornettiResult<(
+        cornetti::auth::models::DefaultLoginResponse<crate::base::users::models::User>,
+        Option<actix_web::cookie::Cookie<'_>>,
+        Option<actix_web::cookie::Cookie<'_>>,
+        Option<actix_web::cookie::Cookie<'_>>,
+        Option<actix_web::cookie::Cookie<'_>>,
+    )> {
         let _ = self
             .users_repository
             .get_by_user_password(&login.username, &login.password)
@@ -75,10 +73,7 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         .await
     }
 
-    pub async fn logout(
-        &self,
-        claims: Option<JwtDefaultClaims>,
-    ) -> CornettiResult<Vec<&str>> {
+    pub async fn logout(&self, claims: Option<JwtDefaultClaims>) -> CornettiResult<Vec<&str>> {
         if let Some(c) = claims {
             let _ = self.identity_repository.get_user_by_email(&c.sub).await?;
 
@@ -99,13 +94,11 @@ impl<'a, S: SessionStore> AuthenticationService<'a, S> {
         &self,
         claims: Option<JwtDefaultClaims>,
         req: actix_web::HttpRequest,
-    ) -> CornettiResult<
-        (
-            cornetti::auth::models::RefreshAuthResponseDto<crate::base::identity::models::UserIdentity>,
-            Option<actix_web::cookie::Cookie<'_>>,
-            Option<actix_web::cookie::Cookie<'_>>,
-        ),
-    > {
+    ) -> CornettiResult<(
+        cornetti::auth::models::RefreshAuthResponse<crate::base::identity::models::UserIdentity>,
+        Option<actix_web::cookie::Cookie<'_>>,
+        Option<actix_web::cookie::Cookie<'_>>,
+    )> {
         if let Some(c) = claims {
             let user = self.identity_repository.get_identity(&c.sub).await?;
             return cornetti::actix::auth::helpers::refresh_auth_tokens_and_response(

@@ -5,7 +5,7 @@ mod auth_view {
     use app_modules::base::auth::services::AuthenticationService;
     use app_modules::base::users::models::User;
     use cornetti::auth::models::{
-        DefaultLoginBody, DefaultLoginResponse, JwtDefaultClaims, RefreshAuthResponseDto,
+        DefaultLoginBody, DefaultLoginResponse, JwtDefaultClaims, RefreshAuthResponse,
     };
     use cornetti::core::models::CornettiError;
 
@@ -96,7 +96,7 @@ mod auth_view {
         summary = "Refresh User's Identity",
         tags = ["Auth"],
         responses(
-            (status = 200, description = "User's Identity", body = RefreshAuthResponseDto<User>),
+            (status = 200, description = "User's Identity", body = RefreshAuthResponse<User>),
             (status = 404, description = "Item not found", body = CornettiError),
             (status = 500, description = "Internal server error", body = CornettiError)
         )
@@ -128,17 +128,13 @@ mod auth_view {
             Err(err) => err.into(),
         }
     }
-
 }
 
 pub mod auth_api {
 
     use actix_web::{dev::HttpServiceFactory, web};
     use cornetti::{
-        auth::{
-            confs::JwtAuthConf,
-            helpers::utoipa::AuthRefreshApiDocEntry,
-        },
+        auth::{confs::JwtAuthConf, helpers::utoipa::AuthRefreshApiDocEntry},
         core::{
             confs::BaseConf,
             helpers::utoipa::BaseApiDoc,

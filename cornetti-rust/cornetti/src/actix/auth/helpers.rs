@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::auth::confs::JwtAuthConf;
 use crate::auth::models::{
-    DefaultLoginResponse, JwtDefaultClaims, JwtDefaultToken, RefreshAuthResponseDto,
+    DefaultLoginResponse, JwtDefaultClaims, JwtDefaultToken, RefreshAuthResponse,
     SessionStoreData,
 };
 use crate::auth::traits::{BaseJwtToken, SessionStore};
@@ -254,7 +254,7 @@ pub async fn refresh_auth_tokens_and_response<'a, T, S: SessionStore>(
     session_store: Option<Arc<S>>,
 ) -> CornettiResult<
     (
-        RefreshAuthResponseDto<T>,
+        RefreshAuthResponse<T>,
         Option<Cookie<'a>>,
         Option<Cookie<'a>>,
     ),
@@ -268,7 +268,7 @@ pub async fn refresh_auth_tokens_and_response<'a, T, S: SessionStore>(
     add_to_store(tenant_id, &access_token, None, req, session_store).await?;
 
     let result = (
-        RefreshAuthResponseDto {
+        RefreshAuthResponse {
             access_token: if conf.jwt_search_in_headers {
                 Some(access_token_encoded)
             } else {
