@@ -10,7 +10,7 @@ full = [
     "breadcrumb", "button", "button_group", "calendar", "card", "checkbox",
     "collapsible", "combobox", "command", "confirm_delete", "context_menu", "date_picker",
     "data_table", "dialog", "direction", "drawer", "dropdown_menu", "empty",
-    "field", "hover_card", "icon", "input", "input_group", "item", "kbd",
+    "field", "hover_card", "icon", "image_cropper", "input", "input_group", "item", "kbd",
     "label", "menubar", "native_select", "navigation_menu",     "pagination", "password_input",
     "popover", "progress", "radio_group", "resizable", "scroll_area",
     "select", "separator", "sheet", "sidebar", "skeleton", "slider",
@@ -45,6 +45,7 @@ empty = []
 field = []
 hover_card = []
 icon = []
+image_cropper = ["dialog", "button", "icon", "dep:image"]
 input = []
 input_group = []
 item = []
@@ -84,3 +85,4 @@ leptos = { version = "0.8" }
 chrono = { version = "0.4", features = ["serde"] }
 web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlDocument", "Location"] }
 wasm-bindgen = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"], optional = true }

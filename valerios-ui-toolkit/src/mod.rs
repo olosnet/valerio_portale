@@ -27,6 +27,7 @@ pub mod hover_card;
 pub mod input_group;
 pub mod item;
 pub mod icon;
+pub mod image_cropper;
 pub mod input;
 pub mod kbd;
 pub mod label;

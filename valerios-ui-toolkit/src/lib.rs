@@ -25,6 +25,7 @@
 #[cfg(feature = "field")] pub mod field;
 #[cfg(feature = "hover_card")] pub mod hover_card;
 #[cfg(feature = "icon")] pub mod icon;
+#[cfg(feature = "image_cropper")] pub mod image_cropper;
 #[cfg(feature = "input")] pub mod input;
 #[cfg(feature = "input_group")] pub mod input_group;
 #[cfg(feature = "item")] pub mod item;
