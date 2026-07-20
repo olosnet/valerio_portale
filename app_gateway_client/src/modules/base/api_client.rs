@@ -43,6 +43,7 @@ fn get_cookie(name: &str) -> Option<String> {
 pub struct ApiClient {
     pub base_url: String,
     pub csrf_cookie_name: String,
+    pub csrf_refresh_cookie_name: String,
     refreshing: Arc<AtomicBool>,
 }
 
@@ -51,6 +52,7 @@ impl ApiClient {
         Self {
             base_url: base_url.to_string(),
             csrf_cookie_name: "csrf_access_token".to_string(),
+            csrf_refresh_cookie_name: "csrf_refresh_token".to_string(),
             refreshing: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -98,11 +100,21 @@ impl ApiClient {
         url: &str,
         body: Option<&str>,
     ) -> Result<gloo_net::http::Response, ApiError> {
+        self.fetch_inner(method, url, body, &self.csrf_cookie_name).await
+    }
+
+    async fn fetch_inner(
+        &self,
+        method: &str,
+        url: &str,
+        body: Option<&str>,
+        csrf_cookie_name: &str,
+    ) -> Result<gloo_net::http::Response, ApiError> {
         let mut builder = Self::request_builder(method, url)?;
         builder = builder.credentials(web_sys::RequestCredentials::Include);
 
         if matches!(method, "POST" | "PUT" | "DELETE") {
-            if let Some(csrf_token) = get_cookie(&self.csrf_cookie_name) {
+            if let Some(csrf_token) = get_cookie(csrf_cookie_name) {
                 builder = builder.header("X-CSRF-TOKEN", &csrf_token);
             }
         }
@@ -130,7 +142,7 @@ impl ApiClient {
         }
 
         let refresh_url = format!("{}/auth/refresh", self.base_url);
-        let refresh_resp = self.fetch("POST", &refresh_url, None).await;
+        let refresh_resp = self.fetch_inner("POST", &refresh_url, None, &self.csrf_refresh_cookie_name).await;
         self.refreshing.store(false, Ordering::SeqCst);
 
         match refresh_resp {
