@@ -1,5 +1,6 @@
 use cornetti::{
-    core::{errors, models::CornettiResult},
+    core::models::CornettiResult,
+    errors,
     mongo::{helpers::modules_collection_name, services::MongoDBService},
 };
 use futures::TryStreamExt;
@@ -46,7 +47,7 @@ impl<'a> PermissionsRepository<'a> {
                 let permissions: Vec<String> = match cursor.try_next().await {
                     Ok(Some(doc)) => {
                         let array = doc.get_array("permissions").map_err(|e| {
-                            errors::internal_server_error::generic_error(e.to_string())
+                            errors::internal_server_error::generic_error().with_internal_detail(e.to_string())
                         })?;
                         Ok(array
                             .iter()
@@ -54,12 +55,12 @@ impl<'a> PermissionsRepository<'a> {
                             .collect())
                     }
                     Ok(None) => Ok(vec![]),
-                    Err(e) => Err(errors::internal_server_error::generic_error(e.to_string())),
+                    Err(e) => Err(errors::internal_server_error::generic_error().with_internal_detail(e.to_string())),
                 }?;
 
                 Ok(permissions)
             }
-            Err(e) => Err(errors::internal_server_error::db_error(e.to_string())),
+            Err(e) => Err(errors::internal_server_error::db_error().with_internal_detail(e.to_string())),
         }
     }
 }

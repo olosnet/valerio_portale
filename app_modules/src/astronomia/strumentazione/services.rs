@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use cornetti::{
-    core::{errors, models::CornettiError},
+    core::models::CornettiError,
+    errors,
     mongo::services::MongoDBService,
 };
 use validator::Validate;
@@ -13,7 +14,7 @@ use crate::astronomia::strumentazione::{
 
 fn check_required<T>(field: &Option<T>, name: &str) -> Result<(), CornettiError> {
     if field.is_none() {
-        return Err(errors::bad_request::validation_error(format!(
+        return Err(errors::bad_request::validation_error().with_internal_detail(format!(
             "{} is required for this tipo",
             name
         )));

@@ -4,7 +4,8 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::{errors, helpers::sec::verify_password, models::CornettiResult},
+    core::{helpers::sec::verify_password, http_status::HttpStatus, models::CornettiResult},
+    errors,
     filemanager::confs::FileManagerConf,
     mongo::services::MongoDBService,
 };
@@ -88,7 +89,7 @@ impl<'a> IdentityService<'a> {
         if old_image != default_image {
             match self.filemanager_service.delete(&old_image).await {
                 Ok(()) => {}
-                Err(err) if err.status == 404 => {}
+                Err(err) if err.status == HttpStatus::NotFound => {}
                 Err(err) => return Err(err),
             }
         }
@@ -109,7 +110,7 @@ impl<'a> IdentityService<'a> {
         let stored_hash = self.repository.get_user_password_hash(&claims.sub).await?;
 
         if !verify_password(&stored_hash, &dto.old_password) {
-            return Err(errors::bad_request::validation_error(
+            return Err(errors::bad_request::validation_error().with_internal_detail(
                 "old_password is incorrect".to_string(),
             ));
         }

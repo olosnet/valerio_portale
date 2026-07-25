@@ -7,6 +7,8 @@ edition = "2024"
 clap = { version = "4.5.38", features = ["derive"] }
 console = "0.16.0"
 cornetti = { path = "../cornetti-rust/cornetti", features = ["mongo", "redisdb", "filemanager", "mail", "templates"] }
+cornetti_macros = { path = "../cornetti-rust/cornetti_macros" }
+tracing = "0.1"
 app_modules = { path = "../app_modules"}
 redis = { version = "1", features = ["tokio-comp"] }
 tokio = "1.45.0"

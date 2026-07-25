@@ -4,7 +4,7 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::models::CornettiError,
+    core::{http_status::HttpStatus, models::CornettiError},
     filemanager::confs::FileManagerConf,
     mongo::services::MongoDBService,
 };
@@ -100,7 +100,7 @@ impl<'a> OggettiAstronomiciImageService<'a> {
         if let Some(previous_image) = current.image_filename {
             match self.filemanager_service.delete(&previous_image).await {
                 Ok(()) => {}
-                Err(err) if err.status == 404 => {}
+                Err(err) if err.status == HttpStatus::NotFound => {}
                 Err(err) => return Err(err),
             }
         }

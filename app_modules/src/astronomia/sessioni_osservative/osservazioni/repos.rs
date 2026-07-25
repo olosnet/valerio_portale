@@ -2,10 +2,8 @@ use std::sync::Arc;
 
 use bson::{doc, oid::ObjectId};
 use cornetti::{
-    core::{
-        errors,
-        models::{CornettiError, CornettiResult},
-    },
+    core::models::{CornettiError, CornettiResult},
+    errors,
     mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
@@ -135,7 +133,7 @@ impl OsservazioneRepository {
         let items: Vec<MongoOsservazioneModel> = cursor
             .try_collect()
             .await
-            .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?;
+            .map_err(|e| errors::internal_server_error::generic_error().with_internal_detail(e.to_string()))?;
         Ok(items.into_iter().map(Into::into).collect())
     }
 
@@ -151,7 +149,7 @@ impl OsservazioneRepository {
         let items: Vec<MongoOsservazioneModel> = cursor
             .try_collect()
             .await
-            .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?;
+            .map_err(|e| errors::internal_server_error::generic_error().with_internal_detail(e.to_string()))?;
         Ok(items.into_iter().map(Into::into).collect())
     }
 
@@ -198,7 +196,7 @@ impl OsservazioneRepository {
         };
         let result = self.collection().insert_one(&model).await?;
         let inserted_id = result.inserted_id.as_object_id().ok_or_else(|| {
-            errors::internal_server_error::generic_error(
+            errors::internal_server_error::generic_error().with_internal_detail(
                 "Unable to resolve inserted osservazione ObjectId".to_string(),
             )
         })?;
@@ -227,7 +225,7 @@ impl OsservazioneRepository {
         model.try_merge_from(input)?;
 
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
-            errors::internal_server_error::generic_error(
+            errors::internal_server_error::generic_error().with_internal_detail(
                 "Unable to serialize osservazione update payload".to_string(),
             )
         })?;

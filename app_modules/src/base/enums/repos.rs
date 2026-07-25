@@ -3,10 +3,10 @@ use std::sync::Arc;
 use bson::{doc, oid::ObjectId};
 use cornetti::{
     core::{
-        errors,
         models::CornettiResult,
         traits::{BaseModel, BaseModule},
     },
+    errors,
     mongo::{services::MongoDBService, traits::{MongoBaseModel, TryMergeFrom}},
 };
 use futures::TryStreamExt;
@@ -124,7 +124,7 @@ impl EnumsRepository {
         let items: Vec<MongoEnumModel> = cursor
             .try_collect()
             .await
-            .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?;
+            .map_err(|e| errors::internal_server_error::generic_error().with_internal_detail(e.to_string()))?;
 
         Ok(items.into_iter().map(Into::into).collect())
     }
@@ -152,7 +152,7 @@ impl EnumsRepository {
 
         let result = collection.insert_one(&model).await?;
         let inserted_id = result.inserted_id.as_object_id().ok_or_else(|| {
-            errors::internal_server_error::generic_error(
+            errors::internal_server_error::generic_error().with_internal_detail(
                 "Unable to resolve inserted enum ObjectId".to_string(),
             )
         })?;
@@ -180,7 +180,7 @@ impl EnumsRepository {
         model.try_merge_from(enum_update)?;
 
         let document = model.to_bson().as_document().cloned().ok_or_else(|| {
-            errors::internal_server_error::generic_error(
+            errors::internal_server_error::generic_error().with_internal_detail(
                 "Unable to serialize enum update payload".to_string(),
             )
         })?;

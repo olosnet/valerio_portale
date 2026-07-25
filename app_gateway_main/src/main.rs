@@ -1,3 +1,4 @@
+mod errors;
 mod resources;
 use crate::resources::auth::auth_api;
 use crate::resources::enums::enums_api;

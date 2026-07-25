@@ -1,3 +1,4 @@
+mod errors;
 mod import_catalogs;
 mod import_images;
 mod redis_cache;

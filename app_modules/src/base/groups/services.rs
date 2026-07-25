@@ -1,5 +1,6 @@
 use cornetti::{
-    core::{errors, models::CornettiResult},
+    core::models::CornettiResult,
+    errors,
     mongo::services::MongoDBService, redis::services::RedisDBService,
 };
 use std::sync::Arc;

@@ -2,7 +2,8 @@ use std::{pin::Pin, sync::Arc};
 
 use bson::{doc, oid::ObjectId};
 use cornetti::{
-    core::{errors, models::CornettiError, traits::BaseModule},
+    core::{models::CornettiError, traits::BaseModule},
+    errors,
     filemanager::{
         models::images::{ImageFileManagerResizeMode, ImageFormat, ImagesFileManagerResizedRel},
         traits::images::ImageResizeRelRepositoryTrait,
@@ -143,7 +144,7 @@ impl ImageResizeRelRepositoryTrait for FileManagerImagesRepository {
                     let items: Vec<MongoImageFileManagerResize> = cursor
                         .try_collect()
                         .await
-                        .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?;
+                        .map_err(|e| errors::internal_server_error::generic_error().with_internal_detail(e.to_string()))?;
 
                     Ok(items.into_iter().map(|item| item.into()).collect())
                 }

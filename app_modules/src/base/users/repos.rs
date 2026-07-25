@@ -2,7 +2,7 @@ use crate::base::identity::models::UserIdentity;
 use crate::base::users::models::{User, UserCreate, UserUpdate};
 use bson::{doc, oid::ObjectId};
 use cornetti::auth::models::AuthorizationPermission;
-use cornetti::core::errors;
+use cornetti::errors;
 use cornetti::core::helpers::sec::{hash_password, random_pass, verify_password};
 use cornetti::core::models::CornettiResult;
 use cornetti::core::traits::{BaseModel, BaseModule};
@@ -434,7 +434,7 @@ impl UsersRepository {
                 let user_password: &str = match user.password.as_deref() {
                     Some(password) => password,
                     None => {
-                        return Err(errors::internal_server_error::generic_error(
+                        return Err(errors::internal_server_error::generic_error().with_internal_detail(
                             "Can't read user password".to_string(),
                         ));
                     }

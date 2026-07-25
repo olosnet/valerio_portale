@@ -31,7 +31,7 @@ use cornetti::core::pagination::{
     SortDescriptor, SortDirection,
 };
 use cornetti::core::models::CornettiResult;
-use cornetti::core::errors::bad_request;
+use cornetti::errors::bad_request;
 use serde::Deserialize;
 
 /// Parametri di richiesta inviati dal DataTable frontend.
@@ -172,10 +172,10 @@ impl ValerioUiPaginationAdapter {
             for s in sort_list {
                 let parts: Vec<&str> = s.split(',').collect();
                 if parts.len() != 2 {
-                    return Err(bad_request::validation_error(format!(
-                        "Formato ordinamento non valido: {}",
-                        s
-                    )));
+return Err(bad_request::validation_error().with_internal_detail(format!(
+                            "Formato ordinamento non valido: {}",
+                            s
+                        )));
                 }
                 let field = parts[0].trim().to_string();
                 let direction = match parts[1].trim() {
@@ -187,10 +187,10 @@ impl ValerioUiPaginationAdapter {
                 } else if self.custom_attributes.contains(&field) {
                     custom_order_exprs.push(SortDescriptor { field, direction });
                 } else {
-                    return Err(bad_request::validation_error(format!(
-                        "Campo di ordinamento non consentito: {}",
-                        field
-                    )));
+return Err(bad_request::validation_error().with_internal_detail(format!(
+                            "Campo di ordinamento non consentito: {}",
+                            field
+                        )));
                 }
             }
         }
@@ -312,6 +312,7 @@ impl<T: serde::Serialize> From<ValerioUiPaginationResponse<T>>
 #[allow(dead_code)]
 mod tests {
     use super::*;
+    use cornetti::core::http_status::HttpStatus;
     use std::collections::HashSet;
 
     fn make_adapter() -> ValerioUiPaginationAdapter {
@@ -427,7 +428,7 @@ mod tests {
         let adapter = make_adapter();
         let q = DataTableQuery { sort_field: Some("unknown".into()), sort_dir: Some("asc".into()), ..Default::default() };
         let err = adapter.validate(&raw(&q)).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use bson::doc;
 use cornetti::{
-    core::{errors, helpers::sec::hash_password, models::CornettiResult, traits::BaseModule},
+    core::{helpers::sec::hash_password, models::CornettiResult, traits::BaseModule},
+    errors,
     mongo::services::MongoDBService,
 };
 use mongodb::{Collection, options::ReturnDocument};
@@ -45,7 +46,7 @@ impl IdentityRepository {
 
         match collection.find_one(doc! { "email": email }).await? {
             Some(item) => item.password.ok_or_else(|| {
-                errors::internal_server_error::generic_error("User has no password set".to_string())
+                errors::internal_server_error::generic_error().with_internal_detail("User has no password set".to_string())
             }),
             None => Err(errors::not_found::item_not_found()),
         }
