@@ -703,7 +703,10 @@ fn build_cli() -> Command {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+    tracing_log::LogTracer::init().ok();
 
     let mut cli = build_cli();
     let matches = cli.clone().get_matches();

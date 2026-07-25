@@ -67,9 +67,12 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+    tracing_log::LogTracer::init().ok();
 
-    log::info!("Welcome...");
+    tracing::info!("Welcome...");
 
     let app_info = Arc::new(AppInfo {
         name: env!("CARGO_PKG_NAME").to_string(),
@@ -122,7 +125,7 @@ async fn main() -> std::io::Result<()> {
     let host: String = app_state.base_conf.host.clone();
     let port = app_state.base_conf.port;
 
-    log::info!("init {} server...", env!("CARGO_PKG_NAME"));
+    tracing::info!("init {} server...", env!("CARGO_PKG_NAME"));
 
     HttpServer::new(move || {
         let api_prefix = &app_state.base_conf.api_prefix;
