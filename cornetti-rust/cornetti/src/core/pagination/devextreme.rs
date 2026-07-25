@@ -1,5 +1,6 @@
+use crate::errors::bad_request;
+
 use crate::core::{
-    errors::bad_request,
     pagination::{
         FilterNode, FilterOperator, FilterValue, GroupOperator, LoadOptions, PaginationAdapter,
         PaginationResult, RawPaginationInput, SortDescriptor, SortDirection,
@@ -99,10 +100,10 @@ impl PaginationAdapter for DevExtremePaginationAdapter {
 }
 
 impl DevExtremePaginationAdapter {
-    /// Parsifica le stringhe di ordinamento.
+    /// Parse sort strings.
     ///
-    /// Ogni stringa deve essere nel formato `"campo,asc"` o `"campo,desc"`.
-    /// Campi in `custom_attributes` vengono raccolti separatamente.
+    /// Each string must be in the format `"field,asc"` or `"field,desc"`.
+    /// Fields in `custom_attributes` are collected separately.
     fn parse_sort(
         &self,
         sort_input: &[String],
@@ -113,8 +114,8 @@ impl DevExtremePaginationAdapter {
         for raw in sort_input {
             let parts: Vec<&str> = raw.split(',').collect();
             if parts.len() != 2 {
-                return Err(bad_request::validation_error(format!(
-                    "Formato ordinamento non valido: {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Invalid sort format: {}",
                     raw
                 )));
             }
@@ -126,8 +127,8 @@ impl DevExtremePaginationAdapter {
                 "asc" => SortDirection::Asc,
                 "desc" => SortDirection::Desc,
                 other => {
-                    return Err(bad_request::validation_error(format!(
-                        "Direzione ordinamento non valida: {}",
+                    return Err(bad_request::validation_error().with_internal_detail(format!(
+                        "Invalid sort direction: {}",
                         other
                     )));
                 }
@@ -138,8 +139,8 @@ impl DevExtremePaginationAdapter {
             } else if self.custom_attributes.contains(&field) {
                 custom_descriptors.push(SortDescriptor { field, direction });
             } else {
-                return Err(bad_request::validation_error(format!(
-                    "Campo di ordinamento non consentito: {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Sort field not allowed: {}",
                     field
                 )));
             }
@@ -148,7 +149,7 @@ impl DevExtremePaginationAdapter {
         Ok((descriptors, custom_descriptors))
     }
 
-    /// Parsifica le stringhe di filtro.
+    /// Parse filter strings.
     fn parse_filter(
         &self,
         filter_input: &[String],
@@ -162,13 +163,11 @@ impl DevExtremePaginationAdapter {
                 continue;
             }
 
-            // Controlla operatore unario ! all'inizio
+            // Check for unary ! operator at start
             if parts[0].trim() == "!" {
                 if parts.len() < 4 {
-                    return Err(bad_request::validation_error(
-                        "Formato filtro NOT non valido: richiesti almeno !,campo,op,valore"
-                            .to_string(),
-                    ));
+                    return Err(bad_request::validation_error()
+                        .with_internal_detail("Invalid NOT filter format: expected at least !,field,op,value"));
                 }
                 let inner_parts = &parts[1..];
                 let (standard, custom) = self.parse_flat_parts(inner_parts)?;
@@ -180,8 +179,8 @@ impl DevExtremePaginationAdapter {
             }
 
             if parts.len() < 3 {
-                return Err(bad_request::validation_error(format!(
-                    "Formato filtro non valido (meno di 3 elementi): {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Invalid filter format (fewer than 3 elements): {}",
                     raw
                 )));
             }
@@ -205,11 +204,11 @@ impl DevExtremePaginationAdapter {
         Ok((filter, custom_exprs))
     }
 
-    /// Parsifica un array piatto di parti in un `FilterNode`.
+    /// Parse a flat array of parts into a `FilterNode`.
     ///
-    /// Gestisce valori contenenti virgole: il valore si estende fino a quando
-    /// non si incontra un operatore di gruppo (`and`/`or`) SEGUITO da un
-    /// attributo riconosciuto e un operatore valido.
+    /// Handles values containing commas: the value extends until
+    /// a group operator (`and`/`or`) FOLLOWED by a recognized
+    /// attribute and a valid operator is encountered.
     fn parse_flat_parts(
         &self,
         parts: &[&str],
@@ -225,23 +224,21 @@ impl DevExtremePaginationAdapter {
             if !self.available_attributes.contains(attr)
                 && !self.custom_attributes.contains(attr)
             {
-                return Err(bad_request::validation_error(format!(
-                    "Campo filtro non consentito: {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Filter field not allowed: {}",
                     attr
                 )));
             }
 
             if i + 1 >= parts.len() {
-                return Err(bad_request::validation_error(
-                    "Formato filtro incompleto: manca operatore".to_string(),
-                ));
+                return Err(bad_request::validation_error()
+                    .with_internal_detail("Incomplete filter format: missing operator"));
             }
             let op = parts[i + 1].trim();
 
             if i + 2 >= parts.len() {
-                return Err(bad_request::validation_error(
-                    "Formato filtro incompleto: manca valore".to_string(),
-                ));
+                return Err(bad_request::validation_error()
+                    .with_internal_detail("Incomplete filter format: missing value"));
             }
 
             // Determina dove finisce il valore
@@ -279,6 +276,7 @@ mod tests {
         FilterNode, FilterOperator, FilterValue, GroupOperator, PaginationAdapter,
         PaginationResult, RawPaginationInput, SortDirection,
     };
+    use crate::core::http_status::HttpStatus;
     use std::collections::HashSet;
 
     fn make_adapter() -> DevExtremePaginationAdapter {
@@ -358,7 +356,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { sort_input: Some(vec!["unknown,asc".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
         assert!(err.detail.contains("unknown"));
     }
 
@@ -367,7 +365,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { sort_input: Some(vec!["name,up".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -375,7 +373,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { sort_input: Some(vec!["solo_un_campo".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -483,7 +481,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { filter_input: Some(vec!["unknown_field,=,val".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
         assert!(err.detail.contains("unknown_field"));
     }
 
@@ -492,7 +490,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { filter_input: Some(vec!["name,=".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -514,7 +512,7 @@ mod tests {
         let adapter = make_adapter();
         let raw = RawPaginationInput { filter_input: Some(vec!["!,name".into()]), ..Default::default() };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -646,13 +644,13 @@ mod tests {
         Ok((standard_nodes, custom_leaves))
     }
 
-    /// Costruisce un `FilterNode::Leaf` da `(attr, op, value)`.
+    /// Build a `FilterNode::Leaf` from `(attr, op, value)`.
     fn build_leaf(&self, attr: &str, op: &str, value: &str) -> CornettiResult<(FilterNode, bool)> {
         let field = attr.to_string();
 
         if self.available_attributes.contains(&field) {
             let operator = FilterOperator::parse_operator(op).ok_or_else(|| {
-                bad_request::validation_error(format!("Operatore filtro non valido: {}", op))
+                bad_request::validation_error().with_internal_detail(format!("Invalid filter operator: {}", op))
             })?;
 
             Ok((
@@ -675,16 +673,16 @@ mod tests {
                 true,
             ))
         } else {
-            Err(bad_request::validation_error(format!(
+            Err(bad_request::validation_error().with_internal_detail(format!(
                 "Campo filtro non consentito: {}",
                 field
             )))
         }
     }
 
-    /// Costruisce un FilterNode da searchExpr/searchOperation/searchValue.
+    /// Build a FilterNode from searchExpr/searchOperation/searchValue.
     ///
-    /// Se ci sono più searchExpr, li combina con OR.
+    /// If there are multiple searchExpr, they are combined with OR.
     fn build_search_filter(
         &self,
         search_expr: Option<&[String]>,

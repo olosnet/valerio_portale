@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use crate::auth::confs::JwtAuthConf;
 use crate::auth::models::{
-    DefaultLoginResponse, JwtDefaultClaims, JwtDefaultToken, RefreshAuthResponse,
-    SessionStoreData,
+    DefaultLoginResponse, JwtDefaultClaims, JwtDefaultToken, RefreshAuthResponse, SessionStoreData,
 };
 use crate::auth::traits::{BaseJwtToken, SessionStore};
-use crate::core::errors;
+use crate::errors;
 use crate::core::models::CornettiResult;
 use actix_web::{HttpRequest, cookie::Cookie};
 
@@ -19,20 +18,18 @@ async fn generate_access_token(
     conf: &JwtAuthConf,
     identity: String,
     session_id: String,
-) -> CornettiResult<
-    (
-        JwtDefaultToken,
-        String,
-        Option<Cookie<'_>>,
-        Option<Cookie<'_>>,
-    ),
-> {
+) -> CornettiResult<(
+    JwtDefaultToken,
+    String,
+    Option<Cookie<'_>>,
+    Option<Cookie<'_>>,
+)> {
     let access_token: JwtDefaultToken =
         JwtDefaultToken::new(conf.clone(), identity, session_id, false);
 
     let access_token_encoded: String = access_token
         .encode(conf)
-        .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?;
+        .map_err(|e| errors::auth_errors::jwt_encode_error().with_internal_detail(e.to_string()))?;
 
     let access_cookie: Option<Cookie> = if conf.jwt_search_in_cookies {
         Some(
@@ -103,13 +100,17 @@ async fn add_to_store<S: SessionStore>(
                 user_agent.clone(),
             );
 
-            store.add_token(tenant_id, &refresh_session_store_data).await?;
+            store
+                .add_token(tenant_id, &refresh_session_store_data)
+                .await?;
         }
 
         let access_session_store_data =
             SessionStoreData::new(access_token.claims.clone(), ip_addr, user_agent);
 
-        store.add_token(tenant_id, &access_session_store_data).await?;
+        store
+            .add_token(tenant_id, &access_session_store_data)
+            .await?;
     }
 
     Ok(())
@@ -130,15 +131,13 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
     tenant_id: &'a str,
     req: HttpRequest,
     session_store: Option<Arc<S>>,
-) -> CornettiResult<
-    (
-        DefaultLoginResponse<T>,
-        Option<Cookie<'a>>,
-        Option<Cookie<'a>>,
-        Option<Cookie<'a>>,
-        Option<Cookie<'a>>,
-    ),
-> {
+) -> CornettiResult<(
+    DefaultLoginResponse<T>,
+    Option<Cookie<'a>>,
+    Option<Cookie<'a>>,
+    Option<Cookie<'a>>,
+    Option<Cookie<'a>>,
+)> {
     let session_id = uuid::Uuid::new_v4().to_string();
 
     let (access_token, access_token_encoded, access_cookie, csrf_access_cookie) =
@@ -155,11 +154,12 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         None
     };
 
-    let refresh_token_encoded: Option<String> = if let Some(refresh_token) = refresh_token.as_ref() {
+    let refresh_token_encoded: Option<String> = if let Some(refresh_token) = refresh_token.as_ref()
+    {
         Some(
             refresh_token
                 .encode(conf)
-                .map_err(|e| errors::internal_server_error::generic_error(e.to_string()))?,
+                .map_err(|e| errors::auth_errors::jwt_encode_error().with_internal_detail(e.to_string()))?,
         )
     } else {
         None
@@ -205,7 +205,14 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
             None
         };
 
-    add_to_store(tenant_id, &access_token, refresh_token.as_ref(), req, session_store).await?;
+    add_to_store(
+        tenant_id,
+        &access_token,
+        refresh_token.as_ref(),
+        req,
+        session_store,
+    )
+    .await?;
 
     let result = (
         DefaultLoginResponse {
@@ -252,13 +259,11 @@ pub async fn refresh_auth_tokens_and_response<'a, T, S: SessionStore>(
     tenant_id: &'a str,
     req: HttpRequest,
     session_store: Option<Arc<S>>,
-) -> CornettiResult<
-    (
-        RefreshAuthResponse<T>,
-        Option<Cookie<'a>>,
-        Option<Cookie<'a>>,
-    ),
-> {
+) -> CornettiResult<(
+    RefreshAuthResponse<T>,
+    Option<Cookie<'a>>,
+    Option<Cookie<'a>>,
+)> {
     let identity = claims.sub;
     let session_id = claims.session_id;
 
@@ -302,7 +307,9 @@ pub async fn invalidate_session<'a, S: SessionStore>(
     tenant_id: &str,
 ) -> CornettiResult<Vec<&'a str>> {
     if let Some(store) = session_store {
-        store.remove_session(tenant_id, &identity, &session_id).await?;
+        store
+            .remove_session(tenant_id, &identity, &session_id)
+            .await?;
     }
     let mut cookie_rem: Vec<&str> = Vec::new();
 

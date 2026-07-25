@@ -1,5 +1,6 @@
+use crate::errors::bad_request;
+
 use crate::core::{
-    errors::bad_request,
     models::CornettiResult,
     pagination::{
         FilterNode, FilterOperator, FilterValue, GroupOperator, LoadOptions, PaginationAdapter,
@@ -91,7 +92,7 @@ impl DevExtremeJsonAdapter {
     ) -> CornettiResult<(Vec<SortDescriptor>, Vec<SortDescriptor>)> {
         let arr = json
             .as_array()
-            .ok_or_else(|| bad_request::validation_error("sort deve essere un array".into()))?;
+            .ok_or_else(|| bad_request::validation_error().with_internal_detail("sort must be an array"))?;
 
         let mut standard = Vec::new();
         let mut custom = Vec::new();
@@ -101,7 +102,7 @@ impl DevExtremeJsonAdapter {
                 .get("selector")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    bad_request::validation_error("sort: manca campo 'selector'".into())
+                    bad_request::validation_error().with_internal_detail("sort: missing 'selector' field")
                 })?;
 
             let desc = item.get("desc").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -118,8 +119,8 @@ impl DevExtremeJsonAdapter {
             } else if self.custom_attributes.contains(&field) {
                 custom.push(SortDescriptor { field, direction });
             } else {
-                return Err(bad_request::validation_error(format!(
-                    "Campo di ordinamento non consentito: {}",
+                return Err(                bad_request::validation_error().with_internal_detail(format!(
+                    "Sort field not allowed: {}",
                     field
                 )));
             }
@@ -128,7 +129,7 @@ impl DevExtremeJsonAdapter {
         Ok((standard, custom))
     }
 
-    /// Fallback: parsifica sort da stringhe comma-delimited.
+    /// Fallback: parse sort from comma-delimited strings.
     fn parse_sort_strings(
         &self,
         strings: &[String],
@@ -139,8 +140,8 @@ impl DevExtremeJsonAdapter {
         for raw in strings {
             let parts: Vec<&str> = raw.split(',').collect();
             if parts.len() != 2 {
-                return Err(bad_request::validation_error(format!(
-                    "Formato ordinamento non valido: {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Invalid sort format: {}",
                     raw
                 )));
             }
@@ -149,8 +150,8 @@ impl DevExtremeJsonAdapter {
                 "asc" => SortDirection::Asc,
                 "desc" => SortDirection::Desc,
                 other => {
-                    return Err(bad_request::validation_error(format!(
-                        "Direzione ordinamento non valida: {}",
+                    return Err(bad_request::validation_error().with_internal_detail(format!(
+                        "Invalid sort direction: {}",
                         other
                     )));
                 }
@@ -161,8 +162,8 @@ impl DevExtremeJsonAdapter {
             } else if self.custom_attributes.contains(&field) {
                 custom.push(SortDescriptor { field, direction });
             } else {
-                return Err(bad_request::validation_error(format!(
-                    "Campo di ordinamento non consentito: {}",
+                return Err(bad_request::validation_error().with_internal_detail(format!(
+                    "Sort field not allowed: {}",
                     field
                 )));
             }
@@ -173,7 +174,7 @@ impl DevExtremeJsonAdapter {
 
     // ─── Filter ──────────────────────────────────────────────────────
 
-    /// Parsifica filtro da JSON DevExtreme nativo (array ricorsivo).
+    /// Parse filter from native DevExtreme JSON (recursive array).
     fn parse_filter_json(
         &self,
         json: &Value,
@@ -199,12 +200,12 @@ impl DevExtremeJsonAdapter {
         Ok((filter, custom))
     }
 
-    /// Parsifica ricorsivamente un Value in FilterNode.
+    /// Recursively parse a Value into FilterNode.
     ///
-    /// Formato DevExtreme:
+    /// DevExtreme format:
     /// - Binary: `["field", "op", value]`
     /// - Unary NOT: `["!", [...]]`
-    /// - Complex: `[[...], "and", [...]]` o `[[...], "or", [...]]`
+    /// - Complex: `[[...], "and", [...]]` or `[[...], "or", [...]]`
     fn parse_filter_value(
         &self,
         val: &Value,
@@ -213,9 +214,8 @@ impl DevExtremeJsonAdapter {
         let arr = match val.as_array() {
             Some(a) => a,
             None => {
-                return Err(bad_request::validation_error(
-                    "Filtro deve essere un array".into(),
-                ))
+                return Err(bad_request::validation_error()
+                    .with_internal_detail("Filter must be an array"))
             }
         };
 
@@ -259,7 +259,7 @@ impl DevExtremeJsonAdapter {
                         children.push(node);
                     }
                 }
-                // Indici dispari sono operatori (già letto il primo)
+                // Odd indices are operators (first already read)
             }
 
             if children.is_empty() {
@@ -273,13 +273,13 @@ impl DevExtremeJsonAdapter {
             }));
         }
 
-        Err(bad_request::validation_error(format!(
-            "Formato filtro JSON non riconosciuto: {}",
+        Err(bad_request::validation_error().with_internal_detail(format!(
+            "Unrecognized JSON filter format: {}",
             val
         )))
     }
 
-    /// Costruisce un Leaf da JSON, gestendo la separazione standard/custom.
+    /// Build a Leaf from JSON, handling standard/custom separation.
     fn build_leaf_from_json(
         &self,
         field: &str,
@@ -289,7 +289,7 @@ impl DevExtremeJsonAdapter {
     ) -> CornettiResult<Option<FilterNode>> {
         let value = FilterValue::from_json(json_value);
         let operator = FilterOperator::parse_operator(op).ok_or_else(|| {
-            bad_request::validation_error(format!("Operatore filtro non valido: {}", op))
+            bad_request::validation_error().with_internal_detail(format!("Invalid filter operator: {}", op))
         })?;
 
         let node = FilterNode::Leaf {
@@ -304,8 +304,8 @@ impl DevExtremeJsonAdapter {
             custom_out.push(node);
             Ok(None)
         } else {
-            Err(bad_request::validation_error(format!(
-                "Campo filtro non consentito: {}",
+            Err(bad_request::validation_error().with_internal_detail(format!(
+                "Filter field not allowed: {}",
                 field
             )))
         }
@@ -313,7 +313,7 @@ impl DevExtremeJsonAdapter {
 
     // ─── Search ──────────────────────────────────────────────────────
 
-    /// Costruisce FilterNode da searchExpr/searchOperation/searchValue.
+    /// Build FilterNode from searchExpr/searchOperation/searchValue.
     fn build_search_filter(
         &self,
         search_expr: Option<&[String]>,
@@ -363,6 +363,7 @@ mod tests {
         FilterNode, FilterOperator, FilterValue, GroupOperator, PaginationAdapter,
         RawPaginationInput, SortDirection,
     };
+    use crate::core::http_status::HttpStatus;
     use std::collections::HashSet;
 
     fn make_adapter() -> DevExtremeJsonAdapter {
@@ -422,7 +423,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -445,7 +446,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -456,7 +457,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -491,7 +492,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -502,7 +503,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     // Filter JSON: binary
@@ -653,7 +654,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -664,7 +665,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -675,7 +676,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -731,7 +732,7 @@ mod tests {
             ..Default::default()
         };
         let err = adapter.adapt(&raw).unwrap_err();
-        assert_eq!(err.status, 400);
+        assert_eq!(err.status, HttpStatus::BadRequest);
     }
 
     #[test]

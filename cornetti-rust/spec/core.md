@@ -10,10 +10,23 @@ modules in the framework. Every public API depends on `CornettiError` and `Corne
 ### Requirement: Unified error model
 
 The system SHALL represent all fallible API outcomes through a single `CornettiError` type
-carrying an HTTP status code and a textual detail. Every public function that can fail MUST
-return `CornettiResult<T>`.
+carrying an HTTP status code (`HttpStatus` enum), a human-readable detail string, and a
+unique correlation ID (`corr_id`). Every public function that can fail MUST return
+`CornettiResult<T>`.
 
-See `CornettiError` and `CornettiResult<T>` in `src/core/models.rs` for the type definitions.
+The error SHALL carry an optional `log_level` and an `internal_detail` string (not serialized
+in API responses) for server-side diagnostics. The `write_log()` method SHALL emit a
+structured `tracing` event at the configured log level, including the status code,
+correlation ID, and internal detail as fields.
+
+See `CornettiError` and `CornettiResult<T>` in `src/core/models.rs`. The `HttpStatus` enum is
+at `src/core/http_status.rs`.
+
+#### Scenario: Error carries structured diagnostics
+- WHEN a `CornettiError` is created with `log_level: Some(tracing::Level::ERROR)`
+- THEN calling `write_log()` SHALL emit a `tracing::error!` event with the status,
+  `corr_id`, and `internal_detail` as structured fields
+- AND when `log_level` is `None`, `write_log()` SHALL NOT emit any event
 
 #### Scenario: Error conversion from external types
 - WHEN a library-specific error (serde_json, IO, validation, MongoDB, Redis, SQLx, gRPC)
@@ -23,21 +36,63 @@ See `CornettiError` and `CornettiResult<T>` in `src/core/models.rs` for the type
 - AND the conversion from `validator::ValidationErrors` SHALL produce status 400
 - AND the conversion from `std::io::Error` SHALL produce status 500
 
-### Requirement: HTTP status code error factories
+### Requirement: HTTP status code enumeration
 
-The system SHALL provide factory functions organized by HTTP status family (400, 401, 403,
-404, 405, 409, 500) that produce `CornettiError` values with standard detail messages.
+The system SHALL represent all HTTP status codes as an exhaustive `HttpStatus` enum
+in `src/core/http_status.rs`. `from_u16` SHALL accept codes in the range 100–511,
+returning `None` for out-of-range values. `From<u16> for HttpStatus` SHALL panic on
+invalid codes. Serialization via `serde` SHALL use the numeric code.
 
-See `src/core/errors.rs` for all factory modules.
+#### Scenario: Valid code round-trip
+- WHEN `HttpStatus::from_u16(404)` is called
+- THEN `Some(HttpStatus::NotFound)` SHALL be returned
+- AND `HttpStatus::NotFound.as_u16()` SHALL return 404
 
-#### Scenario: Creating a validation error
-- WHEN a consumer calls `core::errors::bad_request::validation_error("field X required")`
-- THEN a `CornettiError` with status 400 and detail prefixed with "Validation error: " SHALL
-  be returned
+#### Scenario: Invalid code rejected
+- WHEN `HttpStatus::from_u16(999)` is called
+- THEN `None` SHALL be returned
 
-#### Scenario: Creating an authentication error
-- WHEN a consumer calls `core::errors::authentication::invalid_credentials()`
-- THEN a `CornettiError` with status 401 and detail "Invalid credentials" SHALL be returned
+### Requirement: Centralized error factory system
+
+The system SHALL define error categories through the `define_errors!` proc macro in
+`cornetti_macros`, which reads DSL definitions from `src/errors/`. Each category
+(e.g. `bad_request`, `not_found`, `internal_server_error`) SHALL generate a Rust
+module containing zero-argument factory functions that return a `CornettiError` pre-filled
+with status, detail, and correlation ID (format `BE_{VARIANT_NAME}`).
+
+Factory functions marked with `*` (e.g. `*validation_error`) SHALL set `internal_detail`
+equal to the detail message (placeholder, expecting the caller to overwrite it with
+`.with_internal_detail(...)`). Unmarked functions SHALL set `internal_detail` to the
+detail message directly. The `with_internal_detail(msg)` builder method SHALL replace
+the `internal_detail` field.
+
+The system SHALL provide an `error_catalog()` function returning a `Vec<CornettiError>`
+of all defined errors. The `export_errors_json!` macro SHALL generate a
+`server-errors.json` file mapping correlation IDs to detail messages at compile time.
+
+See `cornetti/src/errors/mod.rs` and the DSL files under `cornetti/src/errors/`.
+
+#### Scenario: Creating an error with diagnostic context
+- WHEN a consumer calls `crate::errors::bad_request::validation_error()`
+- THEN a `CornettiError` with status 400, detail "Validation error", and
+  corr_id "BE_VALIDATION_ERROR" SHALL be returned
+- AND `internal_detail` SHALL be "Validation error" (placeholder from `*` prefix)
+
+#### Scenario: Adding internal detail to an error
+- WHEN a consumer calls `errors::internal_server_error::generic_error().with_internal_detail("connection lost")`
+- THEN the returned `CornettiError` SHALL have `internal_detail` set to "connection lost"
+- AND the `detail` field SHALL remain "Internal server error"
+
+#### Scenario: Creating an error without diagnostic override
+- WHEN a consumer calls `errors::authorization::forbidden()`
+- THEN a `CornettiError` with status 403, detail "Forbidden", and
+  corr_id "BE_FORBIDDEN" SHALL be returned
+- AND `internal_detail` SHALL be "Forbidden" (no `*` prefix, set as-is)
+
+#### Scenario: Error catalog completeness
+- WHEN `error_catalog()` is called
+- THEN a `Vec<CornettiError>` containing every error variant SHALL be returned
+- AND every entry SHALL have a non-empty `corr_id` and `detail`, and a non-zero status
 
 ### Requirement: Routing filter model
 

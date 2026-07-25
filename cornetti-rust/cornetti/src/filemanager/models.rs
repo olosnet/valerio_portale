@@ -146,7 +146,7 @@ pub mod images {
                 "jpeg" | "jpg" | "image/jpeg" => ImageFormat::Jpeg,
                 "webp" | "image/webp" | "application/x-riff" => ImageFormat::Webp,
                 _ => {
-                    log::error!("Can't recognize image format: {}", format);
+                    tracing::error!("Can't recognize image format: {}", format);
                     ImageFormat::Unknown
                 }
             }

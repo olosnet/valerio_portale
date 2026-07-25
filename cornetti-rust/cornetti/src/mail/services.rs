@@ -7,7 +7,7 @@ use crate::{
     },
 };
 #[cfg(not(feature = "mail-gmail"))]
-use crate::core::models::CornettiError;
+use crate::errors::mail;
 use lettre::message::header::ContentType;
 
 #[cfg(feature = "mail-gmail")]
@@ -47,10 +47,8 @@ impl MailService {
                 }
                 #[cfg(not(feature = "mail-gmail"))]
                 {
-                    return Err(CornettiError {
-                        status: 500,
-                        detail: "Gmail provider requires the 'gmail' feature".to_string(),
-                    });
+                    return Err(mail::missing_mail_feature()
+                        .with_internal_detail("Gmail provider requires the 'gmail' feature"));
                 }
             }
         };

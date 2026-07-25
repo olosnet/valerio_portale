@@ -226,7 +226,7 @@ impl SqlxPagination {
     }
 }
 
-/// Raccoglie tutti i nomi campo da un FilterNode (ricorsivo).
+/// Collect all field names from a FilterNode (recursive).
 fn collect_filter_fields(node: &FilterNode, fields: &mut HashSet<String>) {
     match node {
         FilterNode::Leaf { field, .. } => {
@@ -243,10 +243,10 @@ fn collect_filter_fields(node: &FilterNode, fields: &mut HashSet<String>) {
     }
 }
 
-/// Risolve il nome qualificato di una colonna SQL.
+/// Resolve the qualified SQL column name.
 ///
-/// Se il campo è nel join_dict, restituisce `target_entity.target_field`.
-/// Altrimenti `table.field`.
+/// If the field is in join_dict, returns `target_entity.target_field`.
+/// Otherwise `table.field`.
 fn resolve_column(field: &str, table: &str, join_dict: &HashMap<String, JoinEntry>) -> String {
     if let Some(entry) = join_dict.get(field) {
         format!("{}.{}", entry.target_entity, entry.target_field)
@@ -255,10 +255,10 @@ fn resolve_column(field: &str, table: &str, join_dict: &HashMap<String, JoinEntr
     }
 }
 
-/// Genera l'espressione SQL per una foglia di filtro.
+/// Generate the SQL expression for a filter leaf.
 ///
-/// Gestisce operatori booleani (IS TRUE / IS FALSE), NULL, LIKE e confronti
-/// standard. I valori stringa vengono escapati (singolo apice raddoppiato).
+/// Handles boolean operators (IS TRUE / IS FALSE), NULL, LIKE and standard
+/// comparisons. String values are escaped (single quotes doubled).
 fn leaf_sql(column: &str, operator: FilterOperator, value: &FilterValue) -> String {
     match operator {
         FilterOperator::Contains => {
@@ -296,7 +296,7 @@ fn leaf_sql(column: &str, operator: FilterOperator, value: &FilterValue) -> Stri
     }
 }
 
-/// Converte un FilterValue in un letterale SQL.
+/// Convert a FilterValue into an SQL literal.
 fn sql_literal(value: &FilterValue) -> String {
     match value {
         FilterValue::Integer(n) => n.to_string(),

@@ -554,10 +554,8 @@ impl GrpcClientConf {
 }
 
 fn grpc_config_error(detail: impl Into<String>) -> CornettiError {
-    CornettiError {
-        status: 500,
-        detail: format!("gRPC configuration error: {}", detail.into()),
-    }
+    crate::errors::grpc::grpc_config_error()
+        .with_internal_detail(detail.into())
 }
 
 #[cfg(feature = "grpc-tls")]

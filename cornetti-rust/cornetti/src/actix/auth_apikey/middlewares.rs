@@ -104,21 +104,21 @@ pub mod authentication {
             let header_name = auth_conf.header_name.as_str();
 
             let header_value = req.headers().get(header_name).ok_or_else(|| {
-                errors::authentication::custom_error_message(format!(
+                errors::authentication::custom_auth_error().with_internal_detail(format!(
                     "Missing {} header",
                     header_name
                 ))
             })?;
 
             let header_value = header_value.to_str().map_err(|_| {
-                errors::authentication::custom_error_message(format!(
+                errors::authentication::custom_auth_error().with_internal_detail(format!(
                     "Invalid {} header",
                     header_name
                 ))
             })?;
 
             if header_value.trim().is_empty() {
-                return Err(errors::authentication::custom_error_message(format!(
+                return Err(errors::authentication::custom_auth_error().with_internal_detail(format!(
                     "Invalid {} header",
                     header_name
                 )));

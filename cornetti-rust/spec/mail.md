@@ -84,11 +84,16 @@ See `SendGmailMailService` in `src/mail/gmail/services.rs`.
 
 ### Requirement: Error conversion
 
-SMTP errors (`lettre::Error`, `AddressError`, `smtp::Error`) SHALL be converted to
-`CornettiError` with appropriate status codes: general lettre errors → 500,
-address errors → 409, SMTP transport errors → 500.
+SMTP and mail errors SHALL be converted to `CornettiError` via the centralized error
+factory system (`errors::mail`):
+- `lettre::error::Error` → `errors::mail::mail_error()` (500)
+- `lettre::address::AddressError` → `errors::mail::mail_address_error()` (409)
+- `lettre::transport::smtp::Error` → `errors::mail::smtp_transport_error()` (500)
+- Missing `mail-gmail` feature → `errors::mail::missing_mail_feature()` (500)
 
-See `src/mail/smtp/errors.rs`.
+All conversions SHALL populate `internal_detail` with the original error string.
+
+See `src/mail/smtp/adapters.rs` and `src/mail/services.rs`.
 
 #### Scenario: Invalid email address
 - WHEN sending to a malformed email address

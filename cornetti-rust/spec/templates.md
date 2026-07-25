@@ -27,7 +27,8 @@ See `TemplatesService` in `src/templates/services.rs`.
 
 #### Scenario: Minijinja error conversion
 - WHEN a `minijinja::Error` is converted to `CornettiError`
-- THEN it SHALL produce a 500 error with the rendering error in detail
+- THEN it SHALL produce a 500 error via `errors::templates::template_rendering_error()`
+- AND the original error SHALL be stored in `internal_detail`
 
 ### Requirement: Configuration
 

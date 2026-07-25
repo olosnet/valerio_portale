@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Provides MongoDB integration: connection management, a custom `CornettiObjectId` wrapper
-with human-readable serialization, base traits for models and modules, error conversion
+Provides MongoDB integration: connection management, a `CornettiObjectId` type alias
+for `bson::oid::ObjectId` with serde helpers for human-readable serialization, base traits
+for models and modules including `TryMergeFrom` for DTO-to-model merging, error conversion
 with transient detection, and helpers for indexes and decimal conversions.
 
 Requires the `mongo` feature.
@@ -26,22 +27,26 @@ See `MongoDBService` in `src/mongo/services.rs`.
 - WHEN both username and password are provided
 - THEN the URI SHALL include credentials and `authSource`/`authMechanism` parameters
 
-### Requirement: CornettiObjectId wrapper
+### Requirement: CornettiObjectId type alias
 
-`CornettiObjectId` SHALL wrap MongoDB's `ObjectId`. In human-readable formats (JSON),
-it SHALL serialize as a 24-character hex string. In binary formats (BSON), it SHALL
-serialize as the native `ObjectId`. Deserialization of invalid hex strings SHALL
-produce a default `ObjectId`.
+`CornettiObjectId` SHALL be a type alias for `bson::oid::ObjectId`, provided for backward
+compatibility. Consumers SHOULD prefer `bson::oid::ObjectId` directly. Parsing from a hex
+string SHALL use the standalone `parse_object_id()` function, which SHALL return a
+`Result` and SHALL NOT silently default on invalid input.
 
-See `CornettiObjectId` in `src/mongo/types.rs`.
+See `CornettiObjectId` and `parse_object_id` in `src/mongo/types.rs`.
 
-#### Scenario: JSON serialization
-- WHEN a `CornettiObjectId` is serialized to JSON
-- THEN the output SHALL be a hex string
+#### Scenario: Type alias resolves to ObjectId
+- WHEN a consumer uses `CornettiObjectId` in a type position
+- THEN it SHALL be semantically identical to `bson::oid::ObjectId`
 
-#### Scenario: Invalid hex deserialization from `&str`
-- WHEN `CornettiObjectId::from("not-a-valid-oid")` is called
-- THEN a new default `ObjectId` SHALL be returned (no error)
+#### Scenario: Valid hex parsing succeeds
+- WHEN `parse_object_id` is called with a valid 24-character hex string
+- THEN an `Ok(ObjectId)` SHALL be returned
+
+#### Scenario: Invalid hex parsing returns error
+- WHEN `parse_object_id` is called with an invalid hex string
+- THEN an `Err(bson::error::Error)` SHALL be returned
 
 ### Requirement: Base model traits
 
@@ -54,6 +59,26 @@ See `src/mongo/traits.rs`.
 #### Scenario: Model touch
 - WHEN `touch()` is called on a `MongoBaseModel`
 - THEN the `modified` timestamp SHALL be updated to the current time
+
+### Requirement: DTO-to-Model merge via TryMergeFrom
+
+The `TryMergeFrom<T>` trait SHALL provide a method for merging an update DTO into a
+Mongo model loaded from the database. Only fields present in the DTO SHALL be
+overwritten; fields not in the DTO (e.g. `_id`, `created`, `default`) SHALL be
+preserved from the database-loaded model. Implementations SHALL return `Ok(())` on
+successful merge, or a `CornettiError` if a field cannot be converted (e.g. an
+invalid ObjectId hex string).
+
+See `TryMergeFrom` in `src/mongo/traits.rs`.
+
+#### Scenario: Successful merge overwrites DTO fields
+- WHEN `try_merge_from` is called with an update DTO containing names and descriptions
+- THEN the model's corresponding fields SHALL be updated to the DTO values
+- AND fields not present in the DTO (`_id`, `created`, etc.) SHALL remain unchanged
+
+#### Scenario: Infallible merge returns Ok
+- WHEN an implementation performs only infallible field assignments (no ObjectId parsing)
+- THEN `try_merge_from` SHALL return `Ok(())`
 
 ### Requirement: Module registration and migration
 
@@ -79,7 +104,10 @@ MongoDB errors SHALL be classified as:
 - **Transient** (I/O, connection pool cleared, server selection, retryable labels) → 503
 - **All others** → 500. BSON errors SHALL always produce 400.
 
-See `src/mongo/errors.rs`.
+Errors are constructed via the centralized error factory system (`errors::mongo`,
+`errors::conflict`), with `internal_detail` set to the original error string.
+
+See `src/mongo/adapters.rs`.
 
 #### Scenario: Duplicate key produces conflict
 - WHEN a MongoDB write fails with error code 11000
@@ -89,11 +117,12 @@ See `src/mongo/errors.rs`.
 - WHEN `is_transient_mongo_error` is called on a connection pool cleared error
 - THEN it SHALL return `true`
 
-### Requirement: Optional ObjectId serde helpers
+### Requirement: ObjectId serde helpers
 
 The system SHALL provide serde helpers in `optional_objectid_as_human_readable` and
-`vec_objectid_as_human_readable` that serialize `Option<CornettiObjectId>` and
-`Vec<CornettiObjectId>` as hex strings.
+`vec_objectid_as_human_readable` that serialize `Option<ObjectId>` and
+`Vec<ObjectId>` as hex strings in human-readable formats. Deserialization of invalid
+hex strings SHALL return an error rather than silently producing a default value.
 
 See `src/mongo/serde.rs`.
 

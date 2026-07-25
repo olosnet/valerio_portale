@@ -112,16 +112,16 @@ pub trait MongoBaseModule: BaseModule {
             match collection.update_one(filter, module).upsert(true).await {
                 Ok(_) => {
                     if current_version != module_version {
-                        log::info!(
+                        tracing::info!(
                             "Registration of {module_name} module, version: {module_version}, was successful"
                         );
                     } else {
-                        log::info!("Module {module_name}, version: {module_version}");
+                        tracing::info!("Module {module_name}, version: {module_version}");
                     }
                     Ok(())
                 }
                 Err(e) => {
-                    log::error!("Error in module registration: {e}");
+                    tracing::error!("Error in module registration: {e}");
                     Err(e)
                 }
             }

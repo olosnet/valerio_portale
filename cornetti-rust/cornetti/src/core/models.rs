@@ -6,6 +6,8 @@ use std::{
 };
 use utoipa::ToSchema;
 
+use crate::core::http_status::HttpStatus;
+
 /// Default tenant identifier used when no explicit tenant is configured.
 pub const DEFAULT_TENANT_ID: &str = "DEFAULT";
 
@@ -16,22 +18,87 @@ pub const DEFAULT_TENANT_ID: &str = "DEFAULT";
 /// # Example
 ///
 /// ```rust
-/// use cornetti::core::models::CornettiError;
+/// use cornetti::core::{http_status::HttpStatus, models::CornettiError};
 ///
-/// let err = CornettiError { status: 404, detail: "Item not found".into() };
-/// assert_eq!(err.status, 404);
+/// let err = CornettiError { status: HttpStatus::NotFound, detail: "Item not found".into(), corr_id: "BE_ITEM_NOT_FOUND".into(), log_level: None, internal_detail: String::new() };
+/// assert_eq!(err.status, HttpStatus::NotFound);
 /// ```
 #[derive(Serialize, ToSchema, Debug)]
 pub struct CornettiError {
     /// HTTP status code.
-    pub status: u16,
+    #[schema(value_type = u16)]
+    pub status: HttpStatus,
     /// Human-readable error detail.
     pub detail: String,
+    /// Unique correlation ID for tracing the error across services.
+    pub corr_id: String,
+
+    #[serde(skip)]
+    pub log_level: Option<tracing::Level>,
+    #[serde(skip)]
+    pub internal_detail: String,
+}
+
+impl CornettiError {
+    pub fn with_internal_detail(mut self, msg: impl Into<String>) -> Self {
+        self.internal_detail = msg.into();
+        self
+    }
+
+    pub fn with_log_level(mut self, level: tracing::Level) -> Self {
+        self.log_level = Some(level);
+        self
+    }
+
+    pub fn with_status(mut self, status: HttpStatus) -> Self {
+        self.status = status;
+        self
+    }
+
+    pub fn write_log(&self) {
+        let Some(level) = self.log_level else {
+            return;
+        };
+
+        let status = self.status.as_u16();
+        match level {
+            tracing::Level::ERROR => tracing::error!(
+                status,
+                corr_id = self.corr_id,
+                internal_detail = self.internal_detail,
+                "CornettiError"
+            ),
+            tracing::Level::WARN => tracing::warn!(
+                status,
+                corr_id = self.corr_id,
+                internal_detail = self.internal_detail,
+                "CornettiError"
+            ),
+            tracing::Level::INFO => tracing::info!(
+                status,
+                corr_id = self.corr_id,
+                internal_detail = self.internal_detail,
+                "CornettiError"
+            ),
+            tracing::Level::DEBUG => tracing::debug!(
+                status,
+                corr_id = self.corr_id,
+                internal_detail = self.internal_detail,
+                "CornettiError"
+            ),
+            tracing::Level::TRACE => tracing::trace!(
+                status,
+                corr_id = self.corr_id,
+                internal_detail = self.internal_detail,
+                "CornettiError"
+            ),
+        }
+    }
 }
 
 impl Display for CornettiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "CornettiError with status: {}", self.status)
+        write!(f, "CornettiError with status: {}", self.status.as_u16())
     }
 }
 
@@ -210,8 +277,11 @@ mod tests {
     #[test]
     fn cornetti_error_display() {
         let err = CornettiError {
-            status: 400,
-            detail: "errore".into(),
+            status: HttpStatus::BadRequest,
+            detail: "error".into(),
+            corr_id: "BE_TEST".into(),
+            log_level: None,
+            internal_detail: String::new(),
         };
         assert_eq!(format!("{}", err), "CornettiError with status: 400");
     }
@@ -219,16 +289,19 @@ mod tests {
     #[test]
     fn cornetti_error_display_404() {
         let err = CornettiError {
-            status: 404,
-            detail: "non trovato".into(),
+            status: HttpStatus::NotFound,
+            detail: "not found".into(),
+            corr_id: "BE_TEST".into(),
+            log_level: None,
+            internal_detail: String::new(),
         };
         assert_eq!(format!("{}", err), "CornettiError with status: 404");
     }
 
     #[test]
     fn cornetti_generic_response_new() {
-        let resp = CornettiGenericResponse::new("Operazione completata".into());
-        assert_eq!(resp.message, "Operazione completata");
+        let resp = CornettiGenericResponse::new("Operation completed".into());
+        assert_eq!(resp.message, "Operation completed");
     }
 
     #[test]
@@ -282,7 +355,10 @@ mod tests {
 
     #[test]
     fn http_method_from_str_delete() {
-        assert_eq!(CornettiHttpMethod::from("DELETE"), CornettiHttpMethod::DELETE);
+        assert_eq!(
+            CornettiHttpMethod::from("DELETE"),
+            CornettiHttpMethod::DELETE
+        );
     }
 
     #[test]
@@ -292,7 +368,10 @@ mod tests {
 
     #[test]
     fn http_method_from_str_options() {
-        assert_eq!(CornettiHttpMethod::from("OPTIONS"), CornettiHttpMethod::OPTIONS);
+        assert_eq!(
+            CornettiHttpMethod::from("OPTIONS"),
+            CornettiHttpMethod::OPTIONS
+        );
     }
 
     #[test]
@@ -318,10 +397,8 @@ mod tests {
     // CornettiHttpFilter::Match
     #[test]
     fn filter_match_path_match_exact() {
-        let filter = CornettiHttpFilter::Match(
-            "/api/test".to_string(),
-            Arc::new([CornettiHttpMethod::GET]),
-        );
+        let filter =
+            CornettiHttpFilter::Match("/api/test".to_string(), Arc::new([CornettiHttpMethod::GET]));
         assert!(filter.path_match("/api/test".to_string()));
         assert!(!filter.path_match("/api/other".to_string()));
     }
@@ -416,10 +493,7 @@ mod tests {
 
     #[test]
     fn filter_starts_with_empty_arc() {
-        let filter = CornettiHttpFilter::StartsWith(
-            "/api".to_string(),
-            Arc::new([]),
-        );
+        let filter = CornettiHttpFilter::StartsWith("/api".to_string(), Arc::new([]));
         assert!(!filter.method_match(CornettiHttpMethod::GET));
         assert!(!filter.rule_match("/api/test".to_string(), CornettiHttpMethod::GET));
     }

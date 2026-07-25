@@ -1,6 +1,6 @@
 #![doc = include_str!("../../../spec/actix.md")]
 
-pub mod errors;
+pub mod adapters;
 pub mod models;
 pub mod pagination;
 

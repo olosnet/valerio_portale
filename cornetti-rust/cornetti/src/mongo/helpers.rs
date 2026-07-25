@@ -36,7 +36,7 @@ pub async fn init_mongo_modules(mongo: &MongoDBService) -> Result<(), mongodb::e
         .collection::<mongodb::bson::Document>(collection_name);
     let indexes = get_collection_indexes(collection.clone()).await;
 
-    log::info!("Create {} indexes...", collection_name);
+    tracing::info!("Create {} indexes...", collection_name);
 
     if !indexes.contains(&"module_name_idx".to_string()) {
         let keys = doc! { "module_name": 1 };

@@ -32,7 +32,10 @@ See `RedisDBService` in `src/redis/services.rs`.
 Redis errors SHALL be classified as transient (I/O, cluster connection not found,
 BUSYLOADING, TRYAGAIN, CLUSTERDOWN, MASTERDOWN) → 503, or generic → 500.
 
-See `src/redis/errors.rs`.
+Errors are constructed via the centralized error factory system (`errors::redis`),
+with `internal_detail` set to the original error string.
+
+See `src/redis/adapters.rs`.
 
 #### Scenario: Transient Redis error
 - WHEN `is_transient_redis_error` is called on a BUSYLOADING error

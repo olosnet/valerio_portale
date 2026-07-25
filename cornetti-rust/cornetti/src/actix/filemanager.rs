@@ -66,7 +66,7 @@ pub mod services {
             let filesize = upload_form.file.size;
 
             if filesize > self.conf.max_file_size {
-                return Err(crate::core::errors::bad_request::file_too_large());
+                return Err(crate::errors::bad_request::file_too_large());
             }
 
             let file_path: &std::path::Path = upload_form.file.file.path();
@@ -277,7 +277,7 @@ pub mod services {
                 let filesize: usize = upload_form.file.size;
 
                 if filesize > self.conf.max_file_size {
-                    return Err(crate::core::errors::bad_request::file_too_large());
+                    return Err(crate::errors::bad_request::file_too_large());
                 }
 
                 let file_path: &std::path::Path = upload_form.file.file.path();
@@ -316,13 +316,13 @@ pub mod services {
 
                 let (image_data, image_format) =
                     open_image(&uploaded_source_file_path, &image_format).map_err(|e| {
-                        crate::core::errors::internal_server_error::generic_error(format!(
+                        crate::errors::filemanager_errors::image_processing_error().with_internal_detail(format!(
                             "Error opening image: {}",
                             e
                         ))
                     })?;
 
-                log::debug!(
+                tracing::debug!(
                     "Image opened successfully: {}x{} with mode {:?}",
                     image_data.width,
                     image_data.height,
@@ -330,7 +330,7 @@ pub mod services {
                 );
 
                 for resize in &self.resizes {
-                    log::debug!(
+                    tracing::debug!(
                         "Resizing image: {} to {}x{} with quality {:?} and mode {:?}",
                         main_filename,
                         resize.width,
@@ -359,7 +359,7 @@ pub mod services {
                         resize,
                     )
                     .map_err(|e| {
-                        crate::core::errors::internal_server_error::generic_error(format!(
+                        crate::errors::filemanager_errors::image_processing_error().with_internal_detail(format!(
                             "Error resizing image: {}",
                             e
                         ))

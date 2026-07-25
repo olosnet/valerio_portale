@@ -1,6 +1,7 @@
 #![doc = include_str!("../../README.md")]
 
 pub mod core;
+pub mod errors;
 
 #[cfg(feature = "filemanager")]
 pub mod filemanager;

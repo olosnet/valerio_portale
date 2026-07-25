@@ -1,7 +1,7 @@
 use cornetti::core::traits::{BaseModel, To};
 use cornetti_macros::{AutoFromPartial, AutoToFull};
 
-// Struct per test AutoFromPartial
+// Struct for AutoFromPartial test
 struct PartialUser {
     name: String,
     age: i32,
@@ -41,7 +41,7 @@ fn auto_from_partial_with_strings() {
     assert_eq!(full.age, 0);
 }
 
-// Struct per test AutoToFull
+// Struct for AutoToFull test
 #[derive(AutoToFull, Debug)]
 #[to_full(FullModel)]
 struct PartialModel {
@@ -94,7 +94,7 @@ fn auto_to_full_partial_overwrites_empty() {
     assert_eq!(full.age, 99);
 }
 
-// Test con valori di default specificati via attributo #[new]
+// Test with default values specified via #[new] attribute
 #[derive(AutoToFull, Debug)]
 #[to_full(FullModelWithDefaults)]
 #[new(active = false)]
@@ -130,5 +130,5 @@ fn auto_to_full_with_defaults() {
     };
     let full: FullModelWithDefaults = partial.to();
     assert_eq!(full.name, "DefaultUser");
-    assert!(!full.active); // sovrascritto da #[new(active = false)]
+    assert!(!full.active); // overridden by #[new(active = false)]
 }

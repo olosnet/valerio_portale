@@ -1,6 +1,5 @@
-use crate::core::errors;
-use crate::core::errors::bad_request::validation_error;
-use crate::core::errors::internal_server_error::generic_error;
+use crate::errors;
+use crate::errors::{bad_request::validation_error, filemanager_errors};
 use crate::core::helpers::common;
 use crate::core::models::CornettiResult;
 use crate::filemanager::confs::FileManagerConf;
@@ -17,7 +16,7 @@ pub fn get_filestem_extension(path: &Path) -> CornettiResult<(String, String)> {
     let file_stem = path
         .file_stem()
         .and_then(|stem| stem.to_str().map(|s| s.to_string()))
-        .ok_or_else(|| validation_error("File stem not found".into()))?;
+        .ok_or_else(|| validation_error().with_internal_detail("File stem not found"))?;
 
     let extension = path
         .extension()
@@ -56,20 +55,20 @@ pub fn generate_random_filepathbuf(
     let max = max.unwrap_or(15);
     let mut max_attempts = max_attempts.unwrap_or(20);
 
-    // Ottieni timestamp corrente
+    // Get current timestamp
     let timestamp = chrono::Utc::now().timestamp();
     let mut random_string = common::generate_random_string(min, max);
     let timestamp_str = timestamp.to_string();
     let mut filename =
         sanitize_filename::sanitize(format!("{}_{}.{}", timestamp_str, random_string, extension));
 
-    // Costruisci il percorso completo
+    // Build the full path
     let directory_path = Path::new(base_directory);
     let mut absolute_path = fs::canonicalize(directory_path)
         .unwrap_or_else(|_| directory_path.to_path_buf())
         .join(&filename);
 
-    // Genera stringhe finché non trova una non utilizzata
+    // Generate strings until an unused one is found
     while absolute_path.exists() && max_attempts > 0 {
         random_string = common::generate_random_string(min, max);
         filename = sanitize_filename::sanitize(format!(
@@ -83,9 +82,8 @@ pub fn generate_random_filepathbuf(
         max_attempts -= 1;
 
         if max_attempts == 0 {
-            return Err(generic_error(
-                "Unable to generate a unique filename after multiple attempts!".to_string(),
-            ));
+            return Err(filemanager_errors::file_operation_error()
+                .with_internal_detail("Unable to generate a unique filename after multiple attempts!"));
         }
     }
 
@@ -127,7 +125,7 @@ pub fn upload_file_from_path(
     let (filestem, extension) = get_filestem_extension_str(filename)?;
 
     if !is_allowed_file_type(&extension, allowed_types) {
-        return Err(crate::core::errors::bad_request::validation_error(format!(
+        return Err(crate::errors::bad_request::validation_error().with_internal_detail(format!(
             "File name {} with type '{}' is not allowed",
             filestem, extension
         )));
@@ -170,6 +168,7 @@ pub fn upload_file_from_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::http_status::HttpStatus;
 
     #[test]
     fn get_filestem_extension_str_basic() {
@@ -210,7 +209,7 @@ mod tests {
     fn get_filestem_extension_str_invalid() {
         let result = get_filestem_extension_str("");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 400);
+        assert_eq!(result.unwrap_err().status, HttpStatus::BadRequest);
     }
 
     #[test]
@@ -286,7 +285,7 @@ pub mod images {
         let mut image_data = read_image(src, start_image_format);
 
         if image_data.is_err() {
-            log::debug!(
+            tracing::debug!(
                 "Failed to read image in format {:?}, trying others...",
                 start_image_format
             );
@@ -545,7 +544,7 @@ pub mod images {
             let data = match info.pixel_format {
                 jpeg_decoder::PixelFormat::L8 => img,
                 jpeg_decoder::PixelFormat::L16 => {
-                    // I dati L16 sono big-endian, 2 bytes per pixel
+                    // L16 data is big-endian, 2 bytes per pixel
                     img.chunks_exact(2)
                         .map(|chunk| {
                             let value = u16::from_be_bytes([chunk[0], chunk[1]]);
@@ -695,7 +694,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale = scale_w.min(scale_h);
@@ -703,7 +702,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding = vec![0u8; new_width * new_height * 3];
             let resized = binding.as_rgb_mut();
 
@@ -712,14 +711,14 @@ pub mod images {
 
             resizer.resize(src.as_rgb(), resized)?;
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height * 3];
 
-            // Calcola offset per centrare
+            // Calculate offset to center
             let x_offset = (target_width - new_width) / 2;
             let y_offset = (target_height - new_height) / 2;
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in 0..new_height {
                 for x in 0..new_width {
                     let src_idx = y * new_width + x;
@@ -764,7 +763,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale: f32 = scale_w.max(scale_h);
@@ -772,7 +771,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding = vec![0u8; new_width * new_height * 3];
             let resized = binding.as_rgb_mut();
 
@@ -781,10 +780,10 @@ pub mod images {
 
             resizer.resize(src.as_rgb(), resized)?;
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height * 3];
 
-            // Calcola offset e padding
+            // Calculate offset and padding
             let x_diff = target_width.abs_diff(new_width) / 2;
             let y_diff = target_height.abs_diff(new_height) / 2;
 
@@ -804,7 +803,7 @@ pub mod images {
                 0
             };
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in start_y..target_height {
                 for x in start_x..target_width {
                     let src_idx = (y + offset_src_y) * new_width + (x + offset_src_x);
@@ -830,7 +829,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale = scale_w.min(scale_h);
@@ -838,7 +837,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding = vec![0u8; new_width * new_height * 4];
             let resized = binding.as_rgba_mut();
 
@@ -848,14 +847,14 @@ pub mod images {
 
             resizer.resize(src.as_rgba(), resized)?;
 
-            // Crea canvas con padding (trasparente)
+            // Create canvas with padding (transparent)
             let mut canvas = vec![0u8; target_width * target_height * 4];
 
-            // Calcola offset per centrare
+            // Calculate offset to center
             let x_offset = (target_width - new_width) / 2;
             let y_offset = (target_height - new_height) / 2;
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in 0..new_height {
                 for x in 0..new_width {
                     let src_idx = y * new_width + x;
@@ -901,7 +900,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale: f32 = scale_w.max(scale_h);
@@ -909,7 +908,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding: Vec<u8> = vec![0u8; new_width * new_height * 4];
             let resized = binding.as_rgba_mut();
 
@@ -919,10 +918,10 @@ pub mod images {
 
             resizer.resize(src.as_rgba(), resized)?;
 
-            // Crea canvas con padding (trasparente)
+            // Create canvas with padding (transparent)
             let mut canvas = vec![0u8; target_width * target_height * 4];
 
-            // Calcola offset e padding
+            // Calculate offset and padding
             let x_diff = target_width.abs_diff(new_width) / 2;
             let y_diff = target_height.abs_diff(new_height) / 2;
 
@@ -942,7 +941,7 @@ pub mod images {
                 0
             };
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in start_y..target_height {
                 for x in start_x..target_width {
                     let src_idx = (y + offset_src_y) * new_width + (x + offset_src_x);
@@ -968,7 +967,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale = scale_w.min(scale_h);
@@ -976,7 +975,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding = vec![0u8; new_width * new_height];
             let resized = binding.as_gray_mut();
 
@@ -991,14 +990,14 @@ pub mod images {
 
             resizer.resize(src.as_gray(), resized)?;
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height];
 
-            // Calcola offset per centrare
+            // Calculate offset to center
             let x_offset = (target_width - new_width) / 2;
             let y_offset = (target_height - new_height) / 2;
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in 0..new_height {
                 for x in 0..new_width {
                     let src_idx = y * new_width + x;
@@ -1043,7 +1042,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale: f32 = scale_w.max(scale_h);
@@ -1051,7 +1050,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
             let mut binding = vec![0u8; new_width * new_height];
             let resized = binding.as_gray_mut();
 
@@ -1066,10 +1065,10 @@ pub mod images {
 
             resizer.resize(src.as_gray(), resized)?;
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height];
 
-            // Calcola offset e padding
+            // Calculate offset and padding
             let x_diff = target_width.abs_diff(new_width) / 2;
             let y_diff = target_height.abs_diff(new_height) / 2;
 
@@ -1089,7 +1088,7 @@ pub mod images {
                 0
             };
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in start_y..target_height {
                 for x in start_x..target_width {
                     let src_idx = (y + offset_src_y) * new_width + (x + offset_src_x);
@@ -1113,7 +1112,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale = scale_w.min(scale_h);
@@ -1121,7 +1120,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
 
             // Convert src &[u8] to &[rgb::Gray<u16>]
             let src_gray16: Vec<rgb::Gray<u16>> = src
@@ -1155,14 +1154,14 @@ pub mod images {
                 binding[i * 2 + 1] = bytes[1];
             }*/
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height * 2];
 
-            // Calcola offset per centrare
+            // Calculate offset to center
             let x_offset = (target_width - new_width) / 2;
             let y_offset = (target_height - new_height) / 2;
 
-            // Copia l'immagine nel canvas
+            // Copy image to canvas
             for y in 0..new_height {
                 for x in 0..new_width {
                     let src_idx = y * new_width + x;
@@ -1219,7 +1218,7 @@ pub mod images {
             target_width: usize,
             target_height: usize,
         ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-            // Calcola scala mantenendo proporzioni
+            // Calculate scale while maintaining aspect ratio
             let scale_w = target_width as f32 / src_width as f32;
             let scale_h = target_height as f32 / src_height as f32;
             let scale: f32 = scale_w.max(scale_h);
@@ -1227,7 +1226,7 @@ pub mod images {
             let new_width = (src_width as f32 * scale) as usize;
             let new_height = (src_height as f32 * scale) as usize;
 
-            // Ridimensiona
+            // Resize
 
             // Convert src &[u8] to &[rgb::Gray<u16>]
             let src_gray16: Vec<rgb::Gray<u16>> = src
@@ -1261,10 +1260,10 @@ pub mod images {
                 binding[i * 2 + 1] = bytes[1];
             }*/
 
-            // Crea canvas con padding (nero)
+            // Create canvas with padding (black)
             let mut canvas = vec![0u8; target_width * target_height * 2];
 
-            // Calcola offset e padding
+            // Calculate offset and padding
             let x_diff = target_width.abs_diff(new_width) / 2;
             let y_diff = target_height.abs_diff(new_height) / 2;
 

@@ -1,7 +1,6 @@
 use crate::{
     auth::{confs::JwtAuthConf, traits::BaseJwtToken},
     core::models::CornettiError,
-    core::traits::To,
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -189,40 +188,40 @@ impl AuthenticationStatus {
     pub fn err(&self) -> Option<CornettiError> {
         match self {
             AuthenticationStatus::MissingAuthHeader => {
-                Some(crate::core::errors::authentication::custom_error_message(
-                    "Missing Authorization header".to(),
+                Some(crate::errors::authentication::custom_auth_error().with_internal_detail(
+                    "Missing Authorization header",
                 ))
             }
             AuthenticationStatus::MissingAuthCookie => {
-                Some(crate::core::errors::authentication::custom_error_message(
-                    "Missing authentication cookie".to(),
+                Some(crate::errors::authentication::custom_auth_error().with_internal_detail(
+                    "Missing authentication cookie",
                 ))
             }
             AuthenticationStatus::InvalidAuthHeader => {
-                Some(crate::core::errors::authentication::custom_error_message(
-                    "Invalid Authorization header".to(),
+                Some(crate::errors::authentication::custom_auth_error().with_internal_detail(
+                    "Invalid Authorization header",
                 ))
             }
             AuthenticationStatus::InvalidAuthCookie => {
-                Some(crate::core::errors::authentication::custom_error_message(
-                    "Invalid authentication cookie".to(),
+                Some(crate::errors::authentication::custom_auth_error().with_internal_detail(
+                    "Invalid authentication cookie",
                 ))
             }
             AuthenticationStatus::InvalidToken => Some(
-                crate::core::errors::authentication::custom_error_message("Invalid JWT token".to()),
+                crate::errors::authentication::custom_auth_error()
+                    .with_internal_detail("Invalid JWT token"),
             ),
             AuthenticationStatus::InvalidCsrfToken => {
-                Some(crate::core::errors::authentication::custom_error_message(
-                    "Invalid CSRF token".to(),
+                Some(crate::errors::authentication::custom_auth_error().with_internal_detail(
+                    "Invalid CSRF token",
                 ))
             }
             AuthenticationStatus::Unauthorized => {
-                Some(crate::core::errors::authentication::unauthorized())
+                Some(crate::errors::authentication::unauthorized())
             }
             AuthenticationStatus::StoreError => {
-                Some(crate::core::errors::internal_server_error::generic_error(
-                    "Error accessing session store".to(),
-                ))
+                Some(crate::errors::auth_errors::session_store_error()
+                    .with_internal_detail("Error accessing session store"))
             }
             AuthenticationStatus::Valid => None,
             AuthenticationStatus::Disabled => None,
@@ -284,6 +283,7 @@ pub struct AuthorizationPermission {
 mod tests {
     use super::*;
     use crate::auth::confs::JwtAuthConf;
+    use crate::core::http_status::HttpStatus;
 
     fn dummy_jwt_conf() -> JwtAuthConf {
         JwtAuthConf {
@@ -328,57 +328,57 @@ mod tests {
     #[test]
     fn authentication_status_missing_auth_header_returns_401() {
         let err = AuthenticationStatus::MissingAuthHeader.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("Authorization"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("Authorization"));
     }
 
     #[test]
     fn authentication_status_missing_auth_cookie_returns_401() {
         let err = AuthenticationStatus::MissingAuthCookie.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("cookie"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("cookie"));
     }
 
     #[test]
     fn authentication_status_invalid_auth_header_returns_401() {
         let err = AuthenticationStatus::InvalidAuthHeader.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("Authorization"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("Authorization"));
     }
 
     #[test]
     fn authentication_status_invalid_auth_cookie_returns_401() {
         let err = AuthenticationStatus::InvalidAuthCookie.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("cookie"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("cookie"));
     }
 
     #[test]
     fn authentication_status_invalid_token_returns_401() {
         let err = AuthenticationStatus::InvalidToken.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("JWT"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("JWT"));
     }
 
     #[test]
     fn authentication_status_unauthorized_returns_401() {
         let err = AuthenticationStatus::Unauthorized.err().unwrap();
-        assert_eq!(err.status, 401);
+        assert_eq!(err.status, HttpStatus::Unauthorized);
         assert_eq!(err.detail, "Unauthorized");
     }
 
     #[test]
     fn authentication_status_invalid_csrf_token_returns_401() {
         let err = AuthenticationStatus::InvalidCsrfToken.err().unwrap();
-        assert_eq!(err.status, 401);
-        assert!(err.detail.contains("CSRF"));
+        assert_eq!(err.status, HttpStatus::Unauthorized);
+        assert!(err.internal_detail.contains("CSRF"));
     }
 
     #[test]
     fn authentication_status_store_error_returns_500() {
         let err = AuthenticationStatus::StoreError.err().unwrap();
-        assert_eq!(err.status, 500);
-        assert!(err.detail.contains("session store"));
+        assert_eq!(err.status, HttpStatus::InternalServerError);
+        assert!(err.internal_detail.contains("session store"));
     }
 
     #[test]
@@ -597,7 +597,7 @@ mod tests {
     }
 
     #[test]
-    fn refresh_auth_response_dto() {
+    fn refresh_auth_response() {
         #[derive(Serialize, ToSchema)]
         struct FakeUser {
             id: String,

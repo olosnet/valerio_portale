@@ -41,7 +41,7 @@ impl MongoPagination {
         let (main_filter, join_entries) =
             Self::split_filters(combined.as_ref(), join_dict);
 
-        // Verifica se ci sono joins sia da filtri che da sort
+        // Check if there are joins from both filters and sort
         let has_filter_joins = !join_entries.is_empty();
         let has_sort_joins = load_options
             .sort
@@ -84,9 +84,9 @@ impl MongoPagination {
         Ok(Self::build_sort_inner(sort, join_dict))
     }
 
-    // ─── Interni ────────────────────────────────────────────────────
+    // ─── Internals ──────────────────────────────────────────────────────
 
-    /// Separa il filtro in: (filtri su collezione principale, filtri su joined).
+    /// Split filter into: (filters on main collection, filters on joined).
     fn split_filters<'a>(
         filter: Option<&FilterNode>,
         join_dict: &'a HashMap<String, JoinEntry>,
@@ -109,7 +109,7 @@ impl MongoPagination {
         (main_doc, join_filters)
     }
 
-    /// Paginazione semplice: `find()` + `count_documents()`.
+    /// Simple pagination: `find()` + `count_documents()`.
     async fn paginate_simple<T, M>(
         collection: &mongodb::Collection<M>,
         load_options: &LoadOptions,
@@ -122,7 +122,7 @@ impl MongoPagination {
     {
         let sort_doc = Self::build_sort_inner(&load_options.sort, &HashMap::new());
 
-        // Skip count se non richiesto
+        // Skip count if not requested
         let total_count = if load_options.require_total_count {
             collection.count_documents(filter.clone()).await? as i64
         } else {
@@ -146,15 +146,15 @@ impl MongoPagination {
         })
     }
 
-    /// Paginazione con JOIN: aggregation pipeline con `$lookup`.
+    /// Pagination with JOIN: aggregation pipeline with `$lookup`.
     ///
-    /// Strategia: due pipeline separate.
-    /// - Count pipeline: $match + $lookup + $match (NO $unwind) con $count.
-    ///   Usa $filter + $size > 0 per verificare che il lookup abbia match,
-    ///   senza duplicare documenti.
+    /// Strategy: two separate pipelines.
+    /// - Count pipeline: $match + $lookup + $match (NO $unwind) with $count.
+    ///   Uses $filter + $size > 0 to check lookup has matches,
+    ///   without duplicating documents.
     /// - Data pipeline: $match + $lookup + $unwind + $match + $sort + $skip/$limit.
-    ///   Qui $unwind è necessario per accedere ai campi joined nell'ordinamento.
-    ///   Deduplicazione via $group alla fine per relazioni 1-to-many.
+    ///   $unwind is needed to access joined fields in sorting.
+    ///   Deduplication via $group at the end for 1-to-many relations.
     async fn paginate_with_joins<T, M>(
         collection: &mongodb::Collection<M>,
         load_options: &LoadOptions,
@@ -167,7 +167,7 @@ impl MongoPagination {
         T: Send,
         M: DeserializeOwned + Send + Sync + Unpin,
     {
-        // ─── Raggruppa join per target_entity (deduplica) ───────────
+        // ─── Group joins by target_entity (dedup) ───────────────────
         let mut join_entities: HashMap<String, (&JoinEntry, Vec<&Document>)> = HashMap::new();
         for (entry, filter_doc) in join_entries {
             join_entities
@@ -176,7 +176,7 @@ impl MongoPagination {
                 .or_insert((entry, vec![filter_doc]));
         }
 
-        // Aggiungi join richieste solo dal sort (non presenti nei filtri)
+        // Add joins required only by sort (not present in filters)
         for s in &load_options.sort {
             if let Some(entry) = join_dict.get(&s.field) {
                 join_entities
@@ -185,7 +185,7 @@ impl MongoPagination {
             }
         }
 
-        // ─── Count pipeline (senza $unwind per evitare inflazione) ──
+        // ─── Count pipeline (without $unwind to avoid inflation) ────
         let total_count = if load_options.require_total_count {
             let mut count_pipeline: Vec<Document> = Vec::new();
 
@@ -193,8 +193,8 @@ impl MongoPagination {
                 count_pipeline.push(doc! { "$match": main_filter.clone() });
             }
 
-            // Per ogni join, $lookup + $match con $expr/$size per filtrare
-            // documenti che hanno almeno un match, senza duplicare
+            // For each join, $lookup + $match with $expr/$size to filter
+            // documents that have at least one match, without duplicating
             for (entity_name, (entry, filters)) in &join_entities {
                 count_pipeline.push(doc! {
                     "$lookup": {
@@ -205,14 +205,14 @@ impl MongoPagination {
                     }
                 });
 
-                // Applica filtri sui campi joined usando array notation
+                // Apply filters on joined fields using array notation
                 for filter_doc in filters {
                     if !filter_doc.is_empty() {
                         count_pipeline.push(doc! { "$match": (*filter_doc).clone() });
                     }
                 }
 
-                // Se inner join: richiedi almeno un risultato nel lookup
+                // If inner join: require at least one result in lookup
                 if !entry.outer_join {
                     count_pipeline.push(doc! {
                         "$match": {
@@ -235,7 +235,7 @@ impl MongoPagination {
             -1i64
         };
 
-        // ─── Data pipeline (con $unwind per accesso campi joined) ───
+        // ─── Data pipeline (with $unwind for joined field access) ────
         let mut pipeline: Vec<Document> = Vec::new();
 
         if !main_filter.is_empty() {
@@ -276,7 +276,7 @@ impl MongoPagination {
             }
         }
 
-        // Deduplicazione: $group per _id per evitare righe duplicate
+        // Deduplication: $group by _id to avoid duplicate rows
         // da relazioni 1-to-many dopo $unwind.
         // Usa $$ROOT per mantenere il documento originale.
         pipeline.push(doc! {
@@ -330,9 +330,9 @@ impl MongoPagination {
     }
 }
 
-/// Partiziona un `FilterNode` in:
-/// - `Vec<Document>` per la collezione principale (campi non in join_dict)
-/// - `Vec<(&JoinEntry, Document)>` per le collezioni joined (campi in join_dict)
+/// Partition a `FilterNode` into:
+/// - `Vec<Document>` for the main collection (fields not in join_dict)
+/// - `Vec<(&JoinEntry, Document)>` for joined collections (fields in join_dict)
 fn partition_filter<'a>(
     node: &FilterNode,
     join_dict: &'a HashMap<String, JoinEntry>,
@@ -345,8 +345,8 @@ fn partition_filter<'a>(
         } => {
             let doc = leaf_to_bson(field, *operator, value);
             if let Some(entry) = join_dict.get(field) {
-                // Campo joined: filtro applicato DOPO il $lookup,
-                // riferito al campo nell'array risultante dal lookup.
+                // Joined field: filter applied AFTER $lookup,
+                // referencing the field in the resulting array from lookup.
                 let join_doc = leaf_to_bson(
                     &format!("{}.{}", entry.virtual_field, entry.target_field),
                     *operator,
@@ -367,7 +367,7 @@ fn partition_filter<'a>(
                 join_docs.extend(j);
             }
 
-            // Raggruppa i filtri main con l'operatore
+            // Group main filters with the operator
             if main_docs.len() > 1 {
                 let op = match operator {
                     GroupOperator::And => "$and",
@@ -388,7 +388,7 @@ fn partition_filter<'a>(
                 }
                 main_docs = vec![not_doc];
             } else if !main_docs.is_empty() {
-                // $nor nega un array di condizioni (equivale a NOT(cond1 AND cond2))
+                // $nor negates an array of conditions (equivalent to NOT(cond1 AND cond2))
                 main_docs = vec![doc! { "$nor": main_docs }];
             }
             (main_docs, join_docs)
@@ -396,7 +396,7 @@ fn partition_filter<'a>(
     }
 }
 
-/// Converte un FilterNode ricorsivamente in un Document BSON.
+/// Recursively convert a FilterNode into a BSON Document.
 fn filter_to_bson(node: &FilterNode, join_dict: &HashMap<String, JoinEntry>) -> Document {
     match node {
         FilterNode::Leaf {
@@ -424,14 +424,14 @@ fn filter_to_bson(node: &FilterNode, join_dict: &HashMap<String, JoinEntry>) -> 
         }
         FilterNode::Not(inner) => {
             let inner_doc = filter_to_bson(inner, join_dict);
-            // $not non esiste a livello root in MongoDB.
-            // Usiamo $nor che nega un array di espressioni.
+            // $not does not exist at root level in MongoDB.
+            // Use $nor which negates an array of expressions.
             doc! { "$nor": [ inner_doc ] }
         }
     }
 }
 
-/// Costruisce il Document BSON per una foglia di filtro.
+/// Build the BSON Document for a filter leaf.
 fn leaf_to_bson(field: &str, operator: FilterOperator, value: &FilterValue) -> Document {
     match operator {
         FilterOperator::Contains => {
@@ -477,7 +477,7 @@ fn leaf_to_bson(field: &str, operator: FilterOperator, value: &FilterValue) -> D
     }
 }
 
-/// Converte un FilterValue nel tipo BSON appropriato.
+/// Convert a FilterValue to the appropriate BSON type.
 fn filter_value_to_bson(value: &FilterValue) -> bson::Bson {
     match value {
         FilterValue::String(s) => bson::Bson::String(s.clone()),
@@ -488,10 +488,10 @@ fn filter_value_to_bson(value: &FilterValue) -> bson::Bson {
     }
 }
 
-/// Risolve il nome campo per MongoDB.
+/// Resolve the field name for MongoDB.
 ///
-/// Se il campo è in join_dict, restituisce `virtual_field.target_field`
-/// (percorso dopo `$lookup`). Altrimenti restituisce il campo così com'è.
+/// If the field is in join_dict, returns `virtual_field.target_field`
+/// (path after `$lookup`). Otherwise returns the field as-is.
 fn resolve_mongo_field(field: &str, join_dict: &HashMap<String, JoinEntry>) -> String {
     if let Some(entry) = join_dict.get(field) {
         format!("{}.{}", entry.virtual_field, entry.target_field)

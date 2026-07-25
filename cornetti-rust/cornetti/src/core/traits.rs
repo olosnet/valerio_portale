@@ -1,3 +1,4 @@
+use crate::core::http_status::HttpStatus;
 use crate::core::models::{CornettiError, CornettiResult};
 use std::{future::Future, time::Duration};
 
@@ -65,7 +66,7 @@ pub trait RepositoryRetry {
     }
     /// Whether the error is transient and worth retrying (default: status 503).
     fn is_transient_error(&self, err: &CornettiError) -> bool {
-        err.status == 503
+        err.status == HttpStatus::ServiceUnavailable
     }
     /// Executes `op` with exponential backoff (1.5× factor) up to `retry_attempts`.
     ///
@@ -89,7 +90,7 @@ pub trait RepositoryRetry {
                         last_err = Some(err);
                         if attempt + 1 < attempts {
                             let delay = base_delay.mul_f32(1.5f32.powi(attempt as i32));
-                            log::warn!(
+                            tracing::warn!(
                                 "Transient repository error, retrying {}/{}: {} (wait {:?})",
                                 attempt + 1,
                                 attempts,
@@ -103,7 +104,7 @@ pub trait RepositoryRetry {
                 }
             }
 
-            log::error!(
+            tracing::error!(
                 "Exhausted {} retry attempts: {}",
                 attempts,
                 last_err.as_ref().unwrap().detail
@@ -142,22 +143,28 @@ mod tests {
             if let Some(ref check) = self.custom_transient_check {
                 check(err)
             } else {
-                err.status == 503
+                err.status == HttpStatus::ServiceUnavailable
             }
         }
     }
 
     fn transient_err() -> CornettiError {
         CornettiError {
-            status: 503,
+            status: HttpStatus::ServiceUnavailable,
             detail: "transient".into(),
+            corr_id: "BE_TRANSIENT_TEST".into(),
+            log_level: Some(tracing::Level::ERROR),
+            internal_detail: "transient".into(),
         }
     }
 
     fn non_transient_err() -> CornettiError {
         CornettiError {
-            status: 500,
+            status: HttpStatus::InternalServerError,
             detail: "non transient".into(),
+            corr_id: "BE_NON_TRANSIENT_TEST".into(),
+            log_level: Some(tracing::Level::ERROR),
+            internal_detail: "non transient".into(),
         }
     }
 
@@ -257,15 +264,18 @@ mod tests {
 
     #[test]
     fn repository_retry_custom_transient_check() {
-        let check: TransientCheck = Rc::new(|e| e.status == 408);
+        let check: TransientCheck = Rc::new(|e| e.status == HttpStatus::RequestTimeout);
         let repo = TestRepo {
             custom_retry_attempts: None,
             custom_retry_delay: None,
             custom_transient_check: Some(check),
         };
         assert!(repo.is_transient_error(&CornettiError {
-            status: 408,
+            status: HttpStatus::RequestTimeout,
             detail: "timeout".into(),
+            corr_id: "BE_TEST".into(),
+            log_level: None,
+            internal_detail: String::new(),
         }));
         assert!(!repo.is_transient_error(&transient_err()));
     }
@@ -311,7 +321,7 @@ mod tests {
             })
             .await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 500);
+        assert_eq!(result.unwrap_err().status, HttpStatus::InternalServerError);
         assert_eq!(calls.get(), 1);
     }
 
@@ -361,7 +371,7 @@ mod tests {
             })
             .await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 503);
+        assert_eq!(result.unwrap_err().status, HttpStatus::ServiceUnavailable);
         assert_eq!(calls.get(), 3);
     }
 
@@ -389,7 +399,7 @@ mod tests {
             })
             .await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 500);
+        assert_eq!(result.unwrap_err().status, HttpStatus::InternalServerError);
         assert_eq!(calls.get(), 2);
     }
 
@@ -412,7 +422,7 @@ mod tests {
             })
             .await;
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 503);
+        assert_eq!(result.unwrap_err().status, HttpStatus::ServiceUnavailable);
         assert_eq!(calls.get(), 1);
     }
 }

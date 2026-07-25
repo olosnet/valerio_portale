@@ -105,9 +105,8 @@ impl AuthApiKeyService {
             .get(&self.tenant_id, key_id.to_string())
             .await?;
         if current.default {
-            return Err(errors::bad_request::validation_error(
-                "Default api keys cannot be modified".to_string(),
-            ));
+            return Err(errors::bad_request::validation_error()
+                .with_internal_detail("Default api keys cannot be modified"));
         }
 
         let update_model: AuthApiKeyUpdateData = api_key_update.into();
@@ -133,9 +132,8 @@ impl AuthApiKeyService {
             .await?;
 
         if current.default {
-            return Err(errors::bad_request::validation_error(
-                "Default api keys cannot be deleted".to_string(),
-            ));
+            return Err(errors::bad_request::validation_error()
+                .with_internal_detail("Default api keys cannot be deleted"));
         }
 
         self.repository.delete(&self.tenant_id, key_id.to_string()).await
@@ -174,38 +172,34 @@ impl AuthApiKeyAuthService {
     /// to the configured application.
     pub async fn authenticate(&self, api_key_value: &str) -> CornettiResult<AuthApiKey> {
         let api_key_value = normalize_api_key_value(api_key_value).ok_or_else(|| {
-            errors::authentication::custom_error_message("Invalid API key".to_string())
+            errors::authentication::custom_auth_error().with_internal_detail("Invalid API key")
         })?;
 
         let key_id = extract_key_id(api_key_value).ok_or_else(|| {
-            errors::authentication::custom_error_message("Invalid API key".to_string())
+            errors::authentication::custom_auth_error().with_internal_detail("Invalid API key")
         })?;
 
         let model = match self.repository.find(key_id.to_string()).await? {
             Some(model) => model,
             None => {
-                return Err(errors::authentication::custom_error_message(
-                    "Invalid API key".to_string(),
-                ));
+                return Err(errors::authentication::custom_auth_error()
+                    .with_internal_detail("Invalid API key"));
             }
         };
 
         if model.app_id != self.app_id {
-            return Err(errors::authentication::custom_error_message(
-                "Invalid API key".to_string(),
-            ));
+            return Err(errors::authentication::custom_auth_error()
+                .with_internal_detail("Invalid API key"));
         }
 
         if !model.enabled {
-            return Err(errors::authentication::custom_error_message(
-                "API key disabled".to_string(),
-            ));
+            return Err(errors::authentication::custom_auth_error()
+                .with_internal_detail("API key disabled"));
         }
 
         if !verify_api_key(&model.key, api_key_value)? {
-            return Err(errors::authentication::custom_error_message(
-                "Invalid API key".to_string(),
-            ));
+            return Err(errors::authentication::custom_auth_error()
+                .with_internal_detail("Invalid API key"));
         }
 
         Ok(model.into())

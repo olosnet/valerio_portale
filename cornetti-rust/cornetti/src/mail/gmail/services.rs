@@ -1,5 +1,9 @@
 use crate::{
-    core::models::{CornettiError, CornettiResult},
+    core::{
+        errors::gmail_errors,
+        http_status::HttpStatus,
+        models::CornettiResult,
+    },
     mail::{gmail::confs::GmailMailConf, EmailAttachment},
 };
 use base64::engine::general_purpose;
@@ -109,18 +113,20 @@ impl SendGmailMailService {
             .json(&api_msg)
             .send()
             .await
-            .map_err(|e| CornettiError {
-                status: 500,
-                detail: format!("Gmail API request failed: {}", e),
-            })?;
+            .map_err(|e| gmail_errors::gmail_api_error()
+                .with_internal_detail(format!("Gmail API request failed: {}", e)))?;
 
         if !resp.status().is_success() {
             let status_code = resp.status().as_u16();
+            let http_status = HttpStatus::from_u16(status_code).unwrap_or(HttpStatus::InternalServerError);
             let error_text = resp.text().await.unwrap_or_default();
-            return Err(CornettiError {
-                status: status_code,
-                detail: format!("Gmail API error ({}): {}", status_code, error_text),
-            });
+            let mut err = gmail_errors::gmail_api_error()
+                .with_status(http_status)
+                .with_internal_detail(error_text);
+            if !http_status.is_server_error() {
+                err.log_level = None;
+            }
+            return Err(err);
         }
 
         Ok(())
@@ -156,17 +162,15 @@ impl SendGmailMailService {
             "sub": impersonate,
         });
 
-        log::debug!("Gmail: impersonating {} for token", impersonate);
+        tracing::debug!("Gmail: impersonating {} for token", impersonate);
 
         let key = EncodingKey::from_rsa_pem(self.conf.service_account.private_key.as_bytes())
-            .map_err(|e| CornettiError {
-                status: 500,
-                detail: format!("Gmail: invalid RSA private key: {}", e),
-            })?;
+            .map_err(|e| gmail_errors::gmail_auth_error()
+                .with_internal_detail(format!("Gmail: invalid RSA private key: {}", e)))?;
 
-        let jwt = jsonwebtoken::encode(&header, &claims, &key).map_err(|e| CornettiError {
-            status: 500,
-            detail: format!("Gmail: JWT encode error: {}", e),
+        let jwt = jsonwebtoken::encode(&header, &claims, &key).map_err(|e| {
+            gmail_errors::gmail_auth_error()
+                .with_internal_detail(format!("Gmail: JWT encode error: {}", e))
         })?;
 
         let params = [
@@ -180,16 +184,12 @@ impl SendGmailMailService {
             .form(&params)
             .send()
             .await
-            .map_err(|e| CornettiError {
-                status: 500,
-                detail: format!("Gmail: token request failed: {}", e),
-            })?;
+            .map_err(|e| gmail_errors::gmail_api_error()
+                .with_internal_detail(format!("Gmail: token request failed: {}", e)))?;
 
         let token_data = resp.json::<GoogleTokenResponse>().await.map_err(|e| {
-            CornettiError {
-                status: 500,
-                detail: format!("Gmail: token response parse error: {}", e),
-            }
+            gmail_errors::gmail_api_error()
+                .with_internal_detail(format!("Gmail: token response parse error: {}", e))
         })?;
 
         let expires_at = Instant::now()

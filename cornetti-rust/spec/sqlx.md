@@ -66,7 +66,11 @@ SQLx errors SHALL be classified as:
   error codes) → 503
 - **All others** → 500
 
-See `src/sqlx/errors.rs`.
+Errors are constructed via the centralized error factory system (`errors::sqlx`,
+`errors::conflict`, `errors::not_found`), with `internal_detail` set to the
+original error string.
+
+See `src/sqlx/adapters.rs`.
 
 #### Scenario: Unique constraint violation
 - WHEN a database error is a unique violation

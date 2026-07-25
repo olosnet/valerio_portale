@@ -65,7 +65,7 @@ pub fn hash_api_key(api_key_value: &str) -> CornettiResult<String> {
     Argon2::default()
         .hash_password(api_key_value.as_bytes(), &salt)
         .map(|hash| hash.to_string())
-        .map_err(|err| errors::internal_server_error::generic_error(err.to_string()))
+        .map_err(|err| errors::auth_apikey_errors::hash_error().with_internal_detail(err.to_string()))
 }
 
 /// Verifies an API key value against an Argon2 hash.
@@ -79,7 +79,7 @@ pub fn hash_api_key(api_key_value: &str) -> CornettiResult<String> {
 /// The underlying `PasswordHash::new()` may panic if the hash format is invalid.
 pub fn verify_api_key(source_hash: &str, api_key_value: &str) -> CornettiResult<bool> {
     let parsed_hash = PasswordHash::new(source_hash)
-        .map_err(|err| errors::internal_server_error::generic_error(err.to_string()))?;
+        .map_err(|err| errors::auth_apikey_errors::hash_error().with_internal_detail(err.to_string()))?;
 
     Ok(Argon2::default()
         .verify_password(api_key_value.as_bytes(), &parsed_hash)
@@ -89,6 +89,7 @@ pub fn verify_api_key(source_hash: &str, api_key_value: &str) -> CornettiResult<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::http_status::HttpStatus;
 
     #[test]
     fn generate_random_token_length() {
@@ -227,7 +228,7 @@ mod tests {
     fn verify_api_key_bad_hash_errors() {
         let result = verify_api_key("not-a-valid-hash", "anything");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, 500);
+        assert_eq!(result.unwrap_err().status, HttpStatus::InternalServerError);
     }
 
     #[test]

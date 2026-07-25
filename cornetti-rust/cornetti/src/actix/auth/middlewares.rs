@@ -463,7 +463,7 @@ pub mod authorization {
                     let res = fut.await?;
                     Ok(res.map_into_right_body())
                 } else {
-                    let corn_err = crate::core::errors::authorization::insufficient_permissions();
+                    let corn_err = crate::errors::authorization::insufficient_permissions();
                     err(corn_err.into()).await
                 }
             })
