@@ -1,0 +1,15 @@
+layout tall
+
+new_tab OpenCode
+launch --title "OpenCode" opencode .
+
+new_tab LazyGit
+launch --title "LazyGit" lazygit
+
+new_tab NeoVim
+launch --title "NeoVim" nvim
+
+new_tab Shell
+layout splits
+launch --title "Shell" bash
+launch --location=vsplit --title "Shell" bash
