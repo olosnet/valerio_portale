@@ -1,6 +1,7 @@
-use cornetti::core::models::CornettiError;
 use cornetti::core::http_status::HttpStatus;
+use cornetti::core::models::CornettiError;
 
+#[allow(dead_code)]
 pub fn startup_failed() -> CornettiError {
     CornettiError {
         status: HttpStatus::InternalServerError,
