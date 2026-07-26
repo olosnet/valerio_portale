@@ -1,11 +1,13 @@
-use std::sync::Arc;
-use chrono::NaiveDate;
-use leptos::prelude::*;
-use crate::shared::{OverlayProvider, use_overlay};
 use crate::calendar::{Calendar, Locale, locale_en};
 use crate::icon::Icon;
+use crate::shared::OverlayProvider;
+use chrono::NaiveDate;
+use leptos::prelude::*;
+use std::sync::Arc;
 
-fn icon_calendar() -> leptos::prelude::AnyView { Icon::LayoutDashboard.render() }
+fn icon_calendar() -> leptos::prelude::AnyView {
+    Icon::LayoutDashboard.render()
+}
 
 #[component]
 pub fn DatePicker(
@@ -20,11 +22,9 @@ pub fn DatePicker(
 
     let display = {
         let loc = loc.clone();
-        move || {
-            match date.get() {
-                Some(d) => loc.format_date(d),
-                None => placeholder.to_string(),
-            }
+        move || match date.get() {
+            Some(d) => loc.format_date(d),
+            None => placeholder.to_string(),
         }
     };
 

@@ -1,7 +1,11 @@
 use leptos::prelude::*;
 
-fn icon_chevron_left() -> leptos::prelude::AnyView { crate::icon::Icon::ChevronLeft.render() }
-fn icon_chevron_right() -> leptos::prelude::AnyView { crate::icon::Icon::ChevronRight.render() }
+fn icon_chevron_left() -> leptos::prelude::AnyView {
+    crate::icon::Icon::ChevronLeft.render()
+}
+fn icon_chevron_right() -> leptos::prelude::AnyView {
+    crate::icon::Icon::ChevronRight.render()
+}
 
 #[component]
 pub fn DataTablePagination(
@@ -29,7 +33,7 @@ pub fn DataTablePagination(
                         let p = page.get();
                         let ps = page_size.get();
                         let start = p * ps + 1;
-                        let end = ((p * ps + ps).min(tc));
+                        let end = (p * ps + ps).min(tc);
                         format!("Mostrando {} a {} di {}", start, end, tc)
                     }
                 }}

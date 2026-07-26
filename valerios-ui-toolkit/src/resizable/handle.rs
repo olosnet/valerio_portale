@@ -1,12 +1,12 @@
+use super::panel_group::use_resizable;
+use leptos::prelude::*;
 use std::cell::Cell;
 use wasm_bindgen::prelude::*;
-use leptos::prelude::*;
-use super::panel_group::use_resizable;
 
 /// Raccoglie lo snapshot necessario al drag prima che i Closure
 /// catturino i valori.
 struct DragState {
-    handle_idx: usize,
+    // handle_idx: usize,
     left_panel_idx: usize,
     right_panel_idx: usize,
     is_horizontal: bool,
@@ -17,9 +17,7 @@ struct DragState {
 }
 
 #[component]
-pub fn ResizableHandle(
-    #[prop(default = false)] with_handle: bool,
-) -> impl IntoView {
+pub fn ResizableHandle(#[prop(default = false)] with_handle: bool) -> impl IntoView {
     let ctx = use_resizable();
 
     let handle_idx = ctx.handle_counter.get();
@@ -31,7 +29,11 @@ pub fn ResizableHandle(
     let is_horizontal = ctx.direction == "horizontal";
     let sizes = ctx.sizes;
 
-    let cursor_cls = if is_horizontal { "cursor-col-resize" } else { "cursor-row-resize" };
+    let cursor_cls = if is_horizontal {
+        "cursor-col-resize"
+    } else {
+        "cursor-row-resize"
+    };
 
     let dragging = std::rc::Rc::new(Cell::new(false));
 
@@ -47,15 +49,19 @@ pub fn ResizableHandle(
             }
 
             dragging.set(true);
-            let dragging_clone = dragging.clone();
+            // let dragging_clone = dragging.clone();
 
-            let start_pos = if is_horizontal { ev.client_x() as f64 } else { ev.client_y() as f64 };
+            let start_pos = if is_horizontal {
+                ev.client_x() as f64
+            } else {
+                ev.client_y() as f64
+            };
             let left_size = current_sizes[left_idx];
             let right_size = current_sizes[right_idx];
             let min_size = 10.0;
 
             let state = DragState {
-                handle_idx,
+                // handle_idx,
                 left_panel_idx: left_idx,
                 right_panel_idx: right_idx,
                 is_horizontal,
@@ -69,30 +75,41 @@ pub fn ResizableHandle(
             let dragging_clone = dragging.clone();
 
             // mousemove
-            let move_cb: wasm_bindgen::closure::Closure<dyn FnMut(web_sys::MouseEvent)> = Closure::new(move |ev: web_sys::MouseEvent| {
-                let current_pos = if state.is_horizontal { ev.client_x() as f64 } else { ev.client_y() as f64 };
-                let delta = current_pos - state.start_pos;
-                let total = state.left_size + state.right_size;
-                let new_left = (state.left_size + delta).clamp(state.min_size, total - state.min_size);
-                let new_right = total - new_left;
+            let move_cb: wasm_bindgen::closure::Closure<dyn FnMut(web_sys::MouseEvent)> =
+                Closure::new(move |ev: web_sys::MouseEvent| {
+                    let current_pos = if state.is_horizontal {
+                        ev.client_x() as f64
+                    } else {
+                        ev.client_y() as f64
+                    };
+                    let delta = current_pos - state.start_pos;
+                    let total = state.left_size + state.right_size;
+                    let new_left =
+                        (state.left_size + delta).clamp(state.min_size, total - state.min_size);
+                    let new_right = total - new_left;
 
-                sizes_clone.update(|s| {
-                    if state.left_panel_idx < s.len() && state.right_panel_idx < s.len() {
-                        s[state.left_panel_idx] = new_left;
-                        s[state.right_panel_idx] = new_right;
-                    }
+                    sizes_clone.update(|s| {
+                        if state.left_panel_idx < s.len() && state.right_panel_idx < s.len() {
+                            s[state.left_panel_idx] = new_left;
+                            s[state.right_panel_idx] = new_right;
+                        }
+                    });
                 });
-            });
 
             // mouseup
-            let up_cb: wasm_bindgen::closure::Closure<dyn FnMut(web_sys::MouseEvent)> = Closure::new(move |_ev: web_sys::MouseEvent| {
-                dragging_clone.set(false);
-            });
+            let up_cb: wasm_bindgen::closure::Closure<dyn FnMut(web_sys::MouseEvent)> =
+                Closure::new(move |_ev: web_sys::MouseEvent| {
+                    dragging_clone.set(false);
+                });
 
             let window = web_sys::window().unwrap();
 
-            window.add_event_listener_with_callback("mousemove", move_cb.as_ref().unchecked_ref()).unwrap();
-            window.add_event_listener_with_callback("mouseup", up_cb.as_ref().unchecked_ref()).unwrap();
+            window
+                .add_event_listener_with_callback("mousemove", move_cb.as_ref().unchecked_ref())
+                .unwrap();
+            window
+                .add_event_listener_with_callback("mouseup", up_cb.as_ref().unchecked_ref())
+                .unwrap();
 
             move_cb.forget();
             up_cb.forget();

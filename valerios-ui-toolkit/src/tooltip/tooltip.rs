@@ -7,7 +7,9 @@ pub struct TooltipContext {
 
 impl TooltipContext {
     pub fn new() -> Self {
-        Self { open: RwSignal::new(false) }
+        Self {
+            open: RwSignal::new(false),
+        }
     }
 }
 
@@ -18,7 +20,7 @@ pub fn use_tooltip() -> TooltipContext {
 #[component]
 pub fn Tooltip(
     children: ChildrenFn,
-    #[prop(default = 300)] delay_ms: u32,
+    // #[prop(default = 300)] delay_ms: u32,
 ) -> impl IntoView {
     provide_context(TooltipContext::new());
 

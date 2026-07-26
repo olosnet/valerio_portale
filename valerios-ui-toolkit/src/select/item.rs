@@ -1,5 +1,5 @@
-use leptos::prelude::*;
 use super::select::use_select;
+use leptos::prelude::*;
 
 #[component]
 pub fn SelectItem(
@@ -10,7 +10,7 @@ pub fn SelectItem(
     let ctx = use_select();
     let extra = class.unwrap_or("");
     let cls = move || {
-        let selected = ctx.value.get() == value;
+        // let selected = ctx.value.get() == value;
         format!(
             "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=selected]:bg-accent data-[state=selected]:text-accent-foreground hover:bg-accent hover:text-accent-foreground {}",
             extra,

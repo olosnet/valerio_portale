@@ -1,12 +1,12 @@
-use leptos::prelude::*;
 use super::panel_group::use_resizable;
+use leptos::prelude::*;
 
 #[component]
 pub fn ResizablePanel(
     children: ChildrenFn,
     #[prop(default = 25.0)] default_size: f64,
     #[prop(default = 10.0)] min_size: f64,
-    #[prop(default = 90.0)] max_size: f64,
+    // #[prop(default = 90.0)] max_size: f64,
 ) -> impl IntoView {
     let ctx = use_resizable();
 

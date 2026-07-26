@@ -1,17 +1,27 @@
-use std::sync::Arc;
-use leptos::prelude::*;
-use super::types::*;
 use super::data_table_pagination::DataTablePagination;
+use super::types::*;
 use crate::icon::Icon;
+use leptos::prelude::*;
+use std::sync::Arc;
 
-fn icon_search() -> leptos::prelude::AnyView { Icon::Search.render() }
-fn icon_up() -> leptos::prelude::AnyView { Icon::ChevronUp.render() }
-fn icon_down() -> leptos::prelude::AnyView { Icon::ChevronDown.render() }
-fn icon_updown() -> leptos::prelude::AnyView { Icon::ChevronsUpDown.render() }
+fn icon_search() -> leptos::prelude::AnyView {
+    Icon::Search.render()
+}
+fn icon_up() -> leptos::prelude::AnyView {
+    Icon::ChevronUp.render()
+}
+fn icon_down() -> leptos::prelude::AnyView {
+    Icon::ChevronDown.render()
+}
+fn icon_updown() -> leptos::prelude::AnyView {
+    Icon::ChevronsUpDown.render()
+}
 
 fn sort_icon_state(sort_field: Option<String>, sort_dir: SortDir, col_title: &str) -> AnyView {
     let active = sort_field.as_deref() == Some(col_title);
-    if !active { return icon_updown(); }
+    if !active {
+        return icon_updown();
+    }
     match sort_dir {
         SortDir::Asc => icon_up(),
         SortDir::Desc => icon_down(),
@@ -30,8 +40,11 @@ fn DataTableRowActions<T: Clone + 'static>(
             <td class=format!("p-4 align-middle text-right {}", width)>
                 {act_fn(&item)}
             </td>
-        }.into_any()
-    } else { ().into_any() }
+        }
+        .into_any()
+    } else {
+        ().into_any()
+    }
 }
 
 #[component]
@@ -61,7 +74,8 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
         let q = search.get().to_lowercase();
         if !q.is_empty() {
             items.retain(|item| {
-                memo_columns.iter()
+                memo_columns
+                    .iter()
                     .filter(|c| c.searchable)
                     .filter_map(|c| c.search_key.as_ref())
                     .any(|sk| sk(item).to_lowercase().contains(&q))
@@ -74,7 +88,9 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
                 if let Some(col) = memo_columns.iter().find(|c| c.title == *field) {
                     if let Some(sk) = col.sort_key.as_ref() {
                         items.sort_by(|a, b| sk(a).cmp(&sk(b)));
-                        if sd == SortDir::Desc { items.reverse(); }
+                        if sd == SortDir::Desc {
+                            items.reverse();
+                        }
                     }
                 }
             }
@@ -84,8 +100,15 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
         let p = page.get();
         let start = p * ps;
         let end = (start + ps).min(total);
-        let data = if start < total { items[start..end].to_vec() } else { vec![] };
-        DataTableResponse { data, total_count: total }
+        let data = if start < total {
+            items[start..end].to_vec()
+        } else {
+            vec![]
+        };
+        DataTableResponse {
+            data,
+            total_count: total,
+        }
     });
 
     let total_pages = Signal::derive(move || {
@@ -109,8 +132,14 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
             } else {
                 match sort_dir.get() {
                     SortDir::Asc => sort_dir.set(SortDir::Desc),
-                    SortDir::Desc => { sort_field.set(None); sort_dir.set(SortDir::None); }
-                    SortDir::None => { sort_field.set(Some(col_title.to_string())); sort_dir.set(SortDir::Asc); }
+                    SortDir::Desc => {
+                        sort_field.set(None);
+                        sort_dir.set(SortDir::None);
+                    }
+                    SortDir::None => {
+                        sort_field.set(Some(col_title.to_string()));
+                        sort_dir.set(SortDir::Asc);
+                    }
                 }
             }
         }

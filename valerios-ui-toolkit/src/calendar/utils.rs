@@ -1,5 +1,5 @@
-use chrono::{Datelike, Duration, NaiveDate, Weekday};
 use super::locale::{FirstDayOfWeek, Locale};
+use chrono::{Datelike, Duration, NaiveDate};
 
 pub fn today() -> NaiveDate {
     chrono::Local::now().date_naive()
@@ -27,11 +27,19 @@ pub fn first_weekday_offset(year: i32, month: u32, first_day: FirstDayOfWeek) ->
 }
 
 pub fn prev_month_date(year: i32, month: u32) -> (i32, u32) {
-    if month == 1 { (year - 1, 12) } else { (year, month - 1) }
+    if month == 1 {
+        (year - 1, 12)
+    } else {
+        (year, month - 1)
+    }
 }
 
 pub fn next_month_date(year: i32, month: u32) -> (i32, u32) {
-    if month == 12 { (year + 1, 1) } else { (year, month + 1) }
+    if month == 12 {
+        (year + 1, 1)
+    } else {
+        (year, month + 1)
+    }
 }
 
 pub fn format_month_year(year: i32, month: u32, locale: &Locale) -> String {
@@ -41,18 +49,20 @@ pub fn format_month_year(year: i32, month: u32, locale: &Locale) -> String {
 pub fn weekday_headers(locale: &Locale) -> Vec<&'static str> {
     let base = NaiveDate::from_ymd_opt(2026, 1, 5).unwrap(); // any Monday
     match locale.first_day_of_week {
-        FirstDayOfWeek::Monday => {
-            (0..7).map(|i| {
+        FirstDayOfWeek::Monday => (0..7)
+            .map(|i| {
                 let date = base + Duration::days(i);
                 locale.weekday_short_name(date.weekday())
-            }).collect()
-        }
+            })
+            .collect(),
         FirstDayOfWeek::Sunday => {
             let sun_base = NaiveDate::from_ymd_opt(2026, 1, 4).unwrap();
-            (0..7).map(|i| {
-                let date = sun_base + Duration::days(i);
-                locale.weekday_short_name(date.weekday())
-            }).collect()
+            (0..7)
+                .map(|i| {
+                    let date = sun_base + Duration::days(i);
+                    locale.weekday_short_name(date.weekday())
+                })
+                .collect()
         }
     }
 }
@@ -64,18 +74,25 @@ pub struct DayInfo {
     pub is_today: bool,
 }
 
-pub fn generate_month_days(year: i32, month: u32, today_date: NaiveDate, first_day: FirstDayOfWeek) -> Vec<DayInfo> {
+pub fn generate_month_days(
+    year: i32,
+    month: u32,
+    today_date: NaiveDate,
+    first_day: FirstDayOfWeek,
+) -> Vec<DayInfo> {
     let first = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
     let offset = first_weekday_offset(year, month, first_day);
     let start = first - Duration::days(offset as i64);
     let total_cells = 42;
 
-    (0..total_cells).map(|i| {
-        let date = start + Duration::days(i as i64);
-        DayInfo {
-            date,
-            is_outside: date.month() != month,
-            is_today: date == today_date,
-        }
-    }).collect()
+    (0..total_cells)
+        .map(|i| {
+            let date = start + Duration::days(i as i64);
+            DayInfo {
+                date,
+                is_outside: date.month() != month,
+                is_today: date == today_date,
+            }
+        })
+        .collect()
 }

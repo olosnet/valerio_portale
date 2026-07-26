@@ -1,5 +1,5 @@
-use leptos::prelude::*;
 use super::{accordion::use_accordion, item::use_accordion_item_value};
+use leptos::prelude::*;
 
 #[component]
 pub fn AccordionTrigger(
@@ -10,7 +10,7 @@ pub fn AccordionTrigger(
     let value = use_accordion_item_value();
     let extra = class.unwrap_or("");
     let cls = move || {
-        let is_open = ctx.open_item.get().as_deref() == Some(value);
+        //let is_open = ctx.open_item.get().as_deref() == Some(value);
         format!(
             "flex flex-1 items-center justify-between py-4 text-sm font-medium ring-offset-background transition-all hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180 {}",
             extra,

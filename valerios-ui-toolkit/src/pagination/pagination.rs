@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use leptos::prelude::*;
+use std::sync::Arc;
 
 fn icon_chevron_left() -> AnyView {
     use crate::icon::Icon;
@@ -58,9 +58,17 @@ pub fn PaginationLink(
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
     let base = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 w-9";
-    let active_cls = if is_active { " border border-border bg-accent text-accent-foreground" } else { "" };
+    let active_cls = if is_active {
+        " border border-border bg-accent text-accent-foreground"
+    } else {
+        ""
+    };
     let cls = move || format!("{} {}{}", base, active_cls, extra);
-    let handle = move |_| { if let Some(ref cb) = on_click { cb(); } };
+    let handle = move |_| {
+        if let Some(ref cb) = on_click {
+            cb();
+        }
+    };
 
     view! {
         <button type="button" data-slot="pagination-link" aria-current=if is_active { "page" } else { "false" } on:click=handle class=cls()>
@@ -75,10 +83,14 @@ pub fn PaginationPrevious(
     #[prop(default = false)] disabled: bool,
     #[prop(default = "Precedente")] text: &'static str,
     #[prop(optional)] class: Option<&'static str>,
-    #[prop(optional)] children: Option<Children>,
+    //#[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    let handle = move |_| { if let Some(ref cb) = on_click { cb(); } };
+    let handle = move |_| {
+        if let Some(ref cb) = on_click {
+            cb();
+        }
+    };
 
     view! {
         <button type="button" data-slot="pagination-previous" disabled=disabled on:click=handle
@@ -96,10 +108,14 @@ pub fn PaginationNext(
     #[prop(default = false)] disabled: bool,
     #[prop(default = "Successivo")] text: &'static str,
     #[prop(optional)] class: Option<&'static str>,
-    #[prop(optional)] children: Option<Children>,
+    //#[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let extra = class.unwrap_or("");
-    let handle = move |_| { if let Some(ref cb) = on_click { cb(); } };
+    let handle = move |_| {
+        if let Some(ref cb) = on_click {
+            cb();
+        }
+    };
 
     view! {
         <button type="button" data-slot="pagination-next" disabled=disabled on:click=handle
@@ -112,9 +128,7 @@ pub fn PaginationNext(
 }
 
 #[component]
-pub fn PaginationEllipsis(
-    #[prop(optional)] class: Option<&'static str>,
-) -> impl IntoView {
+pub fn PaginationEllipsis(#[prop(optional)] class: Option<&'static str>) -> impl IntoView {
     let extra = class.unwrap_or("");
 
     view! {

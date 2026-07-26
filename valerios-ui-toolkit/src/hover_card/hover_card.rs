@@ -7,7 +7,9 @@ pub struct HoverCardContext {
 
 impl HoverCardContext {
     pub fn new() -> Self {
-        Self { open: RwSignal::new(false) }
+        Self {
+            open: RwSignal::new(false),
+        }
     }
 }
 
@@ -18,7 +20,7 @@ pub fn use_hover_card() -> HoverCardContext {
 #[component]
 pub fn HoverCard(
     children: ChildrenFn,
-    #[prop(default = 300)] delay_ms: u32,
+    //#[prop(default = 300)] delay_ms: u32,
 ) -> impl IntoView {
     provide_context(HoverCardContext::new());
 

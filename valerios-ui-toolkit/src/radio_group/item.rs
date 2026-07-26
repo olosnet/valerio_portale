@@ -1,5 +1,5 @@
-use leptos::prelude::*;
 use super::radio_group::use_radio_group;
+use leptos::prelude::*;
 
 #[component]
 pub fn RadioGroupItem(
@@ -10,7 +10,7 @@ pub fn RadioGroupItem(
     let ctx = use_radio_group();
     let extra = class.unwrap_or("");
     let cls = move || {
-        let selected = ctx.value.get() == value;
+        // let selected = ctx.value.get() == value;
         format!(
             "aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground {}",
             extra,
