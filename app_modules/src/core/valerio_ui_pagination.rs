@@ -40,7 +40,7 @@ use serde::Deserialize;
 /// ```http
 /// GET /api/users?page=0&page_size=10&sort_field=nome&sort_dir=asc&search=mario
 /// ```
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct DataTableQuery {
     /// Pagina corrente (0-based).
     #[serde(default)]
