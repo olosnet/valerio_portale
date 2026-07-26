@@ -31,6 +31,7 @@
 #[cfg(feature = "item")] pub mod item;
 #[cfg(feature = "kbd")] pub mod kbd;
 #[cfg(feature = "label")] pub mod label;
+#[cfg(feature = "maps")] pub mod maps;
 #[cfg(feature = "menubar")] pub mod menubar;
 #[cfg(feature = "native_select")] pub mod native_select;
 #[cfg(feature = "navigation_menu")] pub mod navigation_menu;
