@@ -132,6 +132,7 @@ pub fn UsersList() -> impl IntoView {
             title: "Nome",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(|u: &User| u.name.clone().unwrap_or_default().into_any()),
             sort_key: Some(Arc::new(|u| u.name.clone().unwrap_or_default())),
             search_key: Some(Arc::new(|u| u.name.clone().unwrap_or_default())),
@@ -140,6 +141,7 @@ pub fn UsersList() -> impl IntoView {
             title: "Cognome",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(|u: &User| u.surname.clone().unwrap_or_default().into_any()),
             sort_key: Some(Arc::new(|u| u.surname.clone().unwrap_or_default())),
             search_key: Some(Arc::new(|u| u.surname.clone().unwrap_or_default())),
@@ -148,6 +150,7 @@ pub fn UsersList() -> impl IntoView {
             title: "Email",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(|u: &User| u.email.clone().unwrap_or_default().into_any()),
             sort_key: Some(Arc::new(|u| u.email.clone().unwrap_or_default())),
             search_key: Some(Arc::new(|u| u.email.clone().unwrap_or_default())),
@@ -156,6 +159,7 @@ pub fn UsersList() -> impl IntoView {
             title: "Abilitato",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(|u: &User| if u.enabled {
                 view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }.into_any()
             } else {

@@ -14,6 +14,9 @@ use mongodb::{Collection, options::ReturnDocument};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
+use cornetti::core::pagination::{LoadOptions, PaginationResult};
+use cornetti::mongo::pagination::MongoPagination;
+
 use crate::{
     astronomia::common::helpers::secs_to_dms_string,
     astronomia::oggetti_astronomici::{
@@ -292,6 +295,26 @@ impl OggettiAstronomiciRepository {
             .map_err(|e| errors::internal_server_error::generic_error().with_internal_detail(e.to_string()))?;
 
         Ok(items.into_iter().map(Into::into).collect())
+    }
+
+    pub async fn find_paginated(
+        &self,
+        load_options: &LoadOptions,
+    ) -> Result<PaginationResult<OggettoAstronomico>, CornettiError> {
+        let collection_name = MongoOggettoAstronomicoModel::collection_name();
+        let collection: Collection<MongoOggettoAstronomicoModel> =
+            self.mongo.db().collection(collection_name);
+
+        let join_dict = std::collections::HashMap::new();
+        let result = MongoPagination::paginate(
+            &collection,
+            load_options,
+            &join_dict,
+            |m: MongoOggettoAstronomicoModel| m.into(),
+        )
+        .await?;
+
+        Ok(result)
     }
 
     pub async fn search(&self, term: &str) -> Result<Vec<OggettoAstronomico>, CornettiError> {

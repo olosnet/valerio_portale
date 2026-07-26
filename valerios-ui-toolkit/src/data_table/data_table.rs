@@ -59,62 +59,89 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
     #[prop(default = "Azioni")] actions_title: &'static str,
     #[prop(optional)] class: Option<&'static str>,
 ) -> impl IntoView {
-    let page = RwSignal::new(0usize);
-    let page_size = RwSignal::new(initial_page_size);
-    let sort_field: RwSignal<Option<String>> = RwSignal::new(None);
-    let sort_dir: RwSignal<SortDir> = RwSignal::new(SortDir::None);
-    let search: RwSignal<String> = RwSignal::new(String::new());
+    let (page, page_size, sort_field, sort_dir, search, loading) = match &source {
+        DataTableSource::Client(_) => {
+            let page = RwSignal::new(0usize);
+            let page_size = RwSignal::new(initial_page_size);
+            (
+                page,
+                page_size,
+                RwSignal::<Option<String>>::new(None),
+                RwSignal::<SortDir>::new(SortDir::None),
+                RwSignal::<String>::new(String::new()),
+                RwSignal::new(false),
+            )
+        }
+        DataTableSource::Server(state) => {
+            (
+                state.page,
+                state.page_size,
+                state.sort_field,
+                state.sort_dir,
+                state.search,
+                state.loading,
+            )
+        }
+    };
+
     let extra = class.unwrap_or("");
 
     let memo_columns = columns.clone();
-    let result = Memo::new(move |_| {
-        let mut items = match &source {
-            DataTableSource::Client(data) => data.clone(),
-        };
-        let q = search.get().to_lowercase();
-        if !q.is_empty() {
-            items.retain(|item| {
-                memo_columns
-                    .iter()
-                    .filter(|c| c.searchable)
-                    .filter_map(|c| c.search_key.as_ref())
-                    .any(|sk| sk(item).to_lowercase().contains(&q))
-            });
-        }
-        let sf = sort_field.get();
-        let sd = sort_dir.get();
-        if let Some(field) = sf.as_ref() {
-            if sd != SortDir::None {
-                if let Some(col) = memo_columns.iter().find(|c| c.title == *field) {
-                    if let Some(sk) = col.sort_key.as_ref() {
-                        items.sort_by(|a, b| sk(a).cmp(&sk(b)));
-                        if sd == SortDir::Desc {
-                            items.reverse();
+    let result = Memo::new(move |_| match &source {
+        DataTableSource::Client(data) => {
+            let mut items = data.clone();
+            let q = search.get().to_lowercase();
+            if !q.is_empty() {
+                items.retain(|item| {
+                    memo_columns
+                        .iter()
+                        .filter(|c| c.searchable)
+                        .filter_map(|c| c.search_key.as_ref())
+                        .any(|sk| sk(item).to_lowercase().contains(&q))
+                });
+            }
+            let sf = sort_field.get();
+            let sd = sort_dir.get();
+            if let Some(field) = sf.as_ref() {
+                if sd != SortDir::None {
+                    if let Some(col) = memo_columns.iter().find(|c| {
+                        c.backend_field.as_deref() == Some(field.as_str()) || c.title == field.as_str()
+                    }) {
+                        if let Some(sk) = col.sort_key.as_ref() {
+                            items.sort_by(|a, b| sk(a).cmp(&sk(b)));
+                            if sd == SortDir::Desc {
+                                items.reverse();
+                            }
                         }
                     }
                 }
             }
+            let total = items.len();
+            let ps = page_size.get();
+            let p = page.get();
+            let start = p * ps;
+            let end = (start + ps).min(total);
+            let data = if start < total {
+                items[start..end].to_vec()
+            } else {
+                vec![]
+            };
+            DataTableResponse {
+                data,
+                total_count: total,
+            }
         }
-        let total = items.len();
-        let ps = page_size.get();
-        let p = page.get();
-        let start = p * ps;
-        let end = (start + ps).min(total);
-        let data = if start < total {
-            items[start..end].to_vec()
-        } else {
-            vec![]
-        };
-        DataTableResponse {
-            data,
-            total_count: total,
-        }
+        DataTableSource::Server(state) => state.data.get(),
     });
 
     let total_pages = Signal::derive(move || {
         let total = result.get().total_count;
         let ps = page_size.get();
-        if total == 0 { 1 } else { (total + ps - 1) / ps }
+        if total == 0 {
+            1
+        } else {
+            (total + ps - 1) / ps
+        }
     });
 
     let has_actions = actions.is_some();
@@ -145,15 +172,6 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
         }
     };
 
-    let search_input = {
-        let search = search;
-        let page = page;
-        move |ev: leptos::ev::Event| {
-            search.set(event_target_value(&ev));
-            page.set(0);
-        }
-    };
-
     view! {
         <div data-slot="data-table" class=format!("space-y-4 {}", extra)>
             {move || if show_search {
@@ -162,7 +180,10 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
                         {icon_search()}
                         <input type="text" placeholder="Cerca..."
                             prop:value=move || search.get()
-                            on:input=move |ev: leptos::ev::Event| search.set(event_target_value(&ev))
+                            on:input=move |ev: leptos::ev::Event| {
+                                search.set(event_target_value(&ev));
+                                page.set(0);
+                            }
                             class="flex h-9 w-full max-w-sm rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         />
                     </div>
@@ -179,16 +200,16 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
                                 let sd = sort_dir;
                                 let toggler = toggle_sort;
                                 for col in &columns_render {
-                                    let col_title = col.title;
+                                    let sort_id = col.backend_field.unwrap_or(col.title);
                                     views.push(if col.sortable {
                                         let h = toggler;
                                         view! {
                                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
                                                 <button type="button"
-                                                    on:click=move |_| h(col_title)
+                                                    on:click=move |_| h(sort_id)
                                                     class="inline-flex items-center gap-1 hover:text-foreground font-medium">
                                                     {(col.title)}
-                                                    {sort_icon_state(sf.get(), sd.get(), col_title)}
+                                                    {sort_icon_state(sf.get(), sd.get(), sort_id)}
                                                 </button>
                                             </th>
                                         }.into_any()
@@ -214,7 +235,14 @@ pub fn DataTable<T: Clone + PartialEq + Send + Sync + 'static>(
                     <tbody class="[&_tr:last-child]:border-0">
                         {move || {
                             let res = result.get();
-                            if res.data.is_empty() {
+                            let is_loading = loading.get();
+                            if is_loading {
+                                view! {
+                                    <tr class="border-b transition-colors hover:bg-muted/50">
+                                        <td class="p-4 align-middle text-center text-muted-foreground h-24">"Caricamento..."</td>
+                                    </tr>
+                                }.into_any()
+                            } else if res.data.is_empty() {
                                 view! {
                                     <tr class="border-b transition-colors hover:bg-muted/50">
                                         <td class="p-4 align-middle text-center text-muted-foreground h-24">"Nessun risultato."</td>

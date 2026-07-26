@@ -72,16 +72,34 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 fn AstronomiaSection() -> impl IntoView {
     let nav = Arc::new(use_navigate());
     let on_siti = { let n = nav.clone(); move |_| { n("/siti_osservativi", Default::default()); } };
+    let on_oggetti = { let n = nav.clone(); move |_| { n("/oggetti_astronomici", Default::default()); } };
+
+    let show_sub = RwSignal::new(false);
 
     view! {
         <SidebarGroup>
             <SidebarGroupLabel>"Astronomia"</SidebarGroupLabel>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <button on:click=on_siti class=nav_btn_class()>
+                    <button on:click=move |_| show_sub.update(|v| *v = !*v) class=menu_btn_class()>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
-                        <span class="group-data-[collapsible=icon]:hidden">"Siti Osservativi"</span>
+                        <span class="group-data-[collapsible=icon]:hidden">"Astronomia"</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto transition-transform duration-200 shrink-0 group-data-[collapsible=icon]:hidden" class:rotate-90=move || show_sub.get()><path d="m9 18 6-6-6-6"/></svg>
                     </button>
+                    <div class:hidden=move || !show_sub.get()>
+                        <SidebarMenuSub>
+                            <SidebarMenuSubItem>
+                                <button on:click=on_siti class=sub_btn_class()>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg><span>"Siti Osservativi"</span>
+                                </button>
+                            </SidebarMenuSubItem>
+                            <SidebarMenuSubItem>
+                                <button on:click=on_oggetti class=sub_btn_class()>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>"Oggetti Astronomici"</span>
+                                </button>
+                            </SidebarMenuSubItem>
+                        </SidebarMenuSub>
+                    </div>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarGroup>

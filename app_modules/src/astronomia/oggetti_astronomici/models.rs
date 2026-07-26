@@ -555,7 +555,7 @@ impl<'de> Deserialize<'de> for TipoOggetto {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Catalogo {
     pub catalog_id: String,
@@ -571,7 +571,7 @@ pub struct CatalogoInput {
     pub catalog_nr: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct DimensioniApparenti {
     pub secs_a: Option<i32>,
@@ -590,7 +590,7 @@ pub struct DimensioniApparentiInput {
 
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
-#[cfg_attr(feature = "client", derive(Deserialize, Clone))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone, PartialEq))]
 pub struct OggettoAstronomico {
     pub id: Option<String>,
     pub tipo: TipoOggetto,
@@ -609,7 +609,7 @@ pub struct OggettoAstronomico {
     pub image_fov: Option<f64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[cfg_attr(feature = "server", derive(ToSchema, Validate))]
 #[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct OggettoAstronomicoCreate {

@@ -12,6 +12,8 @@ use crate::modules::auth::pages::login::Login;
 use crate::modules::groups::pages::group_detail::GroupDetail;
 use crate::modules::groups::pages::groups_list::GroupsList;
 use crate::modules::identity::pages::profile::Profile;
+use crate::modules::oggetti_astronomici::pages::oggetti_list::OggettiList;
+use crate::modules::oggetti_astronomici::pages::oggetto_detail::OggettoDetail;
 use crate::modules::siti_osservativi::pages::sito_detail::SitoDetail;
 use crate::modules::siti_osservativi::pages::siti_list::SitiList;
 use crate::modules::users::pages::user_detail::UserDetail;
@@ -63,6 +65,8 @@ pub fn App() -> impl IntoView {
                         <Route path=StaticSegment("profile") view=ProtectedProfile/>
                         <Route path=StaticSegment("siti_osservativi") view=ProtectedSitiList/>
                         <Route path=(StaticSegment("siti_osservativi"), ParamSegment("id")) view=ProtectedSitoDetail/>
+                        <Route path=StaticSegment("oggetti_astronomici") view=ProtectedOggettiList/>
+                        <Route path=(StaticSegment("oggetti_astronomici"), ParamSegment("id")) view=ProtectedOggettoDetail/>
                         <Route path=(StaticSegment("settings"), StaticSegment("users")) view=ProtectedUsersList/>
                         <Route path=(StaticSegment("settings"), StaticSegment("users"), ParamSegment("id")) view=ProtectedUserDetail/>
                         <Route path=(StaticSegment("settings"), StaticSegment("groups")) view=ProtectedGroupsList/>
@@ -143,6 +147,42 @@ fn ProtectedSitoDetail() -> impl IntoView {
             return view! { <Redirect path="/login"/> }.into_any();
         }
         with_layout(view! { <SitoDetail/> }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedOggettiList() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { <OggettiList/> }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedOggettoDetail() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { <OggettoDetail/> }).into_any()
     }
 }
 
@@ -265,6 +305,12 @@ fn DashboardBody() -> impl IntoView {
                                 <a href="/siti_osservativi" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
                                     <h3 class="text-lg font-semibold text-foreground mb-1">"Siti Osservativi"</h3>
                                     <p class="text-sm text-muted-foreground">"Gestione siti di osservazione astronomica"</p>
+                                </a>
+                            });
+                            cards.push(view! {
+                                <a href="/oggetti_astronomici" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
+                                    <h3 class="text-lg font-semibold text-foreground mb-1">"Oggetti Astronomici"</h3>
+                                    <p class="text-sm text-muted-foreground">"Catalogo oggetti celesti"</p>
                                 </a>
                             });
                         }

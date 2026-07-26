@@ -4,7 +4,11 @@ use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::{http_status::HttpStatus, models::CornettiError},
+    core::{
+        http_status::HttpStatus,
+        models::CornettiError,
+        pagination::{LoadOptions, PaginationResult},
+    },
     filemanager::confs::FileManagerConf,
     mongo::services::MongoDBService,
 };
@@ -39,6 +43,13 @@ impl OggettiAstronomiciService {
         term: &str,
     ) -> Result<Vec<OggettoAstronomico>, CornettiError> {
         self.repository.search(term).await
+    }
+
+    pub async fn list_oggetti_astronomici_paginated(
+        &self,
+        load_options: &LoadOptions,
+    ) -> Result<PaginationResult<OggettoAstronomico>, CornettiError> {
+        self.repository.find_paginated(load_options).await
     }
 
     pub async fn get_oggetto_astronomico(

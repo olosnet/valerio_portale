@@ -135,6 +135,7 @@ pub fn SitiList() -> impl IntoView {
             title: "Nome",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(
                 |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
                     s.nome.clone().into_any()
@@ -151,6 +152,7 @@ pub fn SitiList() -> impl IntoView {
             title: "Latitudine",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(
                 |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
                     format!("{:.4}", s.latitudine).into_any()
@@ -167,6 +169,7 @@ pub fn SitiList() -> impl IntoView {
             title: "Longitudine",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(
                 |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
                     format!("{:.4}", s.longitudine).into_any()
@@ -183,6 +186,7 @@ pub fn SitiList() -> impl IntoView {
             title: "Altitudine (m)",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(
                 |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
                     format!("{:.1}", s.altitudine).into_any()
@@ -199,6 +203,7 @@ pub fn SitiList() -> impl IntoView {
             title: "Timezone",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(
                 |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
                     s.timezone.clone().unwrap_or_default().into_any()

@@ -113,6 +113,7 @@ pub fn GroupsList() -> impl IntoView {
             title: "Nome",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(|g: &Group| g.name.clone().unwrap_or_default().into_any()),
             sort_key: Some(Arc::new(|g| g.name.clone().unwrap_or_default())),
             search_key: Some(Arc::new(|g| g.name.clone().unwrap_or_default())),
@@ -121,6 +122,7 @@ pub fn GroupsList() -> impl IntoView {
             title: "Descrizione",
             sortable: true,
             searchable: true,
+            backend_field: None,
             cell: Arc::new(|g: &Group| g.description.clone().unwrap_or_default().into_any()),
             sort_key: Some(Arc::new(|g| g.description.clone().unwrap_or_default())),
             search_key: Some(Arc::new(|g| g.description.clone().unwrap_or_default())),
@@ -129,6 +131,7 @@ pub fn GroupsList() -> impl IntoView {
             title: "Permessi",
             sortable: false,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(|g: &Group| g.permissions.len().to_string().into_any()),
             sort_key: None,
             search_key: None,
@@ -137,6 +140,7 @@ pub fn GroupsList() -> impl IntoView {
             title: "Default",
             sortable: true,
             searchable: false,
+            backend_field: None,
             cell: Arc::new(|g: &Group| {
                 if g.default {
                     view! {
