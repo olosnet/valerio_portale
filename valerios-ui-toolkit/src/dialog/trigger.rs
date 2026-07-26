@@ -13,7 +13,7 @@ pub fn DialogTrigger(
     view! {
         <div
             data-slot="dialog-trigger"
-            on:click=move |_| ctx.open.set(true)
+            on:click=move |_| ctx.open_overlay()
             class=cls()
         >
             {children()}

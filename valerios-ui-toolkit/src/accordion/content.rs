@@ -9,21 +9,20 @@ pub fn AccordionContent(
     let ctx = use_accordion();
     let value = use_accordion_item_value();
     let extra = class.unwrap_or("");
-    let base = "overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down";
+    let base = "grid transition-[grid-template-rows] duration-300";
 
     move || {
-        if ctx.open_item.get().as_deref() == Some(value) {
-            view! {
-                <div
-                    data-state="open"
-                    data-slot="accordion-content"
-                    class=format!("{} pb-4 pt-0 {}", base, extra)
-                >
+        let is_open = ctx.open_item.get().as_deref() == Some(value);
+        view! {
+            <div
+                data-state=if is_open { "open" } else { "closed" }
+                data-slot="accordion-content"
+                class=format!("{} grid-rows-[0fr] data-[state=open]:grid-rows-[1fr] {} {}", base, extra, if is_open { "pb-4 pt-0" } else { "" })
+            >
+                <div class="overflow-hidden">
                     {children()}
                 </div>
-            }.into_any()
-        } else {
-            ().into_any()
-        }
+            </div>
+        }.into_any()
     }
 }

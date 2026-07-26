@@ -5,7 +5,7 @@ use leptos_router::components::Redirect;
 use leptos_router::hooks::use_navigate;
 use valerios_ui_toolkit::password_input::PasswordInput;
 
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error};
+use crate::modules::base::toast_utils::{toast_error, use_toast_ctx};
 use crate::stores::auth_store::use_auth;
 
 #[component]
@@ -25,7 +25,8 @@ pub fn Login() -> impl IntoView {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
 
         if auth.is_authenticated() {
@@ -43,7 +44,10 @@ pub fn Login() -> impl IntoView {
                 spawn_local(async move {
                     loading.set(true);
 
-                    match auth.login(&username.get_untracked(), &password.get_untracked()).await {
+                    match auth
+                        .login(&username.get_untracked(), &password.get_untracked())
+                        .await
+                    {
                         Ok(()) => {
                             let _ = navigate("/", Default::default());
                         }
@@ -58,13 +62,13 @@ pub fn Login() -> impl IntoView {
         };
 
         view! {
-            <Title text="Login - App Gateway"/>
+            <Title text="Login - Vita"/>
             <div class="min-h-screen flex items-center justify-center bg-secondary">
                 <div class="w-full max-w-sm mx-4">
                     <div class="bg-background rounded-lg border border-border shadow-sm p-6">
                         <div class="text-center mb-6">
                             <img src="/static/logo.svg" class="mx-auto h-16 w-16 mb-3" alt="Vita" />
-                            <h1 class="text-2xl font-bold text-foreground">"App Gateway"</h1>
+                            <h1 class="text-2xl font-bold text-foreground">"Vita"</h1>
                             <p class="text-sm text-muted-foreground mt-1">"Accedi per continuare"</p>
                         </div>
 

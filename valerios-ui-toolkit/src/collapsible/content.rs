@@ -9,13 +9,20 @@ pub fn CollapsibleContent(
     let ctx = use_collapsible();
     let extra = class.unwrap_or("");
 
+    let base = "grid transition-[grid-template-rows] duration-300";
+
     move || {
-        if ctx.open.get() {
-            view! {
-                <div data-slot="collapsible-content" class=format!("overflow-hidden {}", extra)>
+        let is_open = ctx.open.get();
+        view! {
+            <div
+                data-state=if is_open { "open" } else { "closed" }
+                data-slot="collapsible-content"
+                class=format!("{} grid-rows-[0fr] data-[state=open]:grid-rows-[1fr] {}", base, extra)
+            >
+                <div class="overflow-hidden">
                     {children()}
                 </div>
-            }.into_any()
-        } else { ().into_any() }
+            </div>
+        }.into_any()
     }
 }

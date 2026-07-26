@@ -39,34 +39,54 @@
 }
 
 @utility animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in 0.2s ease-out both;
 }
 @utility animate-fade-out {
-  animation: fade-out 0.15s ease-in;
+  animation: fade-out 0.15s ease-in both;
 }
 @utility animate-zoom-in {
-  animation: zoom-in 0.2s ease-out;
+  animation: zoom-in 0.2s ease-out both;
+}
+@utility animate-zoom-out {
+  animation: zoom-out 0.15s ease-in both;
 }
 @utility animate-slide-in-left {
-  animation: slide-in-left 0.3s ease-out;
+  animation: slide-in-left 0.3s ease-out both;
 }
 @utility animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right 0.3s ease-out both;
 }
 @utility animate-slide-in-top {
-  animation: slide-in-top 0.3s ease-out;
+  animation: slide-in-top 0.3s ease-out both;
 }
 @utility animate-slide-in-bottom {
-  animation: slide-in-bottom 0.3s ease-out;
+  animation: slide-in-bottom 0.3s ease-out both;
+}
+@utility animate-slide-out-left {
+  animation: slide-out-left 0.3s ease-in both;
+}
+@utility animate-slide-out-right {
+  animation: slide-out-right 0.3s ease-in both;
+}
+@utility animate-slide-out-top {
+  animation: slide-out-top 0.3s ease-in both;
+}
+@utility animate-slide-out-bottom {
+  animation: slide-out-bottom 0.3s ease-in both;
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes zoom-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes zoom-in { from { opacity: 0; scale: 0.95; } to { opacity: 1; scale: 1; } }
+@keyframes zoom-out { from { opacity: 1; scale: 1; } to { opacity: 0; scale: 0.95; } }
 @keyframes slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 @keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes slide-in-top { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 @keyframes slide-in-bottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slide-out-left { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes slide-out-top { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+@keyframes slide-out-bottom { from { transform: translateY(0); } to { transform: translateY(100%); } }
 
 @layer base {
   * { @apply border-border outline-ring/50; }

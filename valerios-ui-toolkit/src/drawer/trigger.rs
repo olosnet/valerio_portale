@@ -7,7 +7,7 @@ pub fn DrawerTrigger(
 ) -> impl IntoView {
     let ctx = use_overlay();
     view! {
-        <div data-slot="drawer-trigger" on:click=move |_| ctx.open.set(true)>
+        <div data-slot="drawer-trigger" on:click=move |_| ctx.open_overlay()>
             {children()}
         </div>
     }

@@ -12,7 +12,7 @@ pub fn SheetTrigger(
     view! {
         <div
             data-slot="sheet-trigger"
-            on:click=move |_| ctx.open.set(true)
+            on:click=move |_| ctx.open_overlay()
             class=extra
         >
             {children()}

@@ -3,6 +3,7 @@ use leptos::prelude::*;
 use valerios_ui_toolkit::icon::Icon;
 use valerios_ui_toolkit::sidebar::{use_sidebar, SidebarProvider};
 use valerios_ui_toolkit::theme::use_theme;
+use wasm_bindgen::prelude::*;
 
 use crate::modules::base::components::app_sidebar::AppSidebar;
 
@@ -44,12 +45,28 @@ fn LayoutHeader() -> impl IntoView {
 }
 
 pub fn with_layout(content: impl IntoView + 'static) -> impl IntoView {
+    let mounted = RwSignal::new(false);
+
+    let cb = {
+        let mounted = mounted;
+        move || mounted.set(true)
+    };
+    let window = web_sys::window().unwrap();
+    let closure = Closure::once_into_js(cb);
+    window
+        .set_timeout_with_callback_and_timeout_and_arguments_0(
+            closure.as_ref().unchecked_ref(),
+            10,
+        )
+        .unwrap();
+
     view! {
         <SidebarProvider>
             <AppSidebar/>
             <div class="flex flex-1 flex-col min-w-0">
                 <LayoutHeader/>
-                <main class="flex-1 bg-background p-8 overflow-auto">
+                <main class="flex-1 bg-background p-8 overflow-auto opacity-0 transition-opacity duration-300"
+                      class:opacity-100=move || mounted.get()>
                     {content}
                 </main>
             </div>

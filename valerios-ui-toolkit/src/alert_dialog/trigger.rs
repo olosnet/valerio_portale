@@ -12,7 +12,7 @@ pub fn AlertDialogTrigger(
     view! {
         <div
             data-slot="alert-dialog-trigger"
-            on:click=move |_| ctx.open.set(true)
+            on:click=move |_| ctx.open_overlay()
             class=extra
         >
             {children()}
