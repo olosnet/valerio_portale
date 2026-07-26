@@ -9,7 +9,7 @@ use validator::Validate;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
-#[cfg_attr(feature = "client", derive(Deserialize))]
+#[cfg_attr(not(feature = "server"), derive(Deserialize))]
 pub enum Tipo {
     #[serde(rename = "telescopio")]
     Telescopio,

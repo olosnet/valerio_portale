@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use crate::base::models::AuthorizationPermission;
+
 use cornetti::{
     actix::auth::helpers::invalidate_session,
     auth::{
         confs::JwtAuthConf,
-        models::{AuthorizationPermission, JwtDefaultClaims},
+        models::JwtDefaultClaims,
         traits::{IdentityAuthorization, SessionStore},
     },
     core::models::CornettiResult,

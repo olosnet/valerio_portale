@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-#[cfg(feature = "client")]
 use crate::base::models::AuthorizationPermission;
-#[cfg(feature = "server")]
-use cornetti::auth::models::AuthorizationPermission;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "server")]

@@ -12,7 +12,7 @@ use crate::astronomia::oggetti_astronomici::helpers::{validate_coord_ar, validat
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
-#[cfg_attr(feature = "client", derive(Deserialize))]
+#[cfg_attr(not(feature = "server"), derive(Deserialize))]
 pub enum Costellazione {
     #[serde(rename = "Sconosciuta")]
     Sconosciuta,
@@ -410,7 +410,7 @@ impl<'de> Deserialize<'de> for Costellazione {
 /// morfologica piu' fine (Hubble sequence, attività nucleare).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
-#[cfg_attr(feature = "client", derive(Deserialize))]
+#[cfg_attr(not(feature = "server"), derive(Deserialize))]
 pub enum TipoOggetto {
     // --- Galassie (classificazione morfologica) ---
     #[serde(rename = "GAL")]

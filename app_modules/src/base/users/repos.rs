@@ -1,11 +1,11 @@
 use crate::base::identity::models::UserIdentity;
+use crate::base::models::AuthorizationPermission;
 use crate::base::users::models::{User, UserCreate, UserUpdate};
 use bson::{doc, oid::ObjectId};
-use cornetti::auth::models::AuthorizationPermission;
-use cornetti::errors;
 use cornetti::core::helpers::sec::{hash_password, random_pass, verify_password};
 use cornetti::core::models::CornettiResult;
 use cornetti::core::traits::{BaseModel, BaseModule};
+use cornetti::errors;
 use cornetti::mongo::services::MongoDBService;
 use cornetti::mongo::traits::{MongoBaseModel, TryMergeFrom};
 use cornetti::redis::services::RedisDBService;
@@ -147,10 +147,7 @@ impl TryFrom<UserCreate> for MongoUserModel {
         let group_ids = dto
             .groups_ids
             .iter()
-            .map(|id| {
-                ObjectId::parse_str(id)
-                    .map_err(|_| errors::bad_request::invalid_object_id())
-            })
+            .map(|id| ObjectId::parse_str(id).map_err(|_| errors::bad_request::invalid_object_id()))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(MongoUserModel {
             _id: None,
@@ -180,8 +177,7 @@ impl TryMergeFrom<UserUpdate> for MongoUserModel {
                 .groups_ids
                 .iter()
                 .map(|id| {
-                    ObjectId::parse_str(id)
-                        .map_err(|_| errors::bad_request::invalid_object_id())
+                    ObjectId::parse_str(id).map_err(|_| errors::bad_request::invalid_object_id())
                 })
                 .collect::<Result<Vec<_>, _>>()?;
         }
@@ -215,10 +211,7 @@ impl UsersRepository {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
-        match collection
-            .find_one(doc! { "_id": &obj_id })
-            .await?
-        {
+        match collection.find_one(doc! { "_id": &obj_id }).await? {
             Some(item) => Ok(item.into()),
             None => Err(errors::not_found::item_not_found()),
         }
@@ -247,11 +240,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn set_default_flag(
-        &self,
-        user_id: &str,
-        is_default: bool,
-    ) -> CornettiResult<User> {
+    pub async fn set_default_flag(&self, user_id: &str, is_default: bool) -> CornettiResult<User> {
         let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -275,11 +264,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn update(
-        &self,
-        user_id: &str,
-        user_update: &UserUpdate,
-    ) -> CornettiResult<User> {
+    pub async fn update(&self, user_id: &str, user_update: &UserUpdate) -> CornettiResult<User> {
         let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -294,10 +279,7 @@ impl UsersRepository {
         let document: bson::Document = model.to_bson().as_document().unwrap().clone();
 
         match collection
-            .find_one_and_update(
-                doc! { "_id": &obj_id },
-                doc! { "$set": document },
-            )
+            .find_one_and_update(doc! { "_id": &obj_id }, doc! { "$set": document })
             .return_document(ReturnDocument::After)
             .await?
         {
@@ -324,11 +306,7 @@ impl UsersRepository {
         }
     }
 
-    pub async fn set_password(
-        &self,
-        user_id: &str,
-        password: &String,
-    ) -> CornettiResult<User> {
+    pub async fn set_password(&self, user_id: &str, password: &String) -> CornettiResult<User> {
         let obj_id = ObjectId::parse_str(user_id)?;
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
@@ -376,10 +354,7 @@ impl UsersRepository {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
-        let current_user = match collection
-            .find_one(doc! { "_id": &obj_user_id })
-            .await?
-        {
+        let current_user = match collection.find_one(doc! { "_id": &obj_user_id }).await? {
             Some(user) => user,
             None => return Err(errors::not_found::item_not_found()),
         };
@@ -434,9 +409,8 @@ impl UsersRepository {
                 let user_password: &str = match user.password.as_deref() {
                     Some(password) => password,
                     None => {
-                        return Err(errors::internal_server_error::generic_error().with_internal_detail(
-                            "Can't read user password".to_string(),
-                        ));
+                        return Err(errors::internal_server_error::generic_error()
+                            .with_internal_detail("Can't read user password".to_string()));
                     }
                 };
 
@@ -453,8 +427,7 @@ impl UsersRepository {
     pub async fn get_user_permissions(
         &self,
         email: &str,
-    ) -> CornettiResult<HashMap<String, AuthorizationPermission>>
-    {
+    ) -> CornettiResult<HashMap<String, AuthorizationPermission>> {
         let collection = self
             .mongo
             .db()
@@ -553,9 +526,7 @@ impl UsersRepository {
         let collection_name: &'static str = MongoUserModel::collection_name();
         let collection: Collection<MongoUserModel> = self.mongo.db().collection(collection_name);
 
-        let cursor = collection
-            .find(doc! { "groups_ids": &obj_id })
-            .await?;
+        let cursor = collection.find(doc! { "groups_ids": &obj_id }).await?;
 
         Ok(cursor.try_collect().await?)
     }
