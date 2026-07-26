@@ -19,7 +19,7 @@ pub async fn logout(client: &ApiClient) -> Result<(), ApiError> {
 
 pub async fn refresh(
     client: &ApiClient,
-) -> Result<crate::modules::identity::models::UserIdentity, ApiError> {
+) -> Result<app_modules::base::identity::models::UserIdentity, ApiError> {
     let resp = client.request("POST", "/auth/refresh", None).await?;
     let dto: crate::modules::auth::models::RefreshAuthResponse =
         serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))?;

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use crate::modules::users::models::User;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoginBody {
@@ -13,12 +12,12 @@ pub struct DefaultLoginResponse {
     pub refresh_token: Option<String>,
     pub expires_in: Option<usize>,
     pub refresh_expires_in: Option<usize>,
-    pub identity: User,
+    pub identity: app_modules::base::users::models::User,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RefreshAuthResponse {
     pub access_token: Option<String>,
     pub expires_in: Option<usize>,
-    pub identity: crate::modules::identity::models::UserIdentity,
+    pub identity: app_modules::base::identity::models::UserIdentity,
 }

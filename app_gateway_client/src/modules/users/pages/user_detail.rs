@@ -6,8 +6,8 @@ use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
-use crate::modules::groups::models::Group;
-use crate::modules::users::models::{SetPasswordBody, UserUpdate};
+use app_modules::base::groups::models::Group;
+use app_modules::base::users::models::{SetPasswordBody, UserUpdate};
 use crate::stores::auth_store::use_auth;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::confirm_delete::ConfirmDeleteDialog;
@@ -23,7 +23,7 @@ pub fn UserDetail() -> impl IntoView {
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
-    let user = RwSignal::new(None::<crate::modules::users::models::User>);
+    let user = RwSignal::new(None::<app_modules::base::users::models::User>);
     let groups = RwSignal::new(Vec::<Group>::new());
 
     let name = RwSignal::new(String::new());

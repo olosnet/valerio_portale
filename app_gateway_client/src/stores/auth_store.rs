@@ -4,9 +4,9 @@ use leptos::prelude::*;
 
 use crate::modules::auth::api as auth_api;
 use crate::modules::base::api_client::ApiClient;
-use crate::modules::base::models::AuthorizationPermission;
+use app_modules::base::models::AuthorizationPermission;
 use crate::modules::identity::api as identity_api;
-use crate::modules::identity::models::UserIdentity;
+use app_modules::base::identity::models::UserIdentity;
 
 #[derive(Clone)]
 pub struct AuthContext {

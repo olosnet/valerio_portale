@@ -1,6 +1,6 @@
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::models::ApiError;
-use crate::modules::identity::models::{UserIdentity, UserIdentityUpdate, UserIdentityUpdatePassword};
+use app_modules::base::identity::models::{UserIdentity, UserIdentityUpdate, UserIdentityUpdatePassword};
 
 pub async fn get_identity(client: &ApiClient) -> Result<UserIdentity, ApiError> {
     let resp = client.request("GET", "/identity", None).await?;

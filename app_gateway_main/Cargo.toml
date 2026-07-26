@@ -15,7 +15,7 @@ cornetti_macros = { path = "../cornetti-rust/cornetti_macros" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-log = "0.2"
-app_modules = { path = "../app_modules"}
+app_modules = { path = "../app_modules" }
 utoipa = { version ="5", features = ["actix_extras", "chrono"]}
 utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 actix-web = "4.11.0"

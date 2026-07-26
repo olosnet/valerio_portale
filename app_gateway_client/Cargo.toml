@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+app_modules = { path = "../app_modules", default-features = false, features = ["client"] }
+chrono = { version = "0.4", features = ["serde"] }
 console_error_panic_hook = "0.1.7"
 leptos = { version = "0.8.20", features = ["csr"] }
 leptos_meta = "0.8.6"
@@ -14,6 +16,6 @@ gloo-net = { version = "0.6", features = ["http"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
-web-sys = { version = "0.3", features = ["Window", "Document", "HtmlDocument", "HtmlInputElement", "HtmlElement", "Element", "Location", "FileReader", "FileList", "FormData", "File", "Blob", "BlobPropertyBag", "ProgressEvent"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "HtmlDocument", "HtmlInputElement", "HtmlElement", "Element", "Location", "FileReader", "FileList", "FormData", "File", "Blob", "BlobPropertyBag", "ProgressEvent", "Url"] }
 valerios-ui-toolkit = { path = "../valerios-ui-toolkit", features = ["full"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }

@@ -6,7 +6,7 @@ use leptos_router::hooks::use_navigate;
 use std::sync::Arc;
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
-use crate::modules::groups::models::{Group, GroupCreate};
+use app_modules::base::groups::models::{Group, GroupCreate};
 use crate::stores::auth_store::use_auth;
 
 use valerios_ui_toolkit::badge::Badge;

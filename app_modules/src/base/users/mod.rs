@@ -1,4 +1,6 @@
+#[cfg(feature = "server")]
 use bson::doc;
+#[cfg(feature = "server")]
 use cornetti::{
     core::traits::BaseModule,
     mongo::{
@@ -7,15 +9,21 @@ use cornetti::{
         traits::{MongoBaseModel, MongoBaseModule},
     },
 };
+#[cfg(feature = "server")]
 use mongodb::{IndexModel, options::IndexOptions};
 pub mod models;
+#[cfg(feature = "server")]
 pub mod repos;
+#[cfg(feature = "server")]
 pub mod services;
 
+#[cfg(feature = "server")]
 use self::repos::MongoUserModel;
 
+#[cfg(feature = "server")]
 pub struct UsersModule;
 
+#[cfg(feature = "server")]
 impl BaseModule for UsersModule {
     fn module_name() -> &'static str {
         "users"
@@ -30,6 +38,7 @@ impl BaseModule for UsersModule {
     }
 }
 
+#[cfg(feature = "server")]
 impl MongoBaseModule for UsersModule {
     async fn create_indexes(
         mongo: &MongoDBService,

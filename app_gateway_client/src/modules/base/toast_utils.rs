@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use leptos::prelude::*;
+use std::sync::Arc;
 use valerios_ui_toolkit::sonner::{ToastContext, ToastInput, ToastType};
 
 /// Recupera il contesto toast per mostrare notifiche.
@@ -32,6 +32,7 @@ pub fn toast_success(ctx: &ToastContext, msg: &str) {
 }
 
 /// Mostra un toast informativo.
+#[allow(dead_code)]
 pub fn toast_info(ctx: &ToastContext, msg: &str) {
     ctx.add.run(ToastInput {
         title: msg.to_string(),
@@ -44,7 +45,13 @@ pub fn toast_info(ctx: &ToastContext, msg: &str) {
 }
 
 /// Mostra un toast di errore con azione (es. "Annulla").
-pub fn toast_error_with_action(ctx: &ToastContext, msg: &str, action_label: &'static str, on_action: Arc<dyn Fn() + Send + Sync>) {
+#[allow(dead_code)]
+pub fn toast_error_with_action(
+    ctx: &ToastContext,
+    msg: &str,
+    action_label: &'static str,
+    on_action: Arc<dyn Fn() + Send + Sync>,
+) {
     ctx.add.run(ToastInput {
         title: msg.to_string(),
         description: None,

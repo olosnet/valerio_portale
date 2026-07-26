@@ -1,6 +1,6 @@
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::models::ApiError;
-use crate::modules::users::models::{SetPasswordBody, User, UserCreate, UserUpdate};
+use app_modules::base::users::models::{SetPasswordBody, User, UserCreate, UserUpdate};
 
 pub async fn list_users(client: &ApiClient) -> Result<Vec<User>, ApiError> {
     let resp = client.request("GET", "/users", None).await?;

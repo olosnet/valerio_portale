@@ -5,36 +5,59 @@ edition = "2024"
 authors = ["Valerio Faiuolo <valerio.faiuolo@errepinet.it>"]
 description = "Current App Modules"
 
+[features]
+default = ["server"]
+server = [
+    "dep:mongodb",
+    "dep:bson",
+    "dep:cornetti",
+    "cornetti/mongo",
+    "cornetti/actix",
+    "cornetti/actix-auth",
+    "cornetti/redisdb",
+    "cornetti/templates",
+    "cornetti/mail",
+    "cornetti/filemanager",
+    "cornetti/filemanager-images",
+    "cornetti/actix-filemanager",
+    "cornetti/actix-filemanager-images",
+    "dep:utoipa",
+    "dep:utoipa-swagger-ui",
+    "dep:actix-web",
+    "dep:actix-multipart",
+    "dep:actix-files",
+    "dep:redis",
+    "dep:lettre",
+    "dep:futures",
+    "dep:validator",
+    "dep:serde_json",
+    "dep:minijinja",
+    "dep:log",
+    "dep:serde_with",
+    "dep:uuid",
+]
+client = []
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-mongodb = { version = "3" }
+
+mongodb = { version = "3", optional = true }
 bson = { version = "3.1.0", features = [
     "chrono-0_4", "serde_with-3"
-] } # Needed for using chrono datetime in doc
-cornetti = { path = "../cornetti-rust/cornetti", features = [
-    "mongo",
-    "actix",
-    "actix-auth",
-    "redisdb",
-    "templates",
-    "mail",
-    "filemanager",
-    "filemanager-images",
-    "actix-filemanager",
-    "actix-filemanager-images",
-] }
-utoipa = { version = "5", features = ["actix_extras", "chrono"] }
-utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
-actix-web = "4.11.0"
-futures = "0.3"
-validator = { version = "0.20.0", features = ["derive"] }
-actix-multipart = "0.7.2"
-actix-files = "0.6.6"
-redis = { version = "1.2.0" }
-serde_json = "1.0.140"
-minijinja = "2.11.0"
-log = "0.4.27"
-serde_with = "3.17.0"
-uuid = { version = "1.18.1", features = ["v4"] }
-lettre = { version = "0.11.17", features = ["tokio1-native-tls"] }
+], optional = true }
+cornetti = { path = "../cornetti-rust/cornetti", optional = true }
+utoipa = { version = "5", features = ["actix_extras", "chrono"], optional = true }
+utoipa-swagger-ui = { version = "9", features = ["actix-web"], optional = true }
+actix-web = { version = "4.11.0", optional = true }
+actix-multipart = { version = "0.7.2", optional = true }
+actix-files = { version = "0.6.6", optional = true }
+redis = { version = "1.2.0", optional = true }
+lettre = { version = "0.11.17", features = ["tokio1-native-tls"], optional = true }
+futures = { version = "0.3", optional = true }
+validator = { version = "0.20.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0.140", optional = true }
+minijinja = { version = "2.11.0", optional = true }
+log = { version = "0.4.27", optional = true }
+serde_with = { version = "3.17.0", optional = true }
+uuid = { version = "1.18.1", features = ["v4"], optional = true }

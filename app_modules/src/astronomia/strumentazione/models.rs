@@ -1,10 +1,15 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "server")]
 use utoipa::ToSchema;
+#[cfg(feature = "server")]
 use validator::Validate;
 
-#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
 pub enum Tipo {
     #[serde(rename = "telescopio")]
     Telescopio,
@@ -42,6 +47,7 @@ impl fmt::Display for Tipo {
     }
 }
 
+#[cfg(feature = "server")]
 impl<'de> Deserialize<'de> for Tipo {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -61,7 +67,9 @@ impl<'de> Deserialize<'de> for Tipo {
     }
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone))]
 pub struct Strumentazione {
     pub id: Option<String>,
     pub tipo: Tipo,
@@ -75,7 +83,9 @@ pub struct Strumentazione {
     pub fov: Option<f64>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct StrumentazioneCreate {
     pub tipo: Tipo,
     #[serde(default)]
@@ -96,7 +106,9 @@ pub struct StrumentazioneCreate {
     pub fov: Option<f64>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct StrumentazioneUpdate {
     pub tipo: Tipo,
     #[serde(default)]

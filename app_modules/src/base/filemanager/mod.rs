@@ -1,4 +1,6 @@
+#[cfg(feature = "server")]
 use bson::doc;
+#[cfg(feature = "server")]
 use cornetti::{
     core::traits::BaseModule,
     mongo::{
@@ -7,13 +9,18 @@ use cornetti::{
         traits::{MongoBaseModel, MongoBaseModule},
     },
 };
+#[cfg(feature = "server")]
 use mongodb::{IndexModel, options::IndexOptions};
 
+#[cfg(feature = "server")]
 pub mod repos;
+#[cfg(feature = "server")]
 pub mod services;
 
+#[cfg(feature = "server")]
 pub struct FileManagerModule;
 
+#[cfg(feature = "server")]
 impl BaseModule for FileManagerModule {
     fn module_name() -> &'static str {
         "filemanager"
@@ -28,6 +35,7 @@ impl BaseModule for FileManagerModule {
     }
 }
 
+#[cfg(feature = "server")]
 impl MongoBaseModule for FileManagerModule {
     async fn create_indexes(
         mongo: &MongoDBService,

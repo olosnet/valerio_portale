@@ -6,7 +6,7 @@ use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
 use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
-use crate::modules::groups::models::{GroupPermission, GroupUpdate};
+use app_modules::base::groups::models::{GroupPermission, GroupUpdate};
 use crate::stores::auth_store::use_auth;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::confirm_delete::ConfirmDeleteDialog;
@@ -21,7 +21,7 @@ pub fn GroupDetail() -> impl IntoView {
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
-    let group = RwSignal::new(None::<crate::modules::groups::models::Group>);
+    let group = RwSignal::new(None::<app_modules::base::groups::models::Group>);
 
     let name = RwSignal::new(String::new());
     let description = RwSignal::new(String::new());

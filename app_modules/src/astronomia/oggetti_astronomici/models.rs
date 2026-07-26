@@ -1,12 +1,18 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "server")]
 use utoipa::ToSchema;
+#[cfg(feature = "server")]
 use validator::Validate;
 
+#[cfg(feature = "server")]
 use crate::astronomia::oggetti_astronomici::helpers::{validate_coord_ar, validate_coord_dec};
 
-#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
 pub enum Costellazione {
     #[serde(rename = "Sconosciuta")]
     Sconosciuta,
@@ -195,7 +201,6 @@ impl Costellazione {
             "ANT" => Self::MacchinaPneumatica,
             "APS" => Self::UccelloDelParadiso,
             "AQL" => Self::Aquila,
-            "AQR" => Self::Aquario,
             "ARA" => Self::Altare,
             "ARI" => Self::Ariete,
             "AUR" => Self::Auriga,
@@ -386,6 +391,7 @@ impl fmt::Display for Costellazione {
     }
 }
 
+#[cfg(feature = "server")]
 impl<'de> Deserialize<'de> for Costellazione {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -402,7 +408,9 @@ impl<'de> Deserialize<'de> for Costellazione {
 /// NGC/IC (OpenNGC) e nella letteratura amatoriale. Le sottoclassi di galassie
 /// (GAL_EL, GAL_SP, ...) estendono il codice base GAL per una classificazione
 /// morfologica piu' fine (Hubble sequence, attività nucleare).
-#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
 pub enum TipoOggetto {
     // --- Galassie (classificazione morfologica) ---
     #[serde(rename = "GAL")]
@@ -506,6 +514,7 @@ impl fmt::Display for TipoOggetto {
     }
 }
 
+#[cfg(feature = "server")]
 impl<'de> Deserialize<'de> for TipoOggetto {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -524,7 +533,7 @@ impl<'de> Deserialize<'de> for TipoOggetto {
             "GAL_AGN" | "AGN" => Self::GalassiaAttiva,
             "OpC" => Self::AmmassoAperto,
             "GCl" => Self::AmmassoGlobulare,
-            "GC" => Self::AmmassoGlobulare, // OpenNGC code
+            "GC" => Self::AmmassoGlobulare,
             "Neb" => Self::Nebulosa,
             "EmN" => Self::NebulosaEmissione,
             "RfN" => Self::NebulosaRiflessione,
@@ -546,20 +555,24 @@ impl<'de> Deserialize<'de> for TipoOggetto {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Catalogo {
     pub catalog_id: String,
     pub catalog_nr: String,
     pub extended: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate, Clone)]
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize))]
 pub struct CatalogoInput {
     pub catalog_id: String,
     pub catalog_nr: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct DimensioniApparenti {
     pub secs_a: Option<i32>,
     pub secs_b: Option<i32>,
@@ -567,13 +580,17 @@ pub struct DimensioniApparenti {
     pub dms_b: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate, Clone)]
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize))]
 pub struct DimensioniApparentiInput {
     pub secs_a: Option<i32>,
     pub secs_b: Option<i32>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone))]
 pub struct OggettoAstronomico {
     pub id: Option<String>,
     pub tipo: TipoOggetto,
@@ -592,7 +609,9 @@ pub struct OggettoAstronomico {
     pub image_fov: Option<f64>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct OggettoAstronomicoCreate {
     pub tipo: TipoOggetto,
     #[serde(default)]
@@ -600,13 +619,13 @@ pub struct OggettoAstronomicoCreate {
     #[serde(default)]
     pub abbr_costellazione: Costellazione,
     #[serde(default)]
-    #[validate(custom(function = "validate_coord_ar"))]
+    #[cfg_attr(feature = "server", validate(custom(function = "validate_coord_ar")))]
     pub coord_ar: String,
     #[serde(default)]
-    #[validate(custom(function = "validate_coord_dec"))]
+    #[cfg_attr(feature = "server", validate(custom(function = "validate_coord_dec")))]
     pub coord_dec: String,
     pub mag_apparente: Option<f64>,
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub dim_apparenti: Option<DimensioniApparentiInput>,
     #[serde(default)]
     pub note: String,
@@ -615,11 +634,13 @@ pub struct OggettoAstronomicoCreate {
     #[serde(default)]
     pub imported: bool,
     #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub cataloghi: Vec<CatalogoInput>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct OggettoAstronomicoUpdate {
     pub tipo: TipoOggetto,
     #[serde(default)]
@@ -627,13 +648,13 @@ pub struct OggettoAstronomicoUpdate {
     #[serde(default)]
     pub abbr_costellazione: Costellazione,
     #[serde(default)]
-    #[validate(custom(function = "validate_coord_ar"))]
+    #[cfg_attr(feature = "server", validate(custom(function = "validate_coord_ar")))]
     pub coord_ar: String,
     #[serde(default)]
-    #[validate(custom(function = "validate_coord_dec"))]
+    #[cfg_attr(feature = "server", validate(custom(function = "validate_coord_dec")))]
     pub coord_dec: String,
     pub mag_apparente: Option<f64>,
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub dim_apparenti: Option<DimensioniApparentiInput>,
     #[serde(default)]
     pub note: String,
@@ -641,12 +662,13 @@ pub struct OggettoAstronomicoUpdate {
     pub multi: bool,
     #[serde(default)]
     pub imported: bool,
-    #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub cataloghi: Vec<CatalogoInput>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct OggettoAstronomicoImageUploadBody {
     pub caption: Option<String>,
 }

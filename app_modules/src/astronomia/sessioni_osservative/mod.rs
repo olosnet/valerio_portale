@@ -1,15 +1,21 @@
+#[cfg(feature = "server")]
 use cornetti::{
     core::traits::BaseModule,
     mongo::{services::MongoDBService, traits::MongoBaseModule},
 };
 
 pub mod models;
+#[cfg(feature = "server")]
 pub mod osservazioni;
+#[cfg(feature = "server")]
 pub mod repos;
+#[cfg(feature = "server")]
 pub mod services;
 
+#[cfg(feature = "server")]
 pub struct SessioniOsservativeModule;
 
+#[cfg(feature = "server")]
 impl BaseModule for SessioniOsservativeModule {
     fn module_name() -> &'static str {
         "sessioni_osservative"
@@ -24,6 +30,7 @@ impl BaseModule for SessioniOsservativeModule {
     }
 }
 
+#[cfg(feature = "server")]
 impl MongoBaseModule for SessioniOsservativeModule {
     async fn create_indexes(
         mongo: &MongoDBService,

@@ -6,7 +6,7 @@ use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
 
 use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
-use crate::modules::users::models::{User, UserCreate};
+use app_modules::base::users::models::{User, UserCreate};
 use crate::stores::auth_store::use_auth;
 
 use valerios_ui_toolkit::button::{Button, ButtonVariant};

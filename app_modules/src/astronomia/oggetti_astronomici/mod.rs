@@ -1,4 +1,6 @@
+#[cfg(feature = "server")]
 use bson::doc;
+#[cfg(feature = "server")]
 use cornetti::{
     core::traits::BaseModule,
     mongo::{
@@ -7,17 +9,25 @@ use cornetti::{
         traits::{MongoBaseModel, MongoBaseModule},
     },
 };
+#[cfg(feature = "server")]
 use mongodb::{IndexModel, options::IndexOptions};
 
+#[cfg(feature = "server")]
+#[cfg(feature = "server")]
 pub mod helpers;
 pub mod models;
+#[cfg(feature = "server")]
 pub mod repos;
+#[cfg(feature = "server")]
 pub mod services;
 
+#[cfg(feature = "server")]
 use self::repos::MongoOggettoAstronomicoModel;
 
+#[cfg(feature = "server")]
 pub struct OggettiAstronomiciModule;
 
+#[cfg(feature = "server")]
 impl BaseModule for OggettiAstronomiciModule {
     fn module_name() -> &'static str {
         "oggetti_astronomici"
@@ -32,6 +42,7 @@ impl BaseModule for OggettiAstronomiciModule {
     }
 }
 
+#[cfg(feature = "server")]
 impl MongoBaseModule for OggettiAstronomiciModule {
     async fn create_indexes(
         mongo: &MongoDBService,

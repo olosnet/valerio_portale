@@ -1,11 +1,19 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "client")]
+use crate::base::models::AuthorizationPermission;
+#[cfg(feature = "server")]
 use cornetti::auth::models::AuthorizationPermission;
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "server")]
 use utoipa::ToSchema;
+#[cfg(feature = "server")]
 use validator::{Validate, ValidationError};
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone))]
 pub struct UserIdentity {
     pub id: Option<String>,
     pub name: Option<String>,
@@ -22,6 +30,7 @@ pub struct UserIdentity {
     pub permissions: HashMap<String, AuthorizationPermission>,
 }
 
+#[cfg(feature = "server")]
 impl UserIdentity {
     pub fn from_user_and_permissions(
         user: crate::base::users::models::User,
@@ -45,19 +54,24 @@ impl UserIdentity {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct UserIdentityUpdate {
     pub name: Option<String>,
     pub surname: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct UserIdentityUpdatePassword {
     pub old_password: String,
     pub new_password: String,
     pub confirm_password: String,
 }
 
+#[cfg(feature = "server")]
 impl Validate for UserIdentityUpdatePassword {
     fn validate(&self) -> Result<(), validator::ValidationErrors> {
         let mut errors = validator::ValidationErrors::new();

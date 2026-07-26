@@ -12,6 +12,8 @@ use crate::modules::auth::pages::login::Login;
 use crate::modules::groups::pages::group_detail::GroupDetail;
 use crate::modules::groups::pages::groups_list::GroupsList;
 use crate::modules::identity::pages::profile::Profile;
+use crate::modules::siti_osservativi::pages::sito_detail::SitoDetail;
+use crate::modules::siti_osservativi::pages::siti_list::SitiList;
 use crate::modules::users::pages::user_detail::UserDetail;
 use crate::modules::users::pages::users_list::UsersList;
 use valerios_ui_toolkit::sonner::Sonner;
@@ -59,6 +61,8 @@ pub fn App() -> impl IntoView {
                         <Route path=StaticSegment("login") view=Login/>
                         <Route path=StaticSegment("") view=ProtectedDashboard/>
                         <Route path=StaticSegment("profile") view=ProtectedProfile/>
+                        <Route path=StaticSegment("siti_osservativi") view=ProtectedSitiList/>
+                        <Route path=(StaticSegment("siti_osservativi"), ParamSegment("id")) view=ProtectedSitoDetail/>
                         <Route path=(StaticSegment("settings"), StaticSegment("users")) view=ProtectedUsersList/>
                         <Route path=(StaticSegment("settings"), StaticSegment("users"), ParamSegment("id")) view=ProtectedUserDetail/>
                         <Route path=(StaticSegment("settings"), StaticSegment("groups")) view=ProtectedGroupsList/>
@@ -103,6 +107,42 @@ fn ProtectedProfile() -> impl IntoView {
             return view! { <Redirect path="/login"/> }.into_any();
         }
         with_layout(view! { <ProfileBody/> }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedSitiList() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { <SitiList/> }).into_any()
+    }
+}
+
+#[component]
+fn ProtectedSitoDetail() -> impl IntoView {
+    let auth = use_auth();
+    move || {
+        if !auth.initial_check_done.get() {
+            return view! {
+                <div class="flex min-h-screen bg-secondary items-center justify-center">
+                    <p class="text-muted-foreground">"Caricamento..."</p>
+                </div>
+            }.into_any();
+        }
+        if !auth.is_authenticated() {
+            return view! { <Redirect path="/login"/> }.into_any();
+        }
+        with_layout(view! { <SitoDetail/> }).into_any()
     }
 }
 
@@ -215,6 +255,16 @@ fn DashboardBody() -> impl IntoView {
                                 <a href="/settings/groups" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
                                     <h3 class="text-lg font-semibold text-foreground mb-1">"Gruppi"</h3>
                                     <p class="text-sm text-muted-foreground">"Gestione gruppi e permessi"</p>
+                                </a>
+                            });
+                        }
+                    }
+                    if let Some(perm) = p.get("astronomia") {
+                        if perm.read {
+                            cards.push(view! {
+                                <a href="/siti_osservativi" class="block bg-background rounded-lg border border-border shadow-sm p-6 hover:shadow-md transition-shadow">
+                                    <h3 class="text-lg font-semibold text-foreground mb-1">"Siti Osservativi"</h3>
+                                    <p class="text-sm text-muted-foreground">"Gestione siti di osservazione astronomica"</p>
                                 </a>
                             });
                         }

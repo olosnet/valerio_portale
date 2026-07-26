@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CornettiError {
@@ -25,12 +25,4 @@ impl std::fmt::Display for ApiError {
             ApiError::Network(e) => write!(f, "Network error: {e}"),
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct AuthorizationPermission {
-    pub read: bool,
-    pub create: bool,
-    pub modify: bool,
-    pub delete: bool,
 }

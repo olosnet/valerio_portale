@@ -18,6 +18,10 @@ fn menu_btn_class() -> &'static str {
     "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate"
 }
 
+fn nav_btn_class() -> &'static str {
+    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate"
+}
+
 fn sub_btn_class() -> &'static str {
     "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 [&>span:last-child]:truncate w-full text-left text-sm [&>svg]:size-4 [&>svg]:shrink-0"
 }
@@ -65,17 +69,39 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 }
 
 #[component]
+fn AstronomiaSection() -> impl IntoView {
+    let nav = Arc::new(use_navigate());
+    let on_siti = { let n = nav.clone(); move |_| { n("/siti_osservativi", Default::default()); } };
+
+    view! {
+        <SidebarGroup>
+            <SidebarGroupLabel>"Astronomia"</SidebarGroupLabel>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <button on:click=on_siti class=nav_btn_class()>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
+                        <span class="group-data-[collapsible=icon]:hidden">"Siti Osservativi"</span>
+                    </button>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarGroup>
+    }
+}
+
+#[component]
 fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
     let nav = Arc::new(use_navigate());
     let can_see_users = auth.can_read_signal("users");
     let can_see_groups = auth.can_read_signal("groups");
+    let can_see_siti = auth.can_read_signal("astronomia");
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
+    let has_astronomia = Signal::derive(move || can_see_siti.get());
     let n = nav.clone();
     let a = auth.clone();
     let n_profile = nav.clone();
     let n_logout = nav.clone();
 
-    fn avatar_view(user: Option<&crate::modules::identity::models::UserIdentity>) -> AnyView {
+    fn avatar_view(user: Option<&app_modules::base::identity::models::UserIdentity>) -> AnyView {
         let img = user.map(|u| u.profile_image.clone()).unwrap_or_default();
         let url = profile_image_url("/api", &img);
         if url.is_empty() {
@@ -111,6 +137,9 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
                 </SidebarGroup>
                 {move || if has_admin.get() {
                     view! { <AdminSection can_see_users=can_see_users can_see_groups=can_see_groups /> }.into_any()
+                } else { ().into_any() }}
+                {move || if has_astronomia.get() {
+                    view! { <AstronomiaSection/> }.into_any()
                 } else { ().into_any() }}
             </SidebarContent>
             <SidebarFooter>
@@ -150,7 +179,9 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
     let sctx = use_sidebar();
     let can_see_users = auth.can_read_signal("users");
     let can_see_groups = auth.can_read_signal("groups");
+    let can_see_siti = auth.can_read_signal("astronomia");
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
+    let has_astronomia = Signal::derive(move || can_see_siti.get());
     let n = nav.clone();
     let a = auth.clone();
     let n_profile = nav.clone();
@@ -179,6 +210,9 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                         </SidebarGroup>
                         {move || if has_admin.get() {
                             view! { <AdminSection can_see_users=can_see_users can_see_groups=can_see_groups /> }.into_any()
+                        } else { ().into_any() }}
+                        {move || if has_astronomia.get() {
+                            view! { <AstronomiaSection/> }.into_any()
                         } else { ().into_any() }}
                     </SidebarContent>
                     <SidebarFooter>

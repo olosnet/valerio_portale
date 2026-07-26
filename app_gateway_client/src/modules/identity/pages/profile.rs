@@ -6,9 +6,9 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use web_sys::FileReader;
 
+use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
 use crate::modules::identity::api::profile_image_url;
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
-use crate::modules::identity::models::{UserIdentityUpdate, UserIdentityUpdatePassword};
+use app_modules::base::identity::models::{UserIdentityUpdate, UserIdentityUpdatePassword};
 use crate::stores::auth_store::use_auth;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::image_cropper::ImageCropper;
@@ -28,6 +28,7 @@ pub fn Profile() -> impl IntoView {
 
     let crop_open = RwSignal::new(false);
     let crop_bytes = RwSignal::new(Vec::<u8>::new());
+    let crop_url = RwSignal::new(String::new());
     let uploading = RwSignal::new(false);
 
     let save_profile = {
@@ -62,7 +63,8 @@ pub fn Profile() -> impl IntoView {
             };
             let toast = toast.clone();
             leptos::task::spawn_local(async move {
-                match crate::modules::identity::api::update_password(&auth.api_client, &body).await {
+                match crate::modules::identity::api::update_password(&auth.api_client, &body).await
+                {
                     Ok(()) => {
                         old_password.set(String::new());
                         new_password.set(String::new());
@@ -83,7 +85,9 @@ pub fn Profile() -> impl IntoView {
             let toast = toast.clone();
             uploading.set(true);
             leptos::task::spawn_local(async move {
-                match crate::modules::identity::api::upload_profile_image(&auth.api_client, cropped).await {
+                match crate::modules::identity::api::upload_profile_image(&auth.api_client, cropped)
+                    .await
+                {
                     Ok(identity) => {
                         auth.user.set(Some(identity));
                         toast_success(&toast, "Immagine profilo aggiornata");
@@ -102,21 +106,33 @@ pub fn Profile() -> impl IntoView {
             if let Some(files) = target.files() {
                 if let Some(file) = files.get(0) {
                     let reader = FileReader::new().unwrap();
-                    let onload: Closure<dyn FnMut(web_sys::ProgressEvent)> = Closure::new(Box::new(move |pe: web_sys::ProgressEvent| {
-                        let reader: FileReader = pe.target().unwrap().dyn_into().unwrap();
-                        if let Ok(result) = reader.result() {
-                            let array = js_sys::Uint8Array::new(&result);
-                            let mut bytes = vec![0u8; array.length() as usize];
-                            array.copy_to(&mut bytes);
-                            crop_bytes.set(bytes);
-                            crop_open.set(true);
-                        }
-                    }));
+                    let onload: Closure<dyn FnMut(web_sys::ProgressEvent)> =
+                        Closure::new(Box::new(move |pe: web_sys::ProgressEvent| {
+                            let reader: FileReader = pe.target().unwrap().dyn_into().unwrap();
+                            if let Ok(result) = reader.result() {
+                                let array = js_sys::Uint8Array::new(&result);
+                                let mut bytes = vec![0u8; array.length() as usize];
+                                array.copy_to(&mut bytes);
+
+                                let old_url = crop_url.get_untracked();
+                                if !old_url.is_empty() {
+                                    let _ = web_sys::Url::revoke_object_url(&old_url);
+                                }
+
+                                let blob =
+                                    web_sys::Blob::new_with_u8_array_sequence(&array).unwrap();
+                                let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+                                crop_url.set(url);
+                                crop_bytes.set(bytes);
+                                crop_open.set(true);
+                            }
+                        }));
                     let _ = reader.set_onload(Some(onload.as_ref().unchecked_ref()));
                     onload.forget();
                     let _ = reader.read_as_array_buffer(&file);
                 }
-                let _ = target.set_value(""); // reset file input
+                let _ = target.set_value("");
             }
         }
     };
@@ -266,8 +282,8 @@ pub fn Profile() -> impl IntoView {
                         Some(ref u) => view! {
                             <div class="text-sm text-muted-foreground space-y-1">
                                 <p>"Tipo utente: " {u.user_type.to_string()}</p>
-                                <p>"Creato: " {u.created.as_deref().unwrap_or("-")}</p>
-                                <p>"Ultimo accesso: " {u.last_access.as_deref().unwrap_or("-")}</p>
+                                <p>"Creato: " {u.created.map(|d| d.to_string()).unwrap_or_else(|| "-".to_string())}</p>
+                                <p>"Ultimo accesso: " {u.last_access.map(|d| d.to_string()).unwrap_or_else(|| "-".to_string())}</p>
                             </div>
                         }.into_any(),
                         None => ().into_any(),
@@ -282,6 +298,7 @@ pub fn Profile() -> impl IntoView {
                 <ImageCropper
                     open=crop_open
                     image_bytes=crop_bytes.get()
+                    image_url=crop_url.get()
                     output_size=256
                     on_crop=on_crop.clone()
                 />

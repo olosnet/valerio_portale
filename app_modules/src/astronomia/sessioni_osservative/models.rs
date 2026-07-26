@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "server")]
 use utoipa::ToSchema;
+#[cfg(feature = "server")]
 use validator::Validate;
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct Osservazione {
     pub osservato_il: chrono::DateTime<chrono::Utc>,
     pub note_osservazione: String,
@@ -10,7 +14,9 @@ pub struct Osservazione {
     pub oggetti_id: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct OsservazioneInput {
     pub osservato_il: chrono::DateTime<chrono::Utc>,
     pub note_osservazione: String,
@@ -19,7 +25,8 @@ pub struct OsservazioneInput {
     pub oggetti_id: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct MisurazioneSqm {
     pub uuid: String,
     pub sqm: f64,
@@ -28,7 +35,9 @@ pub struct MisurazioneSqm {
     pub dataora_rilievo: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct MisurazioneSqmInput {
     pub sqm: f64,
     pub temperatura: f64,
@@ -36,7 +45,8 @@ pub struct MisurazioneSqmInput {
     pub dataora_rilievo: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
 pub struct StrumentazioneSessione {
     pub uuid: String,
     pub tipo: String,
@@ -44,14 +54,18 @@ pub struct StrumentazioneSessione {
     pub modello: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct StrumentazioneSessioneInput {
     pub tipo: String,
     pub marca: String,
     pub modello: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone))]
 pub struct SessioneOsservativa {
     pub id: Option<String>,
     pub data: chrono::DateTime<chrono::Utc>,
@@ -62,30 +76,34 @@ pub struct SessioneOsservativa {
     pub misurazioni_sqm: Vec<MisurazioneSqm>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct SessioneOsservativaCreate {
     pub data: chrono::DateTime<chrono::Utc>,
     pub intro: String,
     pub outro: String,
     pub sito_osservativo_id: String,
     #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub strumentazione: Vec<StrumentazioneSessioneInput>,
     #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub misurazioni_sqm: Vec<MisurazioneSqmInput>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct SessioneOsservativaUpdate {
     pub data: chrono::DateTime<chrono::Utc>,
     pub intro: String,
     pub outro: String,
     pub sito_osservativo_id: String,
     #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub strumentazione: Vec<StrumentazioneSessioneInput>,
     #[serde(default)]
-    #[validate(nested)]
+    #[cfg_attr(feature = "server", validate(nested))]
     pub misurazioni_sqm: Vec<MisurazioneSqmInput>,
 }

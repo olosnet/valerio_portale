@@ -1,3 +1,4 @@
+pub mod elevation_button;
 pub mod layer_control;
 pub mod leaflet_bindings;
 pub mod map;
@@ -5,6 +6,7 @@ pub mod marker;
 pub mod search_box;
 pub mod tile_layer;
 
+pub use elevation_button::*;
 pub use layer_control::*;
 pub use leaflet_bindings::*;
 pub use map::*;

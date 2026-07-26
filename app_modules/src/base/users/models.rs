@@ -1,10 +1,15 @@
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "server")]
 use utoipa::{IntoParams, ToSchema};
+#[cfg(feature = "server")]
 use validator::{Validate, ValidationError};
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(ToSchema))]
+#[cfg_attr(feature = "client", derive(Deserialize, Clone, PartialEq))]
 pub struct User {
-    pub id: Option<String>, //La descrizione dei singoli campi attualmente non è supportata
+    pub id: Option<String>,
     pub name: Option<String>,
     pub surname: Option<String>,
     pub email: Option<String>,
@@ -18,33 +23,40 @@ pub struct User {
     pub groups_ids: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct UserCreate {
     pub name: String,
     pub surname: String,
-    #[validate(email(message = "Invalid email format"))]
+    #[cfg_attr(feature = "server", validate(email(message = "Invalid email format")))]
     pub email: String,
     pub enabled: bool,
     pub groups_ids: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, Validate))]
+#[cfg_attr(feature = "client", derive(Serialize, Clone))]
 pub struct UserUpdate {
     pub name: String,
     pub surname: String,
     pub enabled: bool,
-    #[schema(value_type = Vec<String>)]
+    #[cfg_attr(feature = "server", schema(value_type = Vec<String>))]
     pub groups_ids: Vec<String>,
 }
 
-#[derive(Deserialize, ToSchema, IntoParams)]
+#[derive(Deserialize)]
+#[cfg_attr(feature = "server", derive(ToSchema, IntoParams))]
+#[cfg_attr(feature = "client", derive(Debug, Serialize, Clone))]
 pub struct SetPasswordBody {
-    #[param(min_length = 8, pattern = "[a-z]*")]
+    #[cfg_attr(feature = "server", param(min_length = 8, pattern = "[a-z]*"))]
     pub password: String,
-    #[param(min_length = 8, pattern = "[a-z]*")]
+    #[cfg_attr(feature = "server", param(min_length = 8, pattern = "[a-z]*"))]
     pub confirm_password: String,
 }
 
+#[cfg(feature = "server")]
 impl Validate for SetPasswordBody {
     fn validate(&self) -> Result<(), validator::ValidationErrors> {
         let mut errors = validator::ValidationErrors::new();

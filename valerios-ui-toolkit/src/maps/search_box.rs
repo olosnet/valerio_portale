@@ -10,7 +10,7 @@ fn default_geocoding_url() -> &'static str {
     "https://nominatim.openstreetmap.org/search?format=json&limit=5&q={query}"
 }
 
-fn default_elevation_url() -> &'static str {
+pub fn default_elevation_url() -> &'static str {
     "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lng}"
 }
 
@@ -80,7 +80,7 @@ fn parse_nominatim(json: &JsValue) -> Vec<SearchSuggestion> {
     results
 }
 
-async fn fetch_altitude(lat: f64, lng: f64, url_template: &str) -> Result<f64, String> {
+pub async fn fetch_altitude(lat: f64, lng: f64, url_template: &str) -> Result<f64, String> {
     let url = url_template
         .replace("{lat}", &lat.to_string())
         .replace("{lng}", &lng.to_string());

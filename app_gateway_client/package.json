@@ -1,0 +1,13 @@
+{
+  "name": "app_gateway_client",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  }
+}

@@ -1,6 +1,6 @@
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::models::ApiError;
-use crate::modules::groups::models::{Group, GroupCreate, GroupUpdate};
+use app_modules::base::groups::models::{Group, GroupCreate, GroupUpdate};
 
 pub async fn list_groups(client: &ApiClient) -> Result<Vec<Group>, ApiError> {
     let resp = client.request("GET", "/groups", None).await?;
