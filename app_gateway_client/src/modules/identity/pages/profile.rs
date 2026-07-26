@@ -119,8 +119,10 @@ pub fn Profile() -> impl IntoView {
                                     let _ = web_sys::Url::revoke_object_url(&old_url);
                                 }
 
+                                let blob_parts = js_sys::Array::new();
+                                blob_parts.push(&array);
                                 let blob =
-                                    web_sys::Blob::new_with_u8_array_sequence(&array).unwrap();
+                                    web_sys::Blob::new_with_u8_array_sequence(&blob_parts).unwrap();
                                 let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
 
                                 crop_url.set(url);
