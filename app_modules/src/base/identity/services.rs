@@ -1,14 +1,25 @@
+use std::io::Write;
 use std::sync::Arc;
 
+use actix_multipart::form::tempfile::TempFile;
 use actix_multipart::form::MultipartForm;
 use cornetti::{
     actix::filemanager::models::FileManagerUploadForm,
     auth::models::JwtDefaultClaims,
-    core::{helpers::sec::verify_password, http_status::HttpStatus, models::CornettiResult},
+    core::{
+        helpers::sec::verify_password,
+        http_status::HttpStatus,
+        models::CornettiResult,
+    },
     errors,
-    filemanager::confs::FileManagerConf,
+    filemanager::{
+        confs::FileManagerConf,
+        helpers::images::convert_image,
+        models::images::{ImageFileManagerResize, ImageFileManagerResizeMode, ImageFormat},
+    },
     mongo::services::MongoDBService,
 };
+use tempfile::NamedTempFile;
 use validator::Validate;
 
 use crate::{
@@ -75,12 +86,51 @@ impl<'a> IdentityService<'a> {
         form: MultipartForm<FileManagerUploadForm>,
     ) -> CornettiResult<User> {
         let claims = claims.ok_or_else(errors::not_found::item_not_found)?;
-
         let current = self.repository.get_user_by_email(&claims.sub).await?;
+
+        let target_size: usize = std::env::var("APP_PROFILE_IMAGE_SIZE")
+            .unwrap_or_else(|_| "256".to_string())
+            .parse()
+            .unwrap_or(256);
+
+        let original_bytes = std::fs::read(form.file.file.path())
+            .map_err(|e| errors::internal_server_error::generic_error()
+                .with_internal_detail(e.to_string()))?;
+
+        let png_bytes = convert_image(
+            &original_bytes,
+            &ImageFormat::Unknown,
+            &ImageFormat::Png,
+            Some(&ImageFileManagerResize {
+                width: target_size,
+                height: target_size,
+                quality: None,
+                mode: ImageFileManagerResizeMode::Stretch,
+                slug: String::new(),
+            }),
+        )
+        .map_err(|e| errors::bad_request::validation_error()
+            .with_internal_detail(e.to_string()))?;
+
+        let mut named = NamedTempFile::new()
+            .map_err(|e| errors::internal_server_error::generic_error()
+                .with_internal_detail(e.to_string()))?;
+        named.write_all(&png_bytes)
+            .map_err(|e| errors::internal_server_error::generic_error()
+                .with_internal_detail(e.to_string()))?;
+
+        let resized_form = MultipartForm(FileManagerUploadForm {
+            file: TempFile {
+                file: named,
+                content_type: Some("image/png".parse().unwrap()),
+                file_name: Some("profile.png".to_string()),
+                size: png_bytes.len(),
+            },
+        });
 
         let main_file = self
             .filemanager_service
-            .upload(Some(claims.clone()), None, form)
+            .upload(Some(claims.clone()), None, resized_form)
             .await?;
 
         let old_image = current.profile_image.clone();

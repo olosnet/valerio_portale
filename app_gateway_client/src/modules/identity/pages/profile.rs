@@ -3,7 +3,9 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use leptos_meta::Title;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::closure::Closure;
+use wasm_bindgen_futures::JsFuture;
 use web_sys::FileReader;
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
@@ -80,18 +82,34 @@ pub fn Profile() -> impl IntoView {
     let on_crop = {
         let auth = auth.clone();
         let toast = toast.clone();
-        Callback::new(move |cropped: Vec<u8>| {
+        Callback::new(move |(cropped, ext): (Vec<u8>, String)| {
             let auth = auth.clone();
             let toast = toast.clone();
+            crop_open.set(false);
             uploading.set(true);
             leptos::task::spawn_local(async move {
-                match crate::modules::identity::api::upload_profile_image(&auth.api_client, cropped)
-                    .await
+                let promise = js_sys::Promise::new(&mut |resolve, _| {
+                    let window = web_sys::window().unwrap();
+                    let cb = Closure::once_into_js(move || {
+                        resolve.call0(&JsValue::UNDEFINED).unwrap();
+                    });
+                    window
+                        .set_timeout_with_callback_and_timeout_and_arguments_0(
+                            cb.as_ref().unchecked_ref(),
+                            10,
+                        )
+                        .unwrap();
+                });
+                let _ = JsFuture::from(promise).await;
+                let filename = format!("profile.{}", ext);
+                let mime = if ext == "jpg" { "image/jpeg" } else { &format!("image/{}", ext) };
+                match crate::modules::identity::api::upload_profile_image(
+                    &auth.api_client, cropped, &filename, mime,
+                ).await
                 {
                     Ok(identity) => {
                         auth.user.set(Some(identity));
                         toast_success(&toast, "Immagine profilo aggiornata");
-                        crop_open.set(false);
                     }
                     Err(e) => toast_error(&toast, &e.to_string()),
                 }
@@ -105,6 +123,7 @@ pub fn Profile() -> impl IntoView {
             let target = event_target::<web_sys::HtmlInputElement>(&ev);
             if let Some(files) = target.files() {
                 if let Some(file) = files.get(0) {
+                    let mime = file.type_();
                     let reader = FileReader::new().unwrap();
                     let onload: Closure<dyn FnMut(web_sys::ProgressEvent)> =
                         Closure::new(Box::new(move |pe: web_sys::ProgressEvent| {
@@ -121,8 +140,11 @@ pub fn Profile() -> impl IntoView {
 
                                 let blob_parts = js_sys::Array::new();
                                 blob_parts.push(&array);
-                                let blob =
-                                    web_sys::Blob::new_with_u8_array_sequence(&blob_parts).unwrap();
+                                let opts = web_sys::BlobPropertyBag::new();
+                                opts.set_type(&mime);
+                                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
+                                    &blob_parts, &opts,
+                                ).unwrap();
                                 let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
 
                                 crop_url.set(url);
@@ -301,7 +323,6 @@ pub fn Profile() -> impl IntoView {
                     open=crop_open
                     image_bytes=crop_bytes.get()
                     image_url=crop_url.get()
-                    output_size=256
                     on_crop=on_crop.clone()
                 />
             }.into_any()

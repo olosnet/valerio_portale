@@ -28,8 +28,10 @@ pub async fn update_password(
 pub async fn upload_profile_image(
     client: &ApiClient,
     image_data: Vec<u8>,
+    filename: &str,
+    mime: &str,
 ) -> Result<UserIdentity, ApiError> {
-    let resp = client.upload_file("/identity/image", image_data, "profile.png", "image/png").await?;
+    let resp = client.upload_file("/identity/image", image_data, filename, mime).await?;
     serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
 }
 

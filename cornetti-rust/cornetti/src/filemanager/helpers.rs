@@ -1,7 +1,7 @@
-use crate::errors;
-use crate::errors::{bad_request::validation_error, filemanager_errors};
 use crate::core::helpers::common;
 use crate::core::models::CornettiResult;
+use crate::errors;
+use crate::errors::{bad_request::validation_error, filemanager_errors};
 use crate::filemanager::confs::FileManagerConf;
 use crate::filemanager::models::{FileManagerCreate, RESOURCE_TYPE_GENERIC};
 use std::fs;
@@ -82,8 +82,11 @@ pub fn generate_random_filepathbuf(
         max_attempts -= 1;
 
         if max_attempts == 0 {
-            return Err(filemanager_errors::file_operation_error()
-                .with_internal_detail("Unable to generate a unique filename after multiple attempts!"));
+            return Err(
+                filemanager_errors::file_operation_error().with_internal_detail(
+                    "Unable to generate a unique filename after multiple attempts!",
+                ),
+            );
         }
     }
 
@@ -125,10 +128,12 @@ pub fn upload_file_from_path(
     let (filestem, extension) = get_filestem_extension_str(filename)?;
 
     if !is_allowed_file_type(&extension, allowed_types) {
-        return Err(crate::errors::bad_request::validation_error().with_internal_detail(format!(
-            "File name {} with type '{}' is not allowed",
-            filestem, extension
-        )));
+        return Err(
+            crate::errors::bad_request::validation_error().with_internal_detail(format!(
+                "File name {} with type '{}' is not allowed",
+                filestem, extension
+            )),
+        );
     }
 
     let filetype = tree_magic_mini::from_filepath(file_path).unwrap_or("unknown");
@@ -450,10 +455,327 @@ pub mod images {
         Ok(())
     }
 
+    fn detect_format(bytes: &[u8]) -> ImageFormat {
+        if bytes.len() > 3 && bytes[0] == 0x89 && bytes[1] == b'P' && bytes[2] == b'N' && bytes[3] == b'G' {
+            ImageFormat::Png
+        } else if bytes.len() > 1 && bytes[0] == 0xFF && bytes[1] == 0xD8 {
+            ImageFormat::Jpeg
+        } else if bytes.len() > 11 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+            ImageFormat::Webp
+        } else {
+            ImageFormat::Unknown
+        }
+    }
+
+    fn decode_from_bytes(
+        bytes: &[u8],
+        format: &ImageFormat,
+    ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
+        let fmt = if matches!(format, ImageFormat::Unknown) {
+            detect_format(bytes)
+        } else {
+            format.clone()
+        };
+        match fmt {
+            ImageFormat::Jpeg => read::read_jpeg_image_from_bytes(bytes),
+            ImageFormat::Png => read::read_png_image_from_bytes(bytes),
+            ImageFormat::Webp => read::read_webp_image_from_bytes(bytes),
+            ImageFormat::Unknown => Err("Unsupported image format for reading".into()),
+        }
+    }
+
+    fn resize_pixels(
+        image_data: &ImageReadResult,
+        resize: &ImageFileManagerResize,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let resized = match image_data.mode {
+            ImageReadTypeMode::GRAY8 => match resize.mode {
+                ImageFileManagerResizeMode::Fit => gray8::resize_gray8_fit(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Fill => gray8::resize_gray8_fill(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Stretch => gray8::resize_gray8_stretch(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+            },
+            ImageReadTypeMode::GRAYA16 => match resize.mode {
+                ImageFileManagerResizeMode::Fit => gray16::resize_gray16_fit(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Fill => gray16::resize_gray16_fill(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Stretch => gray16::resize_gray16_stretch(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+            },
+            ImageReadTypeMode::RGB24 => match resize.mode {
+                ImageFileManagerResizeMode::Fit => rgb24::resize_rgb_fit(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Fill => rgb24::resize_rgb_fill(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Stretch => rgb24::resize_rgb_stretch(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+            },
+            ImageReadTypeMode::RGBA32 => match resize.mode {
+                ImageFileManagerResizeMode::Fit => rgba32::resize_rgba_fit(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Fill => rgba32::resize_rgba_fill(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+                ImageFileManagerResizeMode::Stretch => rgba32::resize_rgba_stretch(
+                    &image_data.data,
+                    image_data.width,
+                    image_data.height,
+                    resize.width,
+                    resize.height,
+                ),
+            },
+        }?;
+        Ok(resized)
+    }
+
+    fn encode_to_bytes(
+        data: &[u8],
+        width: usize,
+        height: usize,
+        mode: ImageReadTypeMode,
+        format: &ImageFormat,
+        quality: Option<u8>,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        match format {
+            ImageFormat::Jpeg => {
+                write::write_jpeg_image_to_bytes(width, height, data, mode, quality)
+            }
+            ImageFormat::Png => write::write_png_image_to_bytes(width, height, data, mode),
+            ImageFormat::Webp => write::write_webp_image_to_bytes(width, height, data, mode),
+            _ => Err("Unsupported image format for encoding".into()),
+        }
+    }
+
+    /// Converte un'immagine da un formato a un altro, opzionalmente ridimensionando.
+    ///
+    /// - `input_bytes`: bytes dell'immagine sorgente
+    /// - `source_format`: formato sorgente (`Unknown` per autodetect)
+    /// - `target_format`: formato desiderato in output (`Png`, `Jpeg`, `Webp`)
+    /// - `resize`: se `Some`, ridimensiona prima della codifica
+    ///
+    /// Ritorna i bytes dell'immagine nel formato target.
+    pub fn convert_image(
+        input_bytes: &[u8],
+        source_format: &ImageFormat,
+        target_format: &ImageFormat,
+        resize: Option<&ImageFileManagerResize>,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        let decoded = decode_from_bytes(input_bytes, source_format)?;
+
+        let out_format = if matches!(target_format, ImageFormat::Unknown) {
+            source_format.clone()
+        } else {
+            target_format.clone()
+        };
+
+        let (data, width, height) = if let Some(r) = resize {
+            if r.width == decoded.width && r.height == decoded.height {
+                (decoded.data, decoded.width, decoded.height)
+            } else {
+                let resized = resize_pixels(&decoded, r)?;
+                (resized, r.width, r.height)
+            }
+        } else {
+            (decoded.data, decoded.width, decoded.height)
+        };
+
+        encode_to_bytes(
+            &data,
+            width,
+            height,
+            decoded.mode,
+            &out_format,
+            resize.and_then(|r| r.quality),
+        )
+    }
+
     mod read {
-        use std::{fs::File, io::BufReader, io::Cursor};
+        use std::{
+            fs::File,
+            io::{BufReader, Cursor},
+        };
 
         use crate::filemanager::models::images::{ImageReadResult, ImageReadTypeMode};
+
+        pub fn read_png_image_from_bytes(
+            bytes: &[u8],
+        ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
+            let decoder = png::Decoder::new(BufReader::new(Cursor::new(bytes)));
+            let mut reader = decoder.read_info()?;
+            let mut buf = vec![
+                0;
+                reader
+                    .output_buffer_size()
+                    .ok_or("Failed to get output buffer size")?
+            ];
+            let next_frame_info = reader.next_frame(&mut buf)?;
+            let raw = &buf[..next_frame_info.buffer_size()];
+            let info = reader.info();
+
+            let mode: ImageReadTypeMode = match info.color_type {
+                png::ColorType::Grayscale => ImageReadTypeMode::GRAY8,
+                png::ColorType::Rgb => ImageReadTypeMode::RGB24,
+                png::ColorType::Rgba => ImageReadTypeMode::RGBA32,
+                _ => return Err("Unsupported PNG color type".into()),
+            };
+
+            if info.is_animated() {
+                return Err("Animated PNGs are not supported".into());
+            }
+
+            let data = match info.bit_depth {
+                png::BitDepth::Eight => raw.to_vec(),
+                png::BitDepth::Sixteen => raw
+                    .chunks_exact(2)
+                    .map(|chunk| (u16::from_be_bytes([chunk[0], chunk[1]]) >> 8) as u8)
+                    .collect(),
+                _ => return Err("Unsupported PNG bit depth".into()),
+            };
+
+            Ok(ImageReadResult {
+                width: info.width as usize,
+                height: info.height as usize,
+                data,
+                mode,
+            })
+        }
+
+        pub fn read_jpeg_image_from_bytes(
+            bytes: &[u8],
+        ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
+            let mut reader = jpeg_decoder::Decoder::new(Cursor::new(bytes));
+            let img = reader.decode()?;
+            let info = reader.info().ok_or("No image info found")?;
+
+            let data = match info.pixel_format {
+                jpeg_decoder::PixelFormat::L8 => img,
+                jpeg_decoder::PixelFormat::L16 => img
+                    .chunks_exact(2)
+                    .map(|chunk| {
+                        let value = u16::from_be_bytes([chunk[0], chunk[1]]);
+                        (value >> 8) as u8
+                    })
+                    .collect(),
+                jpeg_decoder::PixelFormat::RGB24 => img,
+                jpeg_decoder::PixelFormat::CMYK32 => img
+                    .chunks_exact(4)
+                    .flat_map(|chunk| {
+                        let c = chunk[0];
+                        let m = chunk[1];
+                        let y = chunk[2];
+                        let k = chunk[3];
+                        let k_inv = 255 - k as u16;
+                        let r = ((255 - c as u16) * k_inv / 255) as u8;
+                        let g = ((255 - m as u16) * k_inv / 255) as u8;
+                        let b = ((255 - y as u16) * k_inv / 255) as u8;
+                        [r, g, b]
+                    })
+                    .collect(),
+            };
+
+            let mode = match info.pixel_format {
+                jpeg_decoder::PixelFormat::L8 => ImageReadTypeMode::GRAY8,
+                jpeg_decoder::PixelFormat::L16 => ImageReadTypeMode::GRAY8,
+                jpeg_decoder::PixelFormat::RGB24 => ImageReadTypeMode::RGB24,
+                jpeg_decoder::PixelFormat::CMYK32 => ImageReadTypeMode::RGB24,
+            };
+
+            Ok(ImageReadResult {
+                width: info.width as usize,
+                height: info.height as usize,
+                data,
+                mode,
+            })
+        }
+
+        pub fn read_webp_image_from_bytes(
+            bytes: &[u8],
+        ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
+            let mut decoder = image_webp::WebPDecoder::new(Cursor::new(bytes.to_vec()))?;
+
+            if decoder.is_animated() {
+                return Err("Animated WebP images are not supported".into());
+            }
+
+            let mode = if decoder.has_alpha() {
+                ImageReadTypeMode::RGBA32
+            } else {
+                ImageReadTypeMode::RGB24
+            };
+
+            let (width, height) = decoder.dimensions();
+            let mut data = vec![
+                0;
+                decoder
+                    .output_buffer_size()
+                    .ok_or("Failed to get output buffer size")?
+            ];
+            decoder.read_image(&mut data)?;
+
+            Ok(ImageReadResult {
+                width: width as usize,
+                height: height as usize,
+                data,
+                mode,
+            })
+        }
 
         pub fn read_webp_image(
             file_path: &std::path::Path,
@@ -679,6 +1001,89 @@ pub mod images {
             }
 
             Ok(())
+        }
+
+        pub fn write_png_image_to_bytes(
+            width: usize,
+            height: usize,
+            data: &[u8],
+            mode: ImageReadTypeMode,
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+            let mut cursor = std::io::Cursor::new(Vec::new());
+            {
+                let mut encoder = png::Encoder::new(&mut cursor, width as u32, height as u32);
+
+                match mode {
+                    ImageReadTypeMode::GRAY8 => encoder.set_color(png::ColorType::Grayscale),
+                    ImageReadTypeMode::RGB24 => encoder.set_color(png::ColorType::Rgb),
+                    ImageReadTypeMode::RGBA32 => encoder.set_color(png::ColorType::Rgba),
+                    ImageReadTypeMode::GRAYA16 => encoder.set_color(png::ColorType::GrayscaleAlpha),
+                }
+
+                encoder.set_depth(png::BitDepth::Eight);
+                let mut writer = encoder.write_header()?;
+                writer.write_image_data(data)?;
+                writer.finish()?;
+            }
+            Ok(cursor.into_inner())
+        }
+
+        pub fn write_jpeg_image_to_bytes(
+            width: usize,
+            height: usize,
+            data: &[u8],
+            mode: ImageReadTypeMode,
+            quality: Option<u8>,
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+            let quality = quality.unwrap_or(75);
+            let mut cursor = std::io::Cursor::new(Vec::new());
+            let encoder = jpeg_encoder::Encoder::new(&mut cursor, quality);
+
+            match mode {
+                ImageReadTypeMode::GRAY8 => encoder.encode(
+                    data,
+                    width as u16,
+                    height as u16,
+                    jpeg_encoder::ColorType::Luma,
+                )?,
+                ImageReadTypeMode::RGB24 => encoder.encode(
+                    data,
+                    width as u16,
+                    height as u16,
+                    jpeg_encoder::ColorType::Rgb,
+                )?,
+                ImageReadTypeMode::RGBA32 => encoder.encode(
+                    data,
+                    width as u16,
+                    height as u16,
+                    jpeg_encoder::ColorType::Rgba,
+                )?,
+                _ => {
+                    return Err("JPEG encoder does not support (gray) Alpha channels".into());
+                }
+            }
+
+            Ok(cursor.into_inner())
+        }
+
+        pub fn write_webp_image_to_bytes(
+            width: usize,
+            height: usize,
+            data: &[u8],
+            mode: ImageReadTypeMode,
+        ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+            let mut cursor = std::io::Cursor::new(Vec::new());
+            let encoder = image_webp::WebPEncoder::new(&mut cursor);
+
+            let color_type = match mode {
+                ImageReadTypeMode::GRAY8 => image_webp::ColorType::L8,
+                ImageReadTypeMode::RGB24 => image_webp::ColorType::Rgb8,
+                ImageReadTypeMode::RGBA32 => image_webp::ColorType::Rgba8,
+                ImageReadTypeMode::GRAYA16 => image_webp::ColorType::La8,
+            };
+
+            encoder.encode(data, width as u32, height as u32, color_type)?;
+            Ok(cursor.into_inner())
         }
     }
 

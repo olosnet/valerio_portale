@@ -1,40 +1,103 @@
-use std::io::Cursor;
 use std::sync::Arc;
 
-use image::ImageReader;
 use leptos::prelude::*;
+use leptos::task::spawn_local;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
 
 use crate::button::{Button, ButtonVariant};
 use crate::dialog::*;
 
-pub fn crop_and_resize(
-    bytes: &[u8], x: u32, y: u32, crop_sz: u32, out_sz: u32,
-) -> Result<Vec<u8>, String> {
-    let img = image::load_from_memory(bytes).map_err(|e| e.to_string())?;
-    let cropped = img.crop_imm(x, y, crop_sz, crop_sz);
-    let resized = cropped.resize_exact(out_sz, out_sz, image::imageops::FilterType::Lanczos3);
-    let mut buf = Vec::new();
-    resized
-        .write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Png)
-        .map_err(|e| e.to_string())?;
-    Ok(buf)
+async fn load_img_dimensions(url: &str) -> (u32, u32) {
+    let window = match web_sys::window() {
+        Some(w) => w,
+        None => return (256, 256),
+    };
+    let resp = match JsFuture::from(window.fetch_with_str(url)).await {
+        Ok(r) => r,
+        _ => return (256, 256),
+    };
+    let resp: web_sys::Response = match resp.dyn_into() {
+        Ok(r) => r,
+        _ => return (256, 256),
+    };
+    let blob = match resp.blob() { Ok(b) => b, _ => return (256, 256) };
+    let blob = match JsFuture::from(blob).await {
+        Ok(b) => b,
+        _ => return (256, 256),
+    };
+    let blob: web_sys::Blob = match blob.dyn_into() {
+        Ok(b) => b,
+        _ => return (256, 256),
+    };
+    let bitmap_promise = match window.create_image_bitmap_with_blob(&blob) {
+        Ok(p) => p,
+        _ => return (256, 256),
+    };
+    let bitmap = match JsFuture::from(bitmap_promise).await {
+        Ok(b) => b,
+        _ => return (256, 256),
+    };
+    let bitmap: web_sys::ImageBitmap = match bitmap.dyn_into() {
+        Ok(b) => b,
+        _ => return (256, 256),
+    };
+    (bitmap.width(), bitmap.height())
 }
 
-fn compute_dimensions(bytes: &[u8]) -> (u32, u32) {
-    ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .ok()
-        .and_then(|r| r.into_dimensions().ok())
-        .unwrap_or((1, 1))
-}
+pub async fn crop_via_canvas(
+    image_url: &str,
+    sx: f64,
+    sy: f64,
+    crop_sz: f64,
+    out_sz: Option<u32>,
+) -> Result<(Vec<u8>, String), JsValue> {
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("No window"))?;
 
-fn compute_crop_params(
-    zoom: f64, ox: f64, oy: f64, display_sz: f64, nw: u32, nh: u32,
-) -> (u32, u32, u32) {
-    let left = (ox / zoom).max(0.0) as u32;
-    let top = (oy / zoom).max(0.0) as u32;
-    let size = ((display_sz / zoom) as u32).min(nw).min(nh);
-    (left, top, size)
+    let resp = JsFuture::from(window.fetch_with_str(image_url)).await?;
+    let resp: web_sys::Response = resp.dyn_into()?;
+    let blob = JsFuture::from(resp.blob()?).await?.dyn_into::<web_sys::Blob>()?;
+    let bitmap_promise = window.create_image_bitmap_with_blob(&blob)?;
+    let bitmap: web_sys::ImageBitmap = JsFuture::from(bitmap_promise).await?.dyn_into()?;
+
+    let crop_int = crop_sz.ceil() as u32;
+    let crop_canvas = web_sys::OffscreenCanvas::new(crop_int, crop_int)?;
+    let crop_ctx = crop_canvas
+        .get_context("2d")?
+        .ok_or_else(|| JsValue::from_str("No 2d context"))?
+        .dyn_into::<web_sys::OffscreenCanvasRenderingContext2d>()?;
+
+    crop_ctx.draw_image_with_image_bitmap_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+        &bitmap, sx, sy, crop_sz, crop_sz, 0.0, 0.0, crop_int as f64, crop_int as f64,
+    )?;
+
+    let final_canvas = match out_sz {
+        Some(n) if n != crop_int => {
+            let resize_canvas = web_sys::OffscreenCanvas::new(n, n)?;
+            let resize_ctx = resize_canvas
+                .get_context("2d")?
+                .ok_or_else(|| JsValue::from_str("No 2d context"))?
+                .dyn_into::<web_sys::OffscreenCanvasRenderingContext2d>()?;
+            resize_ctx.draw_image_with_offscreen_canvas_and_dw_and_dh(
+                &crop_canvas, 0.0, 0.0, n as f64, n as f64,
+            )?;
+            resize_canvas
+        }
+        _ => crop_canvas,
+    };
+
+    let blob_p = final_canvas.convert_to_blob()?;
+    let blob = JsFuture::from(blob_p).await?;
+    let ab_fn = js_sys::Reflect::get(&blob, &"arrayBuffer".into())
+        .and_then(|v| v.dyn_into::<js_sys::Function>())?;
+    let ab_p = ab_fn.call0(&blob)
+        .and_then(|v| v.dyn_into::<js_sys::Promise>())?;
+    let array_buffer = JsFuture::from(ab_p).await?;
+    let uint8 = js_sys::Uint8Array::new(&array_buffer);
+    let mut bytes = vec![0u8; uint8.length() as usize];
+    uint8.copy_to(&mut bytes);
+    Ok((bytes, "png".to_string()))
 }
 
 #[component]
@@ -42,18 +105,32 @@ pub fn ImageCropper(
     open: RwSignal<bool>,
     image_bytes: Vec<u8>,
     image_url: String,
-    #[prop(default = 256)] output_size: u32,
-    on_crop: Callback<Vec<u8>>,
+    on_crop: Callback<(Vec<u8>, String)>,
 ) -> impl IntoView {
-    let (nw, nh) = compute_dimensions(&image_bytes);
     let display_sz = 256.0;
-    let image_url = StoredValue::new(image_url);
-    let image_bytes = StoredValue::new(image_bytes);
+    let img_src = RwSignal::new(image_url.clone());
+    let dims = RwSignal::new((256u32, 256u32));
+    let nw = Signal::derive(move || dims.get().0);
+    let nh = Signal::derive(move || dims.get().1);
 
-    let initial_z = (display_sz / nw as f64).max(display_sz / nh as f64);
-    let zoom = RwSignal::new(initial_z);
-    let ox = RwSignal::new((display_sz - nw as f64 * initial_z) / 2.0);
-    let oy = RwSignal::new((display_sz - nh as f64 * initial_z) / 2.0);
+    let dims_url = img_src.get();
+    spawn_local(async move {
+        let d = load_img_dimensions(&dims_url).await;
+        if d.0 > 1 && d.1 > 1 { dims.set(d); }
+    });
+
+    let zoom = RwSignal::new(1.0);
+    let ox = RwSignal::new(0.0);
+    let oy = RwSignal::new(0.0);
+
+    Effect::new(move |_| {
+        let (w, h) = dims.get();
+        if w <= 1 && h <= 1 { return; }
+        let z = (display_sz / w as f64).max(display_sz / h as f64);
+        zoom.set(z);
+        ox.set((display_sz - w as f64 * z) / 2.0);
+        oy.set((display_sz - h as f64 * z) / 2.0);
+    });
 
     let (dragging, set_dragging) = signal(false);
     let (drag_start_x, set_drag_start_x) = signal(0.0);
@@ -85,8 +162,8 @@ pub fn ImageCropper(
     });
 
     let on_zoom = Callback::new(move |ev: leptos::ev::Event| {
-        let z: f64 = event_target_value(&ev).parse().unwrap_or(initial_z);
-        zoom.set(z.clamp(initial_z, initial_z * 3.0));
+        let z: f64 = event_target_value(&ev).parse().unwrap_or(1.0);
+        zoom.set(z);
     });
 
     let confirm = Callback::new(move |_: ()| {
@@ -94,21 +171,25 @@ pub fn ImageCropper(
         processing.set(true);
 
         let z = zoom.get_untracked();
-        let x = -ox.get_untracked();
-        let y = -oy.get_untracked();
-        let (left, top, size) = compute_crop_params(z, x, y, display_sz, nw, nh);
-        let bytes = image_bytes.read_value().clone();
-        let oc = on_crop;
+        let ox_val = -ox.get_untracked();
+        let oy_val = -oy.get_untracked();
+        let (w, h) = dims.get_untracked();
+        let crop_sz_px = (display_sz / z) as u32;
+        let size = crop_sz_px.min(w).min(h) as f64;
+        let left = (ox_val / z).max(0.0);
+        let top = (oy_val / z).max(0.0);
+        let url = img_src.get();
 
-        leptos::task::spawn_local(async move {
-            match crop_and_resize(&bytes, left, top, size, output_size) {
-                Ok(r) => {
+        spawn_local(async move {
+            match crop_via_canvas(&url, left, top, size, None).await
+            {
+                Ok(result) => {
                     processing.set(false);
-                    oc.run(r);
+                    on_crop.run(result);
                 }
                 Err(e) => {
                     processing.set(false);
-                    leptos::logging::warn!("Crop error: {e}");
+                    leptos::logging::warn!("Crop error: {:?}", e);
                 }
             }
         });
@@ -133,10 +214,10 @@ pub fn ImageCropper(
                         on:pointermove=move |ev| ptr_move.run(ev)
                         on:pointerup=move |ev| ptr_up.run(ev)
                     >
-                        <img src=image_url.read_value().clone()
+                        <img src=img_src
                             class="absolute max-w-none pointer-events-none"
-                            style:width=format!("{}px", nw)
-                            style:height=format!("{}px", nh)
+                            style:width=move || format!("{}px", nw.get())
+                            style:height=move || format!("{}px", nh.get())
                             style:transform=move || format!(
                                 "translate({:.1}px,{:.1}px) scale({:.4})",
                                 ox.get(), oy.get(), zoom.get()
@@ -167,7 +248,7 @@ pub fn ImageCropper(
 
                     <div class="w-full max-w-[256px] flex items-center gap-2">
                         <span class="text-xs text-muted-foreground shrink-0">"Zoom"</span>
-                        <input type="range" min="0.01" max=move || (initial_z * 3.0).to_string() step="0.01"
+                        <input type="range" min="0.01" max="3.0" step="0.01"
                             prop:value=move || zoom.get().to_string()
                             on:input=move |ev| on_zoom.run(ev)
                             class="w-full h-2 bg-input rounded-lg appearance-none cursor-pointer accent-primary"
@@ -187,10 +268,7 @@ pub fn ImageCropper(
             {move || if processing.get() {
                 view! {
                     <div class="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background/90">
-                        <svg class="animate-spin size-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
+                        <div class="size-10 rounded-full border-[3px] border-primary/25 border-t-primary animate-spin" />
                         <span class="text-sm font-medium text-foreground mt-3">"Attendere..."</span>
                     </div>
                 }.into_any()
