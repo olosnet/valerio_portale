@@ -19,6 +19,13 @@ Configurazioni di ambiente usate dal server API.
 | `APP_API_PREFIX` | Prefisso path API | (vuoto) |
 | `APP_ID` | Identificativo applicazione | `app_default` |
 | `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
+| `APP_TEST_FEATURES` | Abilita endpoint di test (`/tests/email`) e api_doc filemanager | `false` |
+
+### TenantConf
+
+| EnvVar | Descrizione | Default |
+|--------|-------------|---------|
+| `APP_TENANT_ID` | Identificativo tenant (multi-tenancy) | `default` |
 
 ### MongoDBConfig
 

@@ -21,7 +21,7 @@ Configurazioni di ambiente usate dalla CLI di gestione.
 | `MONGO_AUTH_SOURCE` | Auth source | `admin` |
 | `MONGO_AUTH_MECHANISM` | Meccanismo auth | `DEFAULT` |
 
-### FileManagerConf (solo per `--import-images`)
+### FileManagerConf (per `images import` e `catalog import`)
 
 | EnvVar | Descrizione | Default |
 |--------|-------------|---------|
@@ -29,28 +29,32 @@ Configurazioni di ambiente usate dalla CLI di gestione.
 | `FILEMANAGER_MAX_FILE_SIZE_BYTES` | Dimensione massima file (bytes) | `10485760` |
 | `FILEMANAGER_ALLOWED_FILE_TYPES` | Estensioni consentite (separate da `,`) | `jpg,jpeg,png,pdf` |
 
-### Import identity (per `--import-images`)
+### TenantConf / Identity (per `images import`)
 
 | EnvVar | Descrizione | Default |
 |--------|-------------|---------|
-| `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
 | `APP_TENANT_ID` | Tenant ID per filemanager | `default` |
-| `APP_IMPORT_IDENTITY` | Email dell'utente uploader (l'_id viene risolto automaticamente sul DB) | `import@system` |
+| `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
+| `APP_IMPORT_IDENTITY` | Email dell'utente uploader (risolto automaticamente su DB) | `import@system` |
 
 ### Comandi CLI
 
 ```
-app_managment --help
+app_managment [-r] <subcomando>
 ```
 
-| Flag | Descrizione |
-|------|-------------|
+| Comando | Descrizione |
+|---------|-------------|
 | `-r, --register-modules` | Registra tutti i moduli in MongoDB (crea collezioni e indici) |
-| `--generate` | Genera il JSON del catalogo astronomico (NGC+Messier+Caldwell+Arp+Hickson+Abell+DoubleStar) |
-| `--validate` | Valida il JSON contro SIMBAD |
-| `--import` | Importa il JSON in MongoDB (con conflict check e delete imported) |
-| `--generate-images` | Genera JSON con URL immagini DSS B&W (FOV dinamico) |
-| `--import-images` | Scarica e importa le immagini DSS via filemanager, linka agli oggetti |
+| `catalog generate` | Genera JSON del catalogo astronomico con cross-correlazione cataloghi |
+| `catalog validate` | Valida il JSON generato interrogando SIMBAD |
+| `catalog import` | Importa il JSON in MongoDB con conflict check |
+| `images generate` | Genera JSON con URL immagini DSS (FOV dinamico) |
+| `images import` | Scarica e importa immagini DSS via filemanager, linka agli oggetti |
+| `admin create` | Crea gruppo admins + utente amministratore (interattivo) |
+| `test email` | Invia email di test con configurazione SMTP corrente |
+| `redis flush` | Svuota la cache Redis |
+| `redis ping` | Verifica connessione Redis |
 
 ### Esempi
 
@@ -58,18 +62,21 @@ app_managment --help
 # Registrazione moduli (primo avvio)
 cargo run -p app_managment -- -r
 
-# Genera catalogo da file NGC locale (senza rete)
-cargo run -p app_managment -- --generate -o catalogs.json
+# Gestione catalogo
+cargo run -p app_managment -- catalog generate -o catalogs.json
+cargo run -p app_managment -- catalog validate -i catalogs.json --max 100
+cargo run -p app_managment -- catalog import -i catalogs.json
 
-# Valida contro SIMBAD
-cargo run -p app_managment -- --validate --input catalogs.json --max 100
+# Immagini DSS
+cargo run -p app_managment -- images generate -i catalogs.json --download-dir ./dss
+export APP_IMPORT_IDENTITY=admin@example.com
+cargo run -p app_managment -- images import --only-missing
 
-# Importa in MongoDB
-cargo run -p app_managment -- --import --import-file catalogs.json
+# Amministrazione
+cargo run -p app_managment -- admin create
 
-# Genera e scarica immagini DSS
-cargo run -p app_managment -- --generate-images --genimg-input catalogs.json --download-dir ./dss
-
-# Importa immagini negli oggetti
-cargo run -p app_managment -- --import-images --imgimport-file images.json
+# Test e diagnostica
+cargo run -p app_managment -- test email
+cargo run -p app_managment -- redis ping
+cargo run -p app_managment -- redis flush
 ```

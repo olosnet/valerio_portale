@@ -23,6 +23,8 @@ app_managment [-r] <subcomando>
 | `images generate` | Genera JSON con URL delle immagini DSS partendo dal file catalogo. Il FOV e' calcolato dinamicamente dalle dimensioni apparenti dell'oggetto. |
 | `images import` | Legge gli oggetti `imported=true` dal database, genera URL DSS al volo, scarica le immagini, le carica via filemanager e le associa agli oggetti. Nessun file esterno necessario. |
 | `admin create` | Crea il gruppo `admins` con permessi totali e un utente amministratore. Chiede email e password interattivamente. |
+| `test email` | Invia una email di test usando le configurazioni SMTP correnti. |
+| `redis` | Comandi per la cache Redis (flush, ping). |
 
 ### Esempi
 
@@ -59,6 +61,13 @@ cargo run -p app_managment -- images import --only-missing
 
 # Crea amministratore (prompt interattivo)
 cargo run -p app_managment -- admin create
+
+# Invia email di test
+cargo run -p app_managment -- test email
+
+# Redis flush / ping
+cargo run -p app_managment -- redis flush
+cargo run -p app_managment -- redis ping
 ```
 
 ### Flusso completo
