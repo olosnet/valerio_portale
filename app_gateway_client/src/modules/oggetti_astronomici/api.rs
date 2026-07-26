@@ -14,23 +14,30 @@ struct RawPaginationResponse {
     total_count: usize,
 }
 
-fn build_query(page: usize, page_size: usize, sort_field: Option<&str>, sort_dir: Option<&str>, search: Option<&str>) -> String {
+fn urlenc(s: &str) -> String {
+    s.replace('%', "%25")
+        .replace('&', "%26")
+        .replace('=', "%3D")
+        .replace('+', "%2B")
+        .replace(' ', "+")
+}
+
+fn build_query(page: usize, page_size: usize, sort_field: Option<&str>, sort_dir: Option<&str>, search: Option<&str>, filters: Option<&str>) -> String {
     let mut q = format!("page={}&page_size={}", page, page_size);
     if let Some(sf) = sort_field {
-        q.push_str(&format!("&sort_field={}", sf));
+        q.push_str(&format!("&sort_field={}", urlenc(sf)));
     }
     if let Some(sd) = sort_dir {
         q.push_str(&format!("&sort_dir={}", sd));
     }
     if let Some(s) = search {
         if !s.is_empty() {
-            let enc = s
-                .replace('%', "%25")
-                .replace('&', "%26")
-                .replace('=', "%3D")
-                .replace('+', "%2B")
-                .replace(' ', "+");
-            q.push_str(&format!("&search={}", enc));
+            q.push_str(&format!("&search={}", urlenc(s)));
+        }
+    }
+    if let Some(f) = filters {
+        if !f.is_empty() {
+            q.push_str(&format!("&filters={}", urlenc(f)));
         }
     }
     q
@@ -43,8 +50,9 @@ pub async fn list_paginated(
     sort_field: Option<&str>,
     sort_dir: Option<&str>,
     search: Option<&str>,
+    filters: Option<&str>,
 ) -> Result<DataTableResponse<OggettoAstronomico>, ApiError> {
-    let q = build_query(page, page_size, sort_field, sort_dir, search);
+    let q = build_query(page, page_size, sort_field, sort_dir, search, filters);
     let resp = client.request("GET", &format!("/oggetti_astronomici?{}", q), None).await?;
     let raw: RawPaginationResponse = serde_json::from_str(&resp)
         .map_err(|e| ApiError::Network(e.to_string()))?;
