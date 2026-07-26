@@ -12,4 +12,5 @@ pub struct StaticsResponse {
     pub tipo_strumentazione: Vec<EnumValue>,
     pub tipo_oggetto: Vec<EnumValue>,
     pub costellazioni: Vec<EnumValue>,
+    pub timezones: Vec<EnumValue>,
 }

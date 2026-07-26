@@ -17,6 +17,7 @@ impl StaticsService {
             tipo_strumentazione: self.repository.get_tipi_strumentazione().to_vec(),
             tipo_oggetto: self.repository.get_tipi_oggetto().to_vec(),
             costellazioni: self.repository.get_costellazioni().to_vec(),
+            timezones: self.repository.get_timezones().to_vec(),
         }
     }
 }
