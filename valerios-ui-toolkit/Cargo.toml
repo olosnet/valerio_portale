@@ -11,8 +11,8 @@ full = [
     "collapsible", "combobox", "command", "confirm_delete", "context_menu", "date_picker",
     "data_table", "dialog", "direction", "drawer", "dropdown_menu", "empty",
     "field", "hover_card", "icon", "image_cropper", "input", "input_group", "item", "kbd",
-    "label", "menubar", "native_select", "navigation_menu",     "pagination", "password_input",
-    "popover", "progress", "radio_group", "resizable", "scroll_area",
+    "label", "maps", "menubar", "native_select", "navigation_menu", "pagination",
+    "password_input", "popover", "progress", "radio_group", "resizable", "scroll_area",
     "select", "separator", "sheet", "sidebar", "skeleton", "slider",
     "sonner", "spinner", "switch", "table", "tabs", "textarea", "theme", "toggle",
     "toggle_group", "tooltip", "typography",
@@ -51,6 +51,7 @@ input_group = []
 item = []
 kbd = []
 label = []
+maps = ["dep:js-sys", "dep:wasm-bindgen-futures"]
 menubar = ["shared"]
 native_select = []
 navigation_menu = []
@@ -83,6 +84,8 @@ typography = []
 [dependencies]
 leptos = { version = "0.8" }
 chrono = { version = "0.4", features = ["serde"] }
-web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlDocument", "Location"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "HtmlDocument", "Element", "HtmlElement", "Location", "HtmlDivElement", "Request", "RequestInit", "RequestMode", "Response"] }
 wasm-bindgen = "0.2"
+js-sys = { version = "0.3", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"], optional = true }
