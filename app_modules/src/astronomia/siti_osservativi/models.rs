@@ -9,6 +9,7 @@ pub struct SitoOsservativo {
     pub longitudine: f64,
     pub latitudine: f64,
     pub altitudine: f64,
+    pub timezone: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
@@ -17,6 +18,7 @@ pub struct SitoOsservativoCreate {
     pub longitudine: f64,
     pub latitudine: f64,
     pub altitudine: f64,
+    pub timezone: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
@@ -25,4 +27,5 @@ pub struct SitoOsservativoUpdate {
     pub longitudine: f64,
     pub latitudine: f64,
     pub altitudine: f64,
+    pub timezone: Option<String>,
 }
