@@ -76,7 +76,7 @@ mod identity_view {
         tags = ["Identity"],
         request_body(content = FileManagerUploadForm, content_type = "multipart/form-data"),
         responses(
-            (status = 200, description = "Profile image updated", body = app_modules::base::users::models::User),
+            (status = 200, description = "Profile image updated", body = app_modules::base::identity::models::UserIdentity),
             (status = 400, description = "Validation error", body = CornettiError),
             (status = 404, description = "Item not found", body = CornettiError),
             (status = 500, description = "Internal server error", body = CornettiError)
@@ -96,8 +96,11 @@ mod identity_view {
             &state.tenant_conf.tenant_id,
         );
 
-        match service.update_profile_image(claims, form).await {
-            Ok(user) => HttpResponse::Ok().json(user),
+        match service.update_profile_image(claims.clone(), form).await {
+            Ok(_user) => match service.get_identity(claims).await {
+                Ok(identity) => HttpResponse::Ok().json(identity),
+                Err(err) => err.into(),
+            },
             Err(err) => err.into(),
         }
     }

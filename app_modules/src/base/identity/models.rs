@@ -24,7 +24,6 @@ pub struct UserIdentity {
     pub default: bool,
     pub user_type: u8,
     pub groups_ids: Vec<String>,
-    #[serde(default)]
     pub permissions: HashMap<String, AuthorizationPermission>,
 }
 
