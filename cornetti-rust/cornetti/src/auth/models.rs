@@ -39,7 +39,7 @@ impl BaseJwtToken for JwtDefaultToken {
     fn new(conf: JwtAuthConf, subject: String, session_id: String, refresh: bool) -> Self {
         let iat: usize = chrono::Utc::now().timestamp() as usize;
         let exp = if refresh {
-            iat + conf.jwt_refresh_expire_minutes * 60
+            iat + conf.refresh_cookie.expire_minutes * 60
         } else {
             iat + conf.jwt_expire_minutes * 60
         };
@@ -286,32 +286,37 @@ mod tests {
     use crate::core::http_status::HttpStatus;
 
     fn dummy_jwt_conf() -> JwtAuthConf {
+        use crate::auth::confs::{
+            JwtAccessCookieConf, JwtCsrfAccessCookieConf, JwtCsrfRefreshCookieConf,
+            JwtRefreshCookieConf,
+        };
+
         JwtAuthConf {
-            enable_auth: true,
             jwt_secret: "test-secret-key-for-unit-tests".into(),
             jwt_expire_minutes: 60,
-            jwt_issuer: None,
-            jwt_audience: vec![],
-            jwt_access_cookie_name: "access_token".into(),
-            jwt_access_cookie_path: "/".into(),
-            jwt_access_cookie_secure: true,
-            jwt_access_cookie_same_site: crate::auth::confs::ConfSameSite::Strict,
-            jwt_refresh_cookie_name: "refresh_token".into(),
-            jwt_refresh_enable: true,
-            jwt_refresh_expire_minutes: 1440,
-            jwt_refresh_cookie_path: "/auth/refresh".into(),
-            jwt_refresh_cookie_secure: true,
-            jwt_refresh_cookie_same_site: crate::auth::confs::ConfSameSite::Strict,
-            jwt_search_in_headers: true,
-            jwt_search_in_cookies: false,
+            access_cookie: JwtAccessCookieConf {
+                name: "access_token".into(),
+                ..Default::default()
+            },
+            refresh_cookie: JwtRefreshCookieConf {
+                enable: true,
+                expire_minutes: 1440,
+                name: "refresh_token".into(),
+                path: "/auth/refresh".into(),
+                ..Default::default()
+            },
+            csrf_access_cookie: JwtCsrfAccessCookieConf {
+                name: "csrf_access".into(),
+                ..Default::default()
+            },
+            csrf_refresh_cookie: JwtCsrfRefreshCookieConf {
+                name: "csrf_refresh".into(),
+                ..Default::default()
+            },
             jwt_csrf_cookie_enable: false,
             jwt_csrf_check_header_name: "X-CSRF-TOKEN".into(),
-            jwt_csrf_cookie_same_site: crate::auth::confs::ConfSameSite::Strict,
-            jwt_csrf_access_cookie_name: "csrf_access".into(),
-            jwt_csrf_access_cookie_path: "/".into(),
-            jwt_csrf_refresh_cookie_name: "csrf_refresh".into(),
-            jwt_csrf_refresh_cookie_path: "/".into(),
             jwt_csrf_http_methods: vec![],
+            ..Default::default()
         }
     }
 

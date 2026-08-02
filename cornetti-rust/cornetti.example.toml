@@ -1,0 +1,250 @@
+# ============================================================
+# Cornetti configuration example
+# ============================================================
+# Default file name: ./Config.toml (override with the
+# CORNETTI_CONF environment variable):
+#
+#   CORNETTI_CONF=/path/to/config.toml ./my-app
+#
+# Each section can alternatively be loaded from its own TOML file
+# via a CORNETTI_CONF_<SECTION> environment variable (see README):
+#
+#   CORNETTI_CONF_REDIS=/run/secrets/redis.toml ./my-app
+#
+# Section files contain only that section's keys (no [redis] header)
+# and are merged key-by-key over the main file: a section file with
+# just "db_host" keeps every other Redis setting from the main file.
+# A missing main file is tolerated when sections come from the
+# environment files.
+#
+# Application modules can register their own sections by implementing
+# the CornettiConf trait (see README).
+#
+# Every section is optional and falls back to its defaults.
+# Only app_id is required. Sections for features not compiled
+# in are ignored.
+# ============================================================
+
+# ------------------------------------------------------------
+# [app] — base server + tenant
+# ------------------------------------------------------------
+[app]
+host = "0.0.0.0"
+port = 8080
+enable_swagger = true
+tmp_directory = "/tmp"
+api_prefix = "/api"
+app_id = "my-app"                        # required, no default
+shared_resources_id = "shared_res_app_default"
+test_features = false
+tenant_id = "DEFAULT"
+
+# ------------------------------------------------------------
+# [auth] — JWT, session store, API keys, OAuth2
+# ------------------------------------------------------------
+[auth.jwt]
+enable = true
+secret = "change-me"                     # or secret_file = "/run/secrets/jwt"
+expire_minutes = 60
+issuer = "my-app"
+audience = ["web", "mobile"]
+search_in_headers = true
+search_in_cookies = false
+csrf_cookie_enable = false
+csrf_cookie_same_site = "strict"
+csrf_check_header_name = "X-CSRF-TOKEN"
+csrf_http_methods = ["POST", "PUT", "PATCH", "DELETE"]
+
+[auth.jwt.access_cookie]
+name = "access_token_cookie"
+path = "/"
+secure = true
+same_site = "strict"
+
+[auth.jwt.refresh_cookie]
+enable = true
+expire_minutes = 10080
+name = "refresh_token_cookie"
+path = "/auth/refresh"
+secure = true
+same_site = "strict"
+
+[auth.jwt.csrf_access_cookie]
+name = "csrf_access_token"
+path = "/"
+
+[auth.jwt.csrf_refresh_cookie]
+name = "csrf_refresh_token"
+path = "/"
+
+[auth.jwt.store]
+session_expire_mins = 10081
+
+[auth.apikey]
+enable = true
+header_name = "X-API-Key"
+
+[auth.oauth2]
+enable = false
+state_cookie_name = "oauth2_state"
+post_login_redirect = "https://app.example.com/login"
+enable_api_mode = false
+state_ttl_secs = 600
+auto_register_users = true            # false = reject users not registered locally
+
+[[auth.oauth2.providers]]
+name = "google"
+client_id = "1234.apps.googleusercontent.com"
+client_secret = "GOCSPX-..."             # or client_secret_file = "/run/secrets/google"
+redirect_uri = "https://app.example.com/auth/callback"
+scopes = ["openid", "email", "profile"]
+
+[[auth.oauth2.providers]]
+name = "github"
+client_id = "Iv1..."
+client_secret = "..."                    # or client_secret_file = "/run/secrets/github"
+redirect_uri = "https://app.example.com/auth/callback"
+scopes = ["read:user"]
+
+[[auth.oauth2.providers]]
+name = "apple"
+client_id = "com.example.app"
+client_secret = "unused-by-apple"        # Apple replaces it with an ES256 JWT
+redirect_uri = "https://app.example.com/auth/callback"
+
+[auth.oauth2.providers.extra]            # provider-specific data (Apple)
+key_id = "ABCD1234"
+team_id = "TEAMID1234"
+private_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
+-----END PRIVATE KEY-----
+"""
+
+# ------------------------------------------------------------
+# [redis] — Redis connection
+# ------------------------------------------------------------
+[redis]
+db_number = "1"
+db_host = "localhost"
+db_port = "6379"
+db_username = "redis"
+db_password = "..."                      # or db_password_file = "/run/secrets/redis"
+db_enable_tls = false
+
+# ------------------------------------------------------------
+# [sqlx] — SQL pool (backend chosen by compiled feature)
+# ------------------------------------------------------------
+[sqlx]
+db_type = "postgres"                     # postgres | mysql | sqlite (feature-gated)
+db_name = "database"
+db_host = "localhost"
+db_port = "5432"
+db_username = "postgres"
+db_password = "..."                      # or db_password_file = "/run/secrets/db"
+db_enable_tls = false
+db_tls_mode = "require"
+db_tls_root_cert_path = "/etc/ssl/db-ca.pem"
+
+[sqlx.pool]
+max_connections = 10
+min_connections = 1
+acquire_timeout_secs = 30
+idle_timeout_secs = 300
+max_lifetime_secs = 3600
+
+# ------------------------------------------------------------
+# [mongo] — MongoDB connection
+# ------------------------------------------------------------
+[mongo]
+db_name = "database"
+db_host = "localhost"
+db_port = "27017"
+db_username = "mongo"
+db_password = "..."                      # or db_password_file = "/run/secrets/mongo"
+auth_source = "admin"
+auth_mechanism = "SCRAM-SHA-256"
+
+# ------------------------------------------------------------
+# [mail] — provider dispatch + per-provider config
+# ------------------------------------------------------------
+[mail]
+provider = "smtp"                        # smtp | gmail
+
+[mail.smtp]
+email_from = "noreply@example.com"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_username = "user"
+smtp_password = "..."                    # or smtp_password_file = "/run/secrets/smtp"
+transport = "smtp_tls"                   # smtp_tls | smtp_starttls | unencrypted_localhost
+
+[mail.gmail]
+email_from = "noreply@example.com"
+
+[mail.gmail.service_account]             # replaces GMAIL_SERVICE_ACCOUNT_JSON
+private_key_id = "..."
+private_key = """-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
+-----END PRIVATE KEY-----
+"""
+client_email = "service-account@project.iam.gserviceaccount.com"
+token_uri = "https://oauth2.googleapis.com/token"
+
+# Alternative: point at a JSON file in Google's export format
+# [mail.gmail]
+# service_account_file = "/run/secrets/gmail-service-account.json"
+
+# ------------------------------------------------------------
+# [grpc] — tonic server + client
+# ------------------------------------------------------------
+[grpc.server]
+host = "0.0.0.0"
+port = 50051
+concurrency_limit_per_connection = 100
+timeout_secs = 30
+tcp_nodelay = true
+load_shed = false
+accept_http1 = false
+
+[grpc.server.tls]
+enable = false
+certificate = """..."""                  # or certificate_file = "/etc/ssl/server.pem"
+key = """..."""                          # or key_file = "/etc/ssl/server.key"
+client_ca_root = """..."""               # or client_ca_root_file = "/etc/ssl/ca.pem"
+client_auth_optional = false
+
+[grpc.client]
+endpoint = "http://localhost:50051"      # or host/port
+use_tls = false
+user_agent = "cornetti-client"
+timeout_secs = 10
+connect_timeout_secs = 5
+tcp_nodelay = true
+
+[grpc.client.tls]
+domain_name = "grpc.example.com"
+ca_certificate = """..."""               # or ca_certificate_file = "/etc/ssl/ca.pem"
+certificate = """..."""                  # or certificate_file = "/etc/ssl/client.pem"
+key = """..."""                          # or key_file = "/etc/ssl/client.key"
+
+# ------------------------------------------------------------
+# [otp] — simple OTP generator
+# ------------------------------------------------------------
+[otp]
+otp_length = 6
+otp_expires_minutes = 10
+otp_chars = "0123456789"                 # or an array: ["0", "1", ...]
+
+# ------------------------------------------------------------
+# [templates] — template engine
+# ------------------------------------------------------------
+[templates]
+templates_directory = "./templates"
+
+# ------------------------------------------------------------
+# [filemanager] — uploads
+# ------------------------------------------------------------
+[filemanager]
+upload_directory = "/tmp/uploads"
+max_file_size = 10485760
+allowed_file_types = ["jpg", "jpeg", "png", "pdf"]

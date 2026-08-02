@@ -4,7 +4,8 @@
 
 Provides actix-web integration: error conversions, JWT middleware, API key middleware,
 file manager services, and OpenAPI helpers. Sub-modules are separately feature-gated:
-`actix-auth`, `actix-auth-apikey`, `actix-filemanager`, `actix-filemanager-images`.
+`actix-auth`, `actix-auth-apikey`, `actix-auth-oauth2`, `actix-filemanager`,
+`actix-filemanager-images`.
 
 Requires the `actix` feature.
 
@@ -141,6 +142,46 @@ See `images` submodule in `src/actix/filemanager.rs`.
 - THEN the main entry SHALL be created
 - AND resized variants SHALL be generated for each configured resize spec
 - AND resize relationship records SHALL be persisted
+
+### Requirement: OAuth2 authentication handlers
+
+The `actix-auth-oauth2` feature SHALL provide four route handler functions under
+`src/actix/auth_oauth2/helpers.rs`:
+
+- `oauth2_login_handler` (web): SHALL respond `302` to the provider and set the CSRF
+  state as an `HttpOnly`/`Secure`/`Lax` cookie
+- `oauth2_api_login_handler` (mobile): SHALL respond `200` JSON `{ auth_url, state }`,
+  require `enable_api_mode` in config, and SHALL mandate `code_challenge` (PKCE lato client)
+- `oauth2_web_callback_handler` (web): SHALL verify the state cookie, exchange the
+  code, emit JWT via `generate_auth_tokens_and_response`, set cookies, remove the state
+  cookie, and redirect. SHALL guard against missing `jwt_search_in_cookies` by returning
+  `web_mode_misconfigured` (500)
+- `oauth2_api_callback_handler` (mobile): SHALL verify `enable_api_mode`, call
+  `handle_callback` with the client's `code_verifier`, emit JWT, and respond with JSON.
+  SHALL return `api_mode_disabled` (403) if `enable_api_mode` is `false`
+
+All four handlers SHALL be generic over the user handler, user model, JWT session store,
+and OAuth2 session store types.
+
+See `src/actix/auth_oauth2/helpers.rs`.
+
+#### Scenario: Web login redirects with state cookie
+
+- WHEN `oauth2_login_handler` is called for a configured provider
+- THEN the handler SHALL call `OAuth2Service::build_auth_url`
+- AND SHALL set `conf.state_cookie_name` as a cookie with the CSRF state
+- AND SHALL respond with `302` redirecting to the provider's authorization URL
+
+#### Scenario: API login enforces client-side PKCE
+
+- WHEN `oauth2_api_login_handler` is called without `code_challenge`
+- THEN `invalid_pkce_parameter` (400) SHALL be returned
+
+#### Scenario: Web callback with cookie-less JWT config fails
+
+- WHEN `oauth2_web_callback_handler` is called
+- AND `jwt_search_in_cookies` is `false`
+- THEN `web_mode_misconfigured` (500) SHALL be returned before any token is exchanged
 
 ### Requirement: DevExtreme pagination query params
 

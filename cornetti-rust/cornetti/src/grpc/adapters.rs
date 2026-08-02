@@ -1,4 +1,5 @@
-use crate::core::{errors, http_status::HttpStatus, models::CornettiError};
+use crate::errors;
+use crate::core::{http_status::HttpStatus, models::CornettiError};
 
 impl From<tonic::transport::Error> for CornettiError {
     fn from(err: tonic::transport::Error) -> Self {

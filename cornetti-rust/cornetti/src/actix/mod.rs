@@ -13,4 +13,7 @@ pub mod auth;
 #[cfg(feature = "actix-auth-apikey")]
 pub mod auth_apikey;
 
+#[cfg(feature = "actix-auth-oauth2")]
+pub mod auth_oauth2;
+
 pub mod helpers;

@@ -6,6 +6,7 @@ Provides Redis integration: connection management, error classification with tra
 detection, and an optional session store (`RedisSessionStore`) that implements `SessionStore`.
 
 Requires the `redisdb` feature. The session store additionally requires the `auth` feature.
+The OAuth2 session store requires the `redisdb` and `auth-oauth2` features.
 
 ## ADDED Requirements
 
@@ -85,3 +86,41 @@ See `add_token` implementation in `src/redis/auth.rs`.
 #### Scenario: Redis < 7.0 compatibility
 - WHEN the Redis server is older than version 7.0
 - THEN `HSETEX` commands SHALL fail (upstream `redis-rs` error)
+
+### Requirement: Redis OAuth2 session store
+
+`RedisOAuth2SessionStore` SHALL implement `OAuth2SessionStore` using Redis as the
+backend. Each CSRF state entry SHALL be stored as a simple key with a per-entry TTL.
+
+The `set_oauth2_state` method SHALL use `SETEX` with the TTL in seconds provided by
+the caller (from `OAuth2AuthConf.state_ttl_secs`).
+
+The `take_oauth2_state` method SHALL use `GETDEL` — an atomic read-and-delete
+command (available since Redis 6.2). This SHALL satisfy the one-shot semantics
+required by the trait: once a state is consumed, it cannot be replayed.
+
+All Redis keys SHALL follow the pattern `{tenant_id}:{app_id}:<type>:<id>`:
+- OAuth2 state key: `{tenant_id}:{app_id}:oauth2:{provider}:{state}`
+
+The store SHALL be constructed with `Arc<RedisDBService>` and an `app_id` string,
+mirroring `RedisSessionStore`'s constructor. The `redis_conn` field SHALL be
+public for direct consumer access.
+
+See `RedisOAuth2SessionStore` in `src/redis/auth_oauth2.rs`.
+
+#### Scenario: State stored with TTL
+
+- WHEN `set_oauth2_state` is called with `ttl_secs: 600`
+- THEN the state payload SHALL be written to `{tenant_id}:{app_id}:oauth2:{provider}:{state}`
+- AND the key SHALL expire 600 seconds after the write
+
+#### Scenario: State consumed atomically
+
+- WHEN `take_oauth2_state` is called for an existing state key
+- THEN `GETDEL` SHALL be executed, returning the payload and deleting the key atomically
+- AND a subsequent `take_oauth2_state` for the same key SHALL return `None`
+
+#### Scenario: Expired state returns None
+
+- WHEN `take_oauth2_state` is called for a key that has already expired or does not exist
+- THEN `None` SHALL be returned without error

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use validator::Validate;
 
-use crate::core::{errors, models::CornettiResult};
+use crate::errors;
+use crate::core::models::CornettiResult;
 
 use super::{
     helpers::{

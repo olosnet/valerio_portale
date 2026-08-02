@@ -145,31 +145,56 @@ See `BaseModule` in `src/core/traits.rs`.
 - THEN `module_permissions()` SHALL return a static slice of permission names
 - AND `module_permissions_strings()` SHALL return them as owned `Vec<String>`
 
-### Requirement: Configuration from environment
+### Requirement: Configuration from TOML
 
-`BaseConf` and `TenantConf` SHALL read their values from environment variables
-with sensible defaults. `BaseConf` SHALL panic on a missing `APP_ID` and on invalid
-`u16` parsing of `APP_PORT`. `TenantConf` SHALL fall back to `DEFAULT_TENANT_ID`
-when `APP_TENANT_ID` is empty.  
+`BaseConf` SHALL be deserialized from the `[app]` TOML section with sensible
+defaults. `app_id` SHALL be required: `CornettiConfStruct::from_str` and
+`CornettiConfStruct::load_from` SHALL return a configuration error when it is missing.
+`tenant_id` SHALL fall back to `DEFAULT_TENANT_ID` when absent or empty.
+`api_prefix` SHALL have trailing slashes trimmed.
 Middleware (`JWTMiddleware`, `JwtAuthorizationMiddleware`) SHALL require an explicit `tenant_id` parameter — no fallback.
 
-`BaseConf` SHALL read the optional `APP_SHARED_RESOURCES_ID` variable and store its
-value in the `shared_resources_id` field, defaulting to `"shared_res_app_default"` when unset.
-`APP_ID` is mandatory and SHALL cause `from_env()` to panic if not set.
+`shared_resources_id` SHALL default to `"shared_res_app_default"` when unset.
 
-See `src/core/confs.rs`.
+The configuration loader (`CornettiConfStruct`) SHALL support three sources:
+- a main TOML file, from `CORNETTI_CONF` or `./Config.toml` (`load()`, or an
+  explicit path with `load_from()`)
+- per-section TOML files selected by `CORNETTI_CONF_<SECTION>` environment
+  variables (`CORNETTI_CONF_APP`, `CORNETTI_CONF_AUTH`, `CORNETTI_CONF_REDIS`,
+  `CORNETTI_CONF_SQLX`, `CORNETTI_CONF_MONGO`, `CORNETTI_CONF_MAIL`,
+  `CORNETTI_CONF_GRPC`, `CORNETTI_CONF_OTP`, `CORNETTI_CONF_TEMPLATES`,
+  `CORNETTI_CONF_FILEMANAGER`), containing only that section's keys
+- `from_str()` for pure string parsing (no environment access)
+
+Per-section files SHALL be merged key-by-key into the main file: nested tables
+merge recursively, scalars and arrays replace. A missing main file SHALL be
+tolerated by `load()` when the sections come from the environment files. The
+environment SHALL be scanned dynamically, so sections registered by
+application modules are supported as well.
+
+Each section conf struct SHALL implement the `CornettiConf` trait, which
+SHALL provide a default reader `load()` (section from the main file,
+overridable with the per-section environment variable derived from
+`section_name()`), plus `from_toml_str()` and `from_toml_file()` standalone
+constructors using the section content format. Application modules SHALL be
+able to register custom sections by implementing `CornettiConf`; the loader
+SHALL expose them via `CornettiConfStruct::section::<T>()` (defaults when the
+section is absent) and `has_section::<T>()`.
+
+See `BaseConf` in `src/core/confs.rs` and `CornettiConfStruct`/`CornettiConf`
+in `src/conf/mod.rs`.
 
 #### Scenario: Default configuration
-- WHEN no environment variables are set except `APP_ID`
-- THEN `BaseConf::from_env()` SHALL return a config with host `"localhost"`, port `8080`,
+- WHEN the `[app]` section contains only `app_id`
+- THEN `BaseConf` SHALL have host `"localhost"`, port `8080`,
   enable_swagger `true`, tmp_directory `"/tmp"`, empty api_prefix,
   shared_resources_id `"shared_res_app_default"`
-- WHEN `APP_ID` is not set at all
-- THEN `BaseConf::from_env()` SHALL panic
+- WHEN `app_id` is not set at all
+- THEN configuration loading SHALL return a 500 configuration error
 
 #### Scenario: Tenant fallback
-- WHEN `APP_TENANT_ID` is not set or empty
-- THEN `TenantConf::from_env()` SHALL return `tenant_id = "DEFAULT"`
+- WHEN `tenant_id` is not set or empty
+- THEN `BaseConf.tenant_id` SHALL be `"DEFAULT"`
 
 ### Requirement: Password hashing and verification
 
@@ -184,6 +209,46 @@ See `sec` module in `src/core/helpers.rs`.
 - AND the resulting hash is verified with `verify_password` using the correct password
 - THEN verification SHALL return `true`
 - AND verification with a wrong password SHALL return `false`
+
+### Requirement: Constant-time string comparison
+
+`sec::constant_time_eq(a: &str, b: &str) -> bool` SHALL compare two strings in
+constant time with respect to their content. Unlike `==`, it SHALL NOT short-circuit
+on the first differing byte — it SHALL process every byte pair, accumulating XOR
+differences, so the comparison time does not leak *where* two equal-length values
+diverge.
+
+The length of the inputs SHALL NOT be hidden: a length mismatch SHALL return
+immediately. The function SHALL be suitable for fixed-length secrets (CSRF states,
+tokens, signatures) compared against attacker-supplied input, where only the byte
+values are sensitive.
+
+The implementation SHALL NOT depend on the `subtle` crate (available transitively
+through `argon2`): it SHALL use a manual XOR-accumulation loop.
+
+See `sec::constant_time_eq` in `src/core/helpers.rs`.
+
+#### Scenario: Matching strings return true
+
+- WHEN `constant_time_eq("abc123", "abc123")` is called
+- THEN `true` SHALL be returned
+
+#### Scenario: Differing strings return false
+
+- WHEN `constant_time_eq("abc123", "abc124")` is called
+- THEN `false` SHALL be returned
+
+#### Scenario: Different lengths return false immediately
+
+- WHEN `constant_time_eq("abc", "abcd")` is called
+- THEN `false` SHALL be returned immediately without comparing any bytes
+
+#### Scenario: Single-byte difference does not leak position
+
+- WHEN a constant-time comparison is benchmarked across inputs that differ at
+  position 0 vs position 42
+- THEN the comparison time SHALL be statistically indistinguishable regardless
+  of where the first difference occurs (as long as the lengths are equal)
 
 ### Requirement: OpenAPI documentation helpers
 

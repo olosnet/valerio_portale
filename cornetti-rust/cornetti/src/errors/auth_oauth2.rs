@@ -1,0 +1,18 @@
+#[cfg(feature = "auth-oauth2")]
+auth_oauth2_errors(400): {
+    *state_mismatch                      => "OAuth2 state mismatch",
+    *invalid_provider                    => "OAuth2 provider not configured",
+    *missing_code                        => "OAuth2 authorization code missing",
+    *pkce_not_found                      => "PKCE verifier not found or expired",
+    *invalid_pkce_parameter              => "Invalid PKCE parameter",
+    *pkce_mode_mismatch                  => "Inconsistent PKCE mode",
+    *invalid_id_token                    => "Invalid OAuth2 id_token",
+    *auth_disabled(403)                  => "OAuth2 authentication disabled",
+    *api_mode_disabled(403)              => "OAuth2 API mode disabled",
+    *user_not_found(404)                 => "OAuth2 user not found and auto-registration is disabled",
+    *token_exchange_error(500, log_level: Error)   => "OAuth2 token exchange error",
+    *user_info_error(500, log_level: Error)        => "Failed to retrieve user info from OAuth2 provider",
+    *provider_error(500, log_level: Error)         => "Error from OAuth2 provider",
+    *session_store_error(500, log_level: Error)    => "OAuth2 session store error",
+    *web_mode_misconfigured(500, log_level: Error) => "Misconfigured OAuth2 web mode",
+},

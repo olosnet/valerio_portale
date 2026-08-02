@@ -603,14 +603,33 @@ pub mod images {
         }
     }
 
-    /// Converte un'immagine da un formato a un altro, opzionalmente ridimensionando.
+    /// Converts an image from one format to another, optionally resizing it.
     ///
-    /// - `input_bytes`: bytes dell'immagine sorgente
-    /// - `source_format`: formato sorgente (`Unknown` per autodetect)
-    /// - `target_format`: formato desiderato in output (`Png`, `Jpeg`, `Webp`)
-    /// - `resize`: se `Some`, ridimensiona prima della codifica
+    /// When `source_format` is [`ImageFormat::Unknown`], the format is auto-detected
+    /// from magic bytes at the start of `input_bytes`. When `target_format` is
+    /// [`ImageFormat::Unknown`], the source format is preserved in the output.
     ///
-    /// Ritorna i bytes dell'immagine nel formato target.
+    /// If `resize` is `Some`, the image is resized to the requested dimensions
+    /// with the specified [`ImageFileManagerResizeMode`] *after* decoding and
+    /// *before* encoding. Resizing uses Lanczos3 sampling. If the requested
+    /// dimensions already match the decoded image dimensions, the resize step
+    /// is skipped (no-op).
+    ///
+    /// JPEG output quality is taken from `resize.quality` when present, otherwise
+    /// defaults to 75.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The input bytes cannot be decoded (unsupported format, animated image,
+    ///   corrupted data, unsupported color type or bit depth).
+    /// - The resize operation fails.
+    /// - Encoding to the target format fails (e.g., `GRAYA16` is not supported
+    ///   by the JPEG encoder).
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
     pub fn convert_image(
         input_bytes: &[u8],
         source_format: &ImageFormat,
@@ -654,6 +673,29 @@ pub mod images {
 
         use crate::filemanager::models::images::{ImageReadResult, ImageReadTypeMode};
 
+        /// Decodes a PNG image from an in-memory byte slice.
+        ///
+        /// Reads the PNG header and first frame from `bytes`, producing an
+        /// [`ImageReadResult`] with the decoded pixel data. All output pixel
+        /// data is normalized to 8-bit depth: 16-bit source pixels are
+        /// downscaled (right-shift by 8) to 8-bit.
+        ///
+        /// Supported color types: `Grayscale` → [`ImageReadTypeMode::GRAY8`],
+        /// `Rgb` → [`ImageReadTypeMode::RGB24`], `Rgba` →
+        /// [`ImageReadTypeMode::RGBA32`].
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if:
+        /// - The PNG header cannot be parsed (corrupted or not PNG data).
+        /// - The color type is unsupported (e.g., indexed, grayscale-alpha).
+        /// - The bit depth is unsupported (e.g., 1-bit or 4-bit).
+        /// - The image is animated.
+        /// - Reading pixel data fails.
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn read_png_image_from_bytes(
             bytes: &[u8],
         ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
@@ -697,6 +739,28 @@ pub mod images {
             })
         }
 
+        /// Decodes a JPEG image from an in-memory byte slice.
+        ///
+        /// Reads the JPEG stream from `bytes`, producing an
+        /// [`ImageReadResult`] with the decoded pixel data. All output pixel
+        /// data is normalized to 8-bit depth: 16-bit grayscale pixels are
+        /// downscaled (right-shift by 8), and CMYK pixels are converted to
+        /// RGB via the standard `(255-C)*(255-K)/255` formula.
+        ///
+        /// Supported pixel formats: `L8` → [`ImageReadTypeMode::GRAY8`],
+        /// `L16` → [`ImageReadTypeMode::GRAY8`] (downscaled), `RGB24` →
+        /// [`ImageReadTypeMode::RGB24`], `CMYK32` →
+        /// [`ImageReadTypeMode::RGB24`] (converted).
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if:
+        /// - The JPEG stream cannot be decoded (corrupted or not JPEG data).
+        /// - Decoder metadata (image info) is unavailable.
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn read_jpeg_image_from_bytes(
             bytes: &[u8],
         ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
@@ -745,6 +809,24 @@ pub mod images {
             })
         }
 
+        /// Decodes a WebP image from an in-memory byte slice.
+        ///
+        /// Reads the WebP stream from `bytes`, producing an
+        /// [`ImageReadResult`] with the decoded pixel data. The output mode
+        /// depends on whether the WebP image has an alpha channel:
+        /// [`ImageReadTypeMode::RGBA32`] if alpha is present,
+        /// [`ImageReadTypeMode::RGB24`] otherwise.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if:
+        /// - The WebP stream cannot be decoded (corrupted or not WebP data).
+        /// - The image is animated (animated WebP is not supported).
+        /// - The output buffer size cannot be determined.
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn read_webp_image_from_bytes(
             bytes: &[u8],
         ) -> Result<ImageReadResult, Box<dyn std::error::Error>> {
@@ -1003,6 +1085,23 @@ pub mod images {
             Ok(())
         }
 
+        /// Encodes pixel data into a PNG byte vector (in-memory).
+        ///
+        /// Creates a PNG image with 8-bit color depth from the given raw pixel
+        /// data. The `mode` determines the output color type:
+        /// [`ImageReadTypeMode::GRAY8`] → Grayscale,
+        /// [`ImageReadTypeMode::RGB24`] → RGB,
+        /// [`ImageReadTypeMode::RGBA32`] → RGBA,
+        /// [`ImageReadTypeMode::GRAYA16`] → GrayscaleAlpha.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if the PNG encoder fails to write the header or
+        /// pixel data.
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn write_png_image_to_bytes(
             width: usize,
             height: usize,
@@ -1028,6 +1127,27 @@ pub mod images {
             Ok(cursor.into_inner())
         }
 
+        /// Encodes pixel data into a JPEG byte vector (in-memory).
+        ///
+        /// Creates a JPEG image from the given raw pixel data. The `quality`
+        /// parameter controls compression level (1-100); if `None`, a default
+        /// of 75 is used.
+        ///
+        /// Supported pixel modes: [`ImageReadTypeMode::GRAY8`] → Luma,
+        /// [`ImageReadTypeMode::RGB24`] → RGB,
+        /// [`ImageReadTypeMode::RGBA32`] → RGBA.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if:
+        /// - The pixel mode is not supported by the JPEG encoder (e.g.,
+        ///   [`ImageReadTypeMode::GRAYA16`] or any mode with an alpha
+        ///   grayscale channel).
+        /// - Encoding fails for another reason (I/O error on the cursor).
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn write_jpeg_image_to_bytes(
             width: usize,
             height: usize,
@@ -1066,6 +1186,23 @@ pub mod images {
             Ok(cursor.into_inner())
         }
 
+        /// Encodes pixel data into a WebP byte vector (in-memory).
+        ///
+        /// Creates a WebP image from the given raw pixel data. The `mode`
+        /// determines the output color type:
+        /// [`ImageReadTypeMode::GRAY8`] → `L8`,
+        /// [`ImageReadTypeMode::RGB24`] → `Rgb8`,
+        /// [`ImageReadTypeMode::RGBA32`] → `Rgba8`,
+        /// [`ImageReadTypeMode::GRAYA16`] → `La8`.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error if the WebP encoder fails (e.g., invalid
+        /// dimensions or data corruption during encoding).
+        ///
+        /// # Panics
+        ///
+        /// This function does not panic.
         pub fn write_webp_image_to_bytes(
             width: usize,
             height: usize,

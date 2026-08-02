@@ -76,18 +76,21 @@ See `IdentityAuthorization` in `src/auth/traits.rs`.
 - THEN a `HashMap<String, AuthorizationPermission>` SHALL be returned
 - AND each entry SHALL indicate whether the identity has read, create, modify, delete access
 
-### Requirement: JWT configuration from environment
+### Requirement: JWT configuration from TOML
 
-`JwtAuthConf::from_env()` SHALL read all JWT parameters from environment variables
-with sensible defaults. If neither `AUTH_JWT_SECRET` nor `AUTH_JWT_SECRET_FILE` is set,
-a random 30-character password SHALL be generated. The function SHALL panic if
-`AUTH_JWT_CSRF_HTTP_METHODS` contains an unrecognized HTTP method.
+`JwtAuthConf` SHALL be deserialized from the `[auth.jwt]` TOML section with
+sensible defaults. Cookie settings SHALL live in the sub-sections
+`[auth.jwt.access_cookie]`, `[auth.jwt.refresh_cookie]`,
+`[auth.jwt.csrf_access_cookie]`, and `[auth.jwt.csrf_refresh_cookie]`.
+If neither `secret` nor `secret_file` is set, a random 30-character password
+SHALL be generated. An unrecognized HTTP method in `csrf_http_methods` SHALL
+produce a configuration error (no panic, no silent fallback).
 
 See `JwtAuthConf` in `src/auth/confs.rs`.
 
-#### Scenario: CSRF method parsing panics
-- WHEN `AUTH_JWT_CSRF_HTTP_METHODS` contains an invalid HTTP method name
-- THEN `from_env()` SHALL panic
+#### Scenario: CSRF method parsing errors
+- WHEN `csrf_http_methods` contains an invalid HTTP method name
+- THEN deserialization SHALL fail with a configuration error
 
 ### Requirement: OpenAPI security scheme generation
 

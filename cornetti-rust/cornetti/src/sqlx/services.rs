@@ -120,23 +120,23 @@ fn apply_pool_options<DB>(
 where
     DB: sqlx::Database,
 {
-    if let Some(value) = config.pool_max_connections {
+    if let Some(value) = config.pool.max_connections {
         options = options.max_connections(value);
     }
 
-    if let Some(value) = config.pool_min_connections {
+    if let Some(value) = config.pool.min_connections {
         options = options.min_connections(value);
     }
 
-    if let Some(value) = config.pool_acquire_timeout_secs {
+    if let Some(value) = config.pool.acquire_timeout_secs {
         options = options.acquire_timeout(Duration::from_secs(value));
     }
 
-    if let Some(value) = config.pool_idle_timeout_secs {
+    if let Some(value) = config.pool.idle_timeout_secs {
         options = options.idle_timeout(Some(Duration::from_secs(value)));
     }
 
-    if let Some(value) = config.pool_max_lifetime_secs {
+    if let Some(value) = config.pool.max_lifetime_secs {
         options = options.max_lifetime(Some(Duration::from_secs(value)));
     }
 

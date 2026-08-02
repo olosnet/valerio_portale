@@ -1,9 +1,9 @@
 use crate::{
     core::{
-        errors::gmail_errors,
         http_status::HttpStatus,
         models::CornettiResult,
     },
+    errors::gmail_errors,
     mail::{gmail::confs::GmailMailConf, EmailAttachment},
 };
 use base64::engine::general_purpose;

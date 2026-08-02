@@ -8,8 +8,8 @@ from `cornetti_macros`. Each subsystem's error variants are declared in a DSL fi
 by HTTP status family.
 
 The system produces a `crate::errors` module hierarchy (e.g. `errors::bad_request`,
-`errors::conflict`, `errors::internal_server_error`) and an `error_catalog()` function
-enumerating all defined errors.
+`errors::conflict`, `errors::internal_server_error`, `errors::conf`) and an
+`error_catalog()` function enumerating all defined errors.
 
 Requires `cornetti_macros` (implicitly available when building `cornetti`).
 

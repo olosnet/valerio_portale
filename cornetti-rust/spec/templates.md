@@ -32,7 +32,7 @@ See `TemplatesService` in `src/templates/services.rs`.
 
 ### Requirement: Configuration
 
-`TemplatesConf::from_env()` SHALL read `TEMPLATES_DIRECTORY`, defaulting to
-`./templates`.
+`TemplatesConf` SHALL be deserialized from the `[templates]` TOML section;
+`templates_directory` SHALL default to `./templates`.
 
 See `src/templates/confs.rs`.

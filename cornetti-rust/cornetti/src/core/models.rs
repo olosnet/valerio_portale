@@ -1,4 +1,5 @@
 use regex::Regex;
+use serde::de::Error as _;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter, Result},
@@ -195,6 +196,33 @@ impl From<&String> for CornettiHttpMethod {
             "OPTIONS" => CornettiHttpMethod::OPTIONS,
             _ => panic!("Unsupported HTTP method: {}", method),
         }
+    }
+}
+
+#[cfg_attr(not(feature = "auth"), allow(dead_code))]
+/// Deserializes an optional list of `CornettiHttpMethod` (missing key → `None`,
+/// so the caller can distinguish "unset" from an explicit empty list).
+pub(crate) fn deserialize_http_methods_opt<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<Vec<CornettiHttpMethod>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<Vec<String>>::deserialize(deserializer)?
+        .map(|methods| methods.into_iter().map(|m| parse_http_method(m).map_err(D::Error::custom)).collect())
+        .transpose()
+}
+
+fn parse_http_method(method: String) -> std::result::Result<CornettiHttpMethod, String> {
+    match method.to_uppercase().as_str() {
+        "GET" => Ok(CornettiHttpMethod::GET),
+        "POST" => Ok(CornettiHttpMethod::POST),
+        "PUT" => Ok(CornettiHttpMethod::PUT),
+        "PATCH" => Ok(CornettiHttpMethod::PATCH),
+        "DELETE" => Ok(CornettiHttpMethod::DELETE),
+        "HEAD" => Ok(CornettiHttpMethod::HEAD),
+        "OPTIONS" => Ok(CornettiHttpMethod::OPTIONS),
+        _ => Err(format!("Unsupported HTTP method: {method}")),
     }
 }
 

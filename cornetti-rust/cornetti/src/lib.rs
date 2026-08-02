@@ -1,5 +1,6 @@
 #![doc = include_str!("../../README.md")]
 
+pub mod conf;
 pub mod core;
 pub mod errors;
 
@@ -20,6 +21,9 @@ pub mod auth;
 
 #[cfg(feature = "auth-apikey")]
 pub mod auth_apikey;
+
+#[cfg(feature = "auth-oauth2")]
+pub mod auth_oauth2;
 
 #[cfg(feature = "templates")]
 pub mod templates;

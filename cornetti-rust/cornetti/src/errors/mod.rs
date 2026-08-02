@@ -4,6 +4,7 @@ use crate::core::models::CornettiError;
 
 cornetti_macros::define_errors! {
     include!("src/errors/body.rs")
+    include!("src/errors/conf.rs")
     include!("src/errors/mongo.rs")
     include!("src/errors/redis.rs")
     include!("src/errors/mail.rs")
@@ -11,6 +12,7 @@ cornetti_macros::define_errors! {
     include!("src/errors/sqlx.rs")
     include!("src/errors/auth.rs")
     include!("src/errors/auth_apikey.rs")
+    include!("src/errors/auth_oauth2.rs")
     include!("src/errors/filemanager.rs")
     include!("src/errors/gmail.rs")
     include!("src/errors/templates.rs")
@@ -20,6 +22,12 @@ impl From<serde_json::Error> for CornettiError {
     fn from(err: serde_json::Error) -> Self {
         internal_server_error::serialization_error()
             .with_internal_detail(err.to_string())
+    }
+}
+
+impl From<toml::de::Error> for CornettiError {
+    fn from(err: toml::de::Error) -> Self {
+        conf::conf_parse_error().with_internal_detail(err.to_string())
     }
 }
 

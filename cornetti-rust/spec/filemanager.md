@@ -87,3 +87,94 @@ The system SHALL write JPEG (configurable quality), PNG, and WebP images via
 `write_jpeg_image`, `write_png_image`, `write_webp_image`.
 
 See `write` module in `src/filemanager/helpers.rs` (behind `filemanager-images`).
+
+## MODIFIED Requirements
+
+### Requirement: In-memory image conversion
+
+`convert_image()` SHALL decode an image from a byte slice, optionally resize it,
+and encode it into a target format byte vector — all in memory, without
+touching the filesystem.
+
+When `source_format` is `ImageFormat::Unknown`, the format SHALL be auto-detected
+from magic bytes (PNG: `89 50 4E 47`, JPEG: `FF D8`, WebP: `RIFF....WEBP`).
+When `target_format` is `ImageFormat::Unknown`, the source format SHALL be
+preserved in the output.
+
+If `resize` is `Some` and the requested dimensions differ from the decoded
+image dimensions, the image SHALL be resized (Lanczos3 sampling) before
+encoding. If dimensions match, the resize step SHALL be skipped (no-op).
+
+JPEG quality SHALL come from `resize.quality` when present, otherwise default
+to 75.
+
+Supported input formats: PNG, JPEG, WebP. Supported output formats: PNG, JPEG,
+WebP. Animated PNG and animated WebP SHALL be rejected during decoding.
+
+See `convert_image` in `src/filemanager/helpers.rs` (behind `filemanager-images`).
+
+#### Scenario: Format auto-detection
+- WHEN `source_format` is `ImageFormat::Unknown` and `input_bytes` starts with `FF D8`
+- THEN the image SHALL be decoded as JPEG
+
+#### Scenario: Same-dimension resize is a no-op
+- WHEN the decoded image is 100x100 and `resize` requests 100x100
+- THEN no resize operation SHALL be performed
+
+#### Scenario: Format conversion with resize
+- WHEN a 200x100 PNG image is converted to JPEG with `Fill` resize at 100x100
+- THEN the output SHALL be a 100x100 JPEG with Lanczos3-scaled content
+
+#### Scenario: Unknown output format preserves source
+- WHEN `target_format` is `ImageFormat::Unknown` and the source is PNG
+- THEN the output SHALL be PNG-encoded bytes
+
+### Requirement: In-memory image decoding from bytes
+
+`read_png_image_from_bytes()`, `read_jpeg_image_from_bytes()`, and
+`read_webp_image_from_bytes()` SHALL decode the respective image formats from
+in-memory byte slices, producing an `ImageReadResult`.
+
+- PNG decoding SHALL support 8-bit and 16-bit depth (16-bit downscaled to 8-bit),
+  color types Grayscale, RGB, and RGBA. Animated PNG SHALL be rejected.
+- JPEG decoding SHALL support L8, L16 (downscaled to 8-bit), RGB24, and CMYK32
+  (converted to RGB). All 16-bit and CMYK inputs SHALL be normalized to 8-bit
+  output.
+- WebP decoding SHALL determine RGBA vs RGB mode based on alpha channel presence.
+  Animated WebP SHALL be rejected.
+
+See `read` module in `src/filemanager/helpers.rs` (behind `filemanager-images`).
+
+#### Scenario: 16-bit PNG downscaled to 8-bit
+- WHEN a 16-bit grayscale PNG is decoded via `read_png_image_from_bytes`
+- THEN the output pixel values SHALL be downscaled by right-shifting 8 bits
+
+#### Scenario: CMYK JPEG converted to RGB
+- WHEN a CMYK JPEG is decoded via `read_jpeg_image_from_bytes`
+- THEN pixels SHALL be converted to RGB using `(255-C)*(255-K)/255` per channel
+
+#### Scenario: Animated WebP rejected
+- WHEN an animated WebP byte slice is decoded via `read_webp_image_from_bytes`
+- THEN an error SHALL be returned
+
+### Requirement: In-memory image encoding to bytes
+
+`write_png_image_to_bytes()`, `write_jpeg_image_to_bytes()`, and
+`write_webp_image_to_bytes()` SHALL encode raw pixel data into the respective
+image format as an in-memory byte vector.
+
+- PNG encoding SHALL support GRAY8, RGB24, RGBA32, and GRAYA16 modes at 8-bit depth.
+- JPEG encoding SHALL support GRAY8 (Luma), RGB24 (RGB), and RGBA32 (RGBA) modes
+  with configurable quality (default 75). GRAYA16 SHALL be rejected.
+- WebP encoding SHALL support GRAY8 (L8), RGB24 (Rgb8), RGBA32 (Rgba8), and
+  GRAYA16 (La8) modes.
+
+See `write` module in `src/filemanager/helpers.rs` (behind `filemanager-images`).
+
+#### Scenario: JPEG quality defaults to 75
+- WHEN `write_jpeg_image_to_bytes` is called with `quality: None`
+- THEN the JPEG SHALL be encoded at quality level 75
+
+#### Scenario: GRAYA16 rejected by JPEG encoder
+- WHEN `write_jpeg_image_to_bytes` is called with mode `ImageReadTypeMode::GRAYA16`
+- THEN an error SHALL be returned

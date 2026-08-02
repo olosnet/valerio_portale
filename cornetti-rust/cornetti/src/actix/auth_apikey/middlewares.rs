@@ -17,10 +17,10 @@ pub mod authentication {
     use crate::{
         auth_apikey::{confs::ApiKeyAuthConf, services::AuthApiKeyAuthService},
         core::{
-            errors,
             models::{CornettiHttpFilter, CornettiResult},
             traits::To,
         },
+        errors,
     };
 
     /// Middleware factory for API key authentication.
@@ -168,7 +168,7 @@ pub mod authentication {
             let api_key_header = match api_key_header {
                 Ok(api_key_header) => api_key_header,
                 Err(err) => {
-                    let status = StatusCode::from_u16(err.status)
+                    let status = StatusCode::from_u16(err.status.as_u16())
                         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
                     let response = HttpResponse::build(status).json(err).map_into_left_body();
 
@@ -188,7 +188,7 @@ pub mod authentication {
                         Ok(response.map_into_right_body())
                     }
                     Err(err) => {
-                        let status = StatusCode::from_u16(err.status)
+                        let status = StatusCode::from_u16(err.status.as_u16())
                             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
                         let response = HttpResponse::build(status).json(err).map_into_left_body();
                         Ok(ServiceResponse::new(http_req, response))

@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use crate::core::helpers::common::env_or_envfile;
+use crate::core::confs::resolve_secret;
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer};
 
 /// SMTP transport security mode.
 #[derive(Debug, Clone)]
@@ -30,56 +32,85 @@ impl FromStr for SmtpMailTransport {
     type Err = SmtpMailTransportParseError;
 }
 
-/// SMTP email configuration.
-#[derive(Clone)]
+impl<'de> Deserialize<'de> for SmtpMailTransport {
+    /// Deserializes from a string (`smtp_tls`, `smtp_starttls`,
+    /// `unencrypted_localhost`, case-insensitive).
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::from_str(&value).map_err(|_| {
+            serde::de::Error::custom(format!(
+                "Unknown SMTP transport '{value}' \
+                 (expected: smtp_tls, smtp_starttls, unencrypted_localhost)"
+            ))
+        })
+    }
+}
+
+/// SMTP email configuration (`[mail.smtp]` TOML section).
+#[derive(Clone, Debug)]
 pub struct SmtpMailConf {
-    /// Default from address.
+    /// Default from address (default: `"test@email.com"`).
     pub email_from: String,
-    /// SMTP server hostname.
+    /// SMTP server hostname (default: `"localhost"`).
     pub smtp_host: String,
-    /// SMTP server port.
+    /// SMTP server port (default: `587`).
     pub smtp_port: u16,
-    /// SMTP username for authentication.
+    /// SMTP username for authentication (default: `"user"`).
     pub smtp_username: String,
-    /// SMTP password for authentication.
+    /// SMTP password for authentication (default: `"password"`), or
+    /// `smtp_password_file` for a path to the secret file.
     pub smtp_password: String,
-    /// Transport security mode.
+    /// Transport security mode (default: `smtp_tls`).
     pub transport: SmtpMailTransport,
 }
 
-impl SmtpMailConf {
-    /// Reads SMTP configuration from environment variables.
-    ///
-    /// # Panics
-    ///
-    /// `MAIL_SMTP_TRANSPORT` is parsed via `FromStr` which returns an error on
-    /// unrecognized values; the `unwrap_or_else` handles it gracefully.
-    pub fn from_env() -> Self {
-        let smtp_host: String =
-            std::env::var("MAIL_SMTP_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let smtp_port: u16 = std::env::var("MAIL_SMTP_PORT")
-            .unwrap_or_else(|_| "587".to_string())
-            .parse()
-            .unwrap_or(587);
-        let smtp_username: String =
-            std::env::var("MAIL_SMTP_USERNAME").unwrap_or_else(|_| "user".to_string());
-        let smtp_password = env_or_envfile("MAIL_SMTP_PASSWORD", "MAIL_SMTP_PASSWORD_FILE")
-            .unwrap_or("password".to_string());
-        let transport: SmtpMailTransport = std::env::var("MAIL_SMTP_TRANSPORT")
-            .unwrap_or_else(|_| "smtp_tls".to_string())
-            .parse()
-            .unwrap_or(SmtpMailTransport::SmtpTls);
-        let email_from: String =
-            std::env::var("MAIL_EMAIL_FROM").unwrap_or_else(|_| "test@email.com".to_string());
-
-        SmtpMailConf {
-            smtp_host,
-            smtp_port,
-            smtp_username,
-            smtp_password,
-            transport,
-            email_from,
+impl Default for SmtpMailConf {
+    fn default() -> Self {
+        Self {
+            email_from: "test@email.com".to_string(),
+            smtp_host: "localhost".to_string(),
+            smtp_port: 587,
+            smtp_username: "user".to_string(),
+            smtp_password: "password".to_string(),
+            transport: SmtpMailTransport::SmtpTls,
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for SmtpMailConf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            email_from: Option<String>,
+            smtp_host: Option<String>,
+            smtp_port: Option<u16>,
+            smtp_username: Option<String>,
+            smtp_password: Option<String>,
+            smtp_password_file: Option<String>,
+            transport: Option<SmtpMailTransport>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let defaults = SmtpMailConf::default();
+
+        Ok(SmtpMailConf {
+            email_from: raw.email_from.unwrap_or(defaults.email_from),
+            smtp_host: raw.smtp_host.unwrap_or(defaults.smtp_host),
+            smtp_port: raw.smtp_port.unwrap_or(defaults.smtp_port),
+            smtp_username: raw.smtp_username.unwrap_or(defaults.smtp_username),
+            smtp_password: resolve_secret(raw.smtp_password, raw.smtp_password_file, || {
+                defaults.smtp_password
+            })
+            .map_err(D::Error::custom)?,
+            transport: raw.transport.unwrap_or(defaults.transport),
+        })
     }
 }
 
@@ -133,6 +164,47 @@ mod tests {
     #[test]
     fn smtp_mail_transport_from_str_empty_errors() {
         let result = SmtpMailTransport::from_str("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn smtp_mail_conf_from_toml_defaults() {
+        let conf: SmtpMailConf = toml::from_str("").unwrap();
+        assert_eq!(conf.email_from, "test@email.com");
+        assert_eq!(conf.smtp_host, "localhost");
+        assert_eq!(conf.smtp_port, 587);
+        assert_eq!(conf.smtp_username, "user");
+        assert_eq!(conf.smtp_password, "password");
+        assert!(matches!(conf.transport, SmtpMailTransport::SmtpTls));
+    }
+
+    #[test]
+    fn smtp_mail_conf_from_toml() {
+        let conf: SmtpMailConf = toml::from_str(
+            r#"
+            email_from = "noreply@example.com"
+            smtp_host = "smtp.example.com"
+            smtp_port = 465
+            smtp_username = "sender"
+            smtp_password = "secret"
+            transport = "smtp_starttls"
+        "#,
+        )
+        .unwrap();
+        assert_eq!(conf.email_from, "noreply@example.com");
+        assert_eq!(conf.smtp_host, "smtp.example.com");
+        assert_eq!(conf.smtp_port, 465);
+        assert_eq!(conf.smtp_username, "sender");
+        assert_eq!(conf.smtp_password, "secret");
+        assert!(matches!(
+            conf.transport,
+            SmtpMailTransport::SmtpStarttls
+        ));
+    }
+
+    #[test]
+    fn smtp_mail_conf_unknown_transport_errors() {
+        let result = toml::from_str::<SmtpMailConf>("transport = \"carrier_pigeon\"");
         assert!(result.is_err());
     }
 }

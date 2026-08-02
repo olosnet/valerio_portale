@@ -3,7 +3,8 @@ use argon2::{
     password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
 
-use crate::core::{errors, helpers::common::generate_random_string, models::CornettiResult};
+use crate::errors;
+use crate::core::{helpers::common::generate_random_string, models::CornettiResult};
 
 const API_KEY_TOKEN_PREFIX: &str = "cak_";
 const API_KEY_RANDOM_LENGTH: usize = 48;

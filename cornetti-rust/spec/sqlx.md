@@ -4,7 +4,7 @@
 
 Provides SQL database integration via sqlx: connection pool management for Postgres,
 MySQL, and SQLite; error classification with transient detection and unique violation
-handling; and environment-based configuration.
+handling; and TOML-based configuration.
 
 Requires the `sqlxdb` feature plus at least one backend feature (`sqlxdb-postgres`,
 `sqlxdb-mysql`, `sqlxdb-sqlite`). Compilation SHALL fail with `compile_error!` if no

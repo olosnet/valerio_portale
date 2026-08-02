@@ -1,5 +1,5 @@
 use crate::core::{
-    helpers::common::env_or_envfile,
+    confs::resolve_secret_opt,
     models::{CornettiError, CornettiResult},
 };
 use std::{
@@ -7,16 +7,129 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
     time::Duration,
 };
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer};
 use tonic::transport::{Endpoint, Server};
 
 #[cfg(feature = "grpc-tls")]
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
-/// gRPC server configuration.
+/// TLS settings for the gRPC server (`[grpc.server.tls]` TOML section).
 ///
-/// All fields are read from environment variables with sensible defaults.
+/// PEM material can be inlined (`certificate`, `key`, `client_ca_root`) or
+/// loaded from files (`certificate_file`, `key_file`, `client_ca_root_file`).
+/// TLS requires the `grpc-tls` feature.
+#[derive(Clone, Debug, Default)]
+pub struct GrpcServerTlsConf {
+    /// Whether TLS is enabled.
+    pub enable: bool,
+    /// PEM-encoded TLS certificate.
+    pub certificate: Option<String>,
+    /// PEM-encoded TLS private key.
+    pub key: Option<String>,
+    /// PEM-encoded client CA certificate for mTLS.
+    pub client_ca_root: Option<String>,
+    /// Whether client authentication is optional.
+    pub client_auth_optional: bool,
+}
+
+impl<'de> Deserialize<'de> for GrpcServerTlsConf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            enable: Option<bool>,
+            certificate: Option<String>,
+            certificate_file: Option<String>,
+            key: Option<String>,
+            key_file: Option<String>,
+            client_ca_root: Option<String>,
+            client_ca_root_file: Option<String>,
+            client_auth_optional: Option<bool>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let defaults = GrpcServerTlsConf::default();
+
+        Ok(GrpcServerTlsConf {
+            enable: raw.enable.unwrap_or(defaults.enable),
+            certificate: resolve_secret_opt(raw.certificate, raw.certificate_file)
+                .map_err(D::Error::custom)?,
+            key: resolve_secret_opt(raw.key, raw.key_file).map_err(D::Error::custom)?,
+            client_ca_root: resolve_secret_opt(raw.client_ca_root, raw.client_ca_root_file)
+                .map_err(D::Error::custom)?,
+            client_auth_optional: raw
+                .client_auth_optional
+                .unwrap_or(defaults.client_auth_optional),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for GrpcServerConf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            host: Option<String>,
+            port: Option<u16>,
+            concurrency_limit_per_connection: Option<usize>,
+            timeout_secs: Option<u64>,
+            initial_stream_window_size: Option<u32>,
+            initial_connection_window_size: Option<u32>,
+            max_concurrent_streams: Option<u32>,
+            tcp_keepalive_secs: Option<u64>,
+            tcp_keepalive_interval_secs: Option<u64>,
+            tcp_keepalive_retries: Option<u32>,
+            tcp_nodelay: Option<bool>,
+            http2_keepalive_interval_secs: Option<u64>,
+            http2_keepalive_timeout_secs: Option<u64>,
+            http2_adaptive_window: Option<bool>,
+            max_frame_size: Option<u32>,
+            max_connection_age_secs: Option<u64>,
+            max_connection_age_grace_secs: Option<u64>,
+            accept_http1: Option<bool>,
+            load_shed: Option<bool>,
+            tls: Option<GrpcServerTlsConf>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let defaults = GrpcServerConf::default();
+
+        Ok(GrpcServerConf {
+            host: raw.host.unwrap_or(defaults.host),
+            port: raw.port.unwrap_or(defaults.port),
+            concurrency_limit_per_connection: raw.concurrency_limit_per_connection,
+            timeout_secs: raw.timeout_secs,
+            initial_stream_window_size: raw.initial_stream_window_size,
+            initial_connection_window_size: raw.initial_connection_window_size,
+            max_concurrent_streams: raw.max_concurrent_streams,
+            tcp_keepalive_secs: raw.tcp_keepalive_secs,
+            tcp_keepalive_interval_secs: raw.tcp_keepalive_interval_secs,
+            tcp_keepalive_retries: raw.tcp_keepalive_retries,
+            tcp_nodelay: raw.tcp_nodelay.unwrap_or(defaults.tcp_nodelay),
+            http2_keepalive_interval_secs: raw.http2_keepalive_interval_secs,
+            http2_keepalive_timeout_secs: raw.http2_keepalive_timeout_secs,
+            http2_adaptive_window: raw.http2_adaptive_window,
+            max_frame_size: raw.max_frame_size,
+            max_connection_age_secs: raw.max_connection_age_secs,
+            max_connection_age_grace_secs: raw.max_connection_age_grace_secs,
+            accept_http1: raw.accept_http1.unwrap_or(defaults.accept_http1),
+            load_shed: raw.load_shed.unwrap_or(defaults.load_shed),
+            tls: raw.tls.unwrap_or_default(),
+        })
+    }
+}
+
+/// gRPC server configuration (`[grpc.server]` TOML section).
+///
 /// TLS configuration requires the `grpc-tls` feature.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GrpcServerConf {
     /// Host to bind to (default: `0.0.0.0`).
     pub host: String,
@@ -38,7 +151,7 @@ pub struct GrpcServerConf {
     pub tcp_keepalive_interval_secs: Option<u64>,
     /// TCP keepalive retry count.
     pub tcp_keepalive_retries: Option<u32>,
-    /// Whether TCP_NODELAY is enabled.
+    /// Whether TCP_NODELAY is enabled (default: `true`).
     pub tcp_nodelay: bool,
     /// HTTP/2 PING interval in seconds.
     pub http2_keepalive_interval_secs: Option<u64>,
@@ -52,110 +165,42 @@ pub struct GrpcServerConf {
     pub max_connection_age_secs: Option<u64>,
     /// Grace period after max connection age in seconds.
     pub max_connection_age_grace_secs: Option<u64>,
-    /// Whether to accept HTTP/1 requests.
+    /// Whether to accept HTTP/1 requests (default: `false`).
     pub accept_http1: bool,
-    /// Whether load shedding is enabled.
+    /// Whether load shedding is enabled (default: `false`).
     pub load_shed: bool,
-    /// Whether TLS is enabled.
-    pub tls_enable: bool,
-    /// PEM-encoded TLS certificate.
-    pub tls_certificate: Option<String>,
-    /// PEM-encoded TLS private key.
-    pub tls_key: Option<String>,
-    /// PEM-encoded client CA certificate for mTLS.
-    pub tls_client_ca_root: Option<String>,
-    /// Whether client authentication is optional.
-    pub tls_client_auth_optional: bool,
+    /// TLS settings.
+    pub tls: GrpcServerTlsConf,
+}
+
+impl Default for GrpcServerConf {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".to_string(),
+            port: 50051,
+            concurrency_limit_per_connection: None,
+            timeout_secs: None,
+            initial_stream_window_size: None,
+            initial_connection_window_size: None,
+            max_concurrent_streams: None,
+            tcp_keepalive_secs: None,
+            tcp_keepalive_interval_secs: None,
+            tcp_keepalive_retries: None,
+            tcp_nodelay: true,
+            http2_keepalive_interval_secs: None,
+            http2_keepalive_timeout_secs: None,
+            http2_adaptive_window: None,
+            max_frame_size: None,
+            max_connection_age_secs: None,
+            max_connection_age_grace_secs: None,
+            accept_http1: false,
+            load_shed: false,
+            tls: GrpcServerTlsConf::default(),
+        }
+    }
 }
 
 impl GrpcServerConf {
-    /// Reads configuration from environment variables.
-    ///
-    /// See the source for the full list of `GRPC_SERVER_*` variables.
-    pub fn from_env() -> Self {
-        let host = std::env::var("GRPC_SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-        let port = std::env::var("GRPC_SERVER_PORT")
-            .unwrap_or_else(|_| "50051".to_string())
-            .parse()
-            .unwrap_or(50051);
-
-        let concurrency_limit_per_connection =
-            env_parse::<usize>("GRPC_SERVER_CONCURRENCY_LIMIT_PER_CONNECTION");
-        let timeout_secs = env_parse::<u64>("GRPC_SERVER_TIMEOUT_SECS");
-        let initial_stream_window_size = env_parse::<u32>("GRPC_SERVER_INITIAL_STREAM_WINDOW_SIZE");
-        let initial_connection_window_size =
-            env_parse::<u32>("GRPC_SERVER_INITIAL_CONNECTION_WINDOW_SIZE");
-        let max_concurrent_streams = env_parse::<u32>("GRPC_SERVER_MAX_CONCURRENT_STREAMS");
-        let tcp_keepalive_secs = env_parse::<u64>("GRPC_SERVER_TCP_KEEPALIVE_SECS");
-        let tcp_keepalive_interval_secs =
-            env_parse::<u64>("GRPC_SERVER_TCP_KEEPALIVE_INTERVAL_SECS");
-        let tcp_keepalive_retries = env_parse::<u32>("GRPC_SERVER_TCP_KEEPALIVE_RETRIES");
-        let tcp_nodelay = std::env::var("GRPC_SERVER_TCP_NODELAY")
-            .unwrap_or_else(|_| "true".to_string())
-            .parse()
-            .unwrap_or(true);
-        let http2_keepalive_interval_secs =
-            env_parse::<u64>("GRPC_SERVER_HTTP2_KEEPALIVE_INTERVAL_SECS");
-        let http2_keepalive_timeout_secs =
-            env_parse::<u64>("GRPC_SERVER_HTTP2_KEEPALIVE_TIMEOUT_SECS");
-        let http2_adaptive_window = env_parse::<bool>("GRPC_SERVER_HTTP2_ADAPTIVE_WINDOW");
-        let max_frame_size = env_parse::<u32>("GRPC_SERVER_MAX_FRAME_SIZE");
-        let max_connection_age_secs = env_parse::<u64>("GRPC_SERVER_MAX_CONNECTION_AGE_SECS");
-        let max_connection_age_grace_secs =
-            env_parse::<u64>("GRPC_SERVER_MAX_CONNECTION_AGE_GRACE_SECS");
-        let accept_http1 = std::env::var("GRPC_SERVER_ACCEPT_HTTP1")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false);
-        let load_shed = std::env::var("GRPC_SERVER_LOAD_SHED")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false);
-
-        let tls_enable = std::env::var("GRPC_SERVER_TLS_ENABLE")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false);
-        let tls_certificate =
-            env_or_envfile_non_empty("GRPC_SERVER_TLS_CERT", "GRPC_SERVER_TLS_CERT_FILE");
-        let tls_key = env_or_envfile_non_empty("GRPC_SERVER_TLS_KEY", "GRPC_SERVER_TLS_KEY_FILE");
-        let tls_client_ca_root = env_or_envfile_non_empty(
-            "GRPC_SERVER_TLS_CLIENT_CA_ROOT",
-            "GRPC_SERVER_TLS_CLIENT_CA_ROOT_FILE",
-        );
-        let tls_client_auth_optional = std::env::var("GRPC_SERVER_TLS_CLIENT_AUTH_OPTIONAL")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false);
-
-        Self {
-            host,
-            port,
-            concurrency_limit_per_connection,
-            timeout_secs,
-            initial_stream_window_size,
-            initial_connection_window_size,
-            max_concurrent_streams,
-            tcp_keepalive_secs,
-            tcp_keepalive_interval_secs,
-            tcp_keepalive_retries,
-            tcp_nodelay,
-            http2_keepalive_interval_secs,
-            http2_keepalive_timeout_secs,
-            http2_adaptive_window,
-            max_frame_size,
-            max_connection_age_secs,
-            max_connection_age_grace_secs,
-            accept_http1,
-            load_shed,
-            tls_enable,
-            tls_certificate,
-            tls_key,
-            tls_client_ca_root,
-            tls_client_auth_optional,
-        }
-    }
-
     /// Returns `host:port` as a string.
     pub fn bind_address(&self) -> String {
         host_with_port(&self.host, self.port)
@@ -176,12 +221,12 @@ impl GrpcServerConf {
 
     /// Whether TLS is enabled and both certificate and key are configured.
     pub fn has_tls_identity(&self) -> bool {
-        self.tls_enable && self.tls_certificate.is_some() && self.tls_key.is_some()
+        self.tls.enable && self.tls.certificate.is_some() && self.tls.key.is_some()
     }
 
     /// Whether mTLS client authentication is configured.
     pub fn has_tls_client_auth(&self) -> bool {
-        self.tls_enable && self.tls_client_ca_root.is_some()
+        self.tls.enable && self.tls.client_ca_root.is_some()
     }
 
     /// Builds a `ServerTlsConfig` if TLS is enabled.
@@ -194,23 +239,23 @@ impl GrpcServerConf {
     /// Returns a 500 error if required TLS settings are missing or keys are invalid.
     #[cfg(feature = "grpc-tls")]
     pub fn tls_config(&self) -> CornettiResult<Option<ServerTlsConfig>> {
-        if !self.tls_enable {
+        if !self.tls.enable {
             return Ok(None);
         }
 
-        let certificate = self.tls_certificate.as_deref().ok_or_else(|| {
-            grpc_config_error("Missing GRPC_SERVER_TLS_CERT or GRPC_SERVER_TLS_CERT_FILE")
+        let certificate = self.tls.certificate.as_deref().ok_or_else(|| {
+            grpc_config_error("Missing tls.certificate (or tls.certificate_file) in [grpc.server]")
         })?;
-        let key = self.tls_key.as_deref().ok_or_else(|| {
-            grpc_config_error("Missing GRPC_SERVER_TLS_KEY or GRPC_SERVER_TLS_KEY_FILE")
+        let key = self.tls.key.as_deref().ok_or_else(|| {
+            grpc_config_error("Missing tls.key (or tls.key_file) in [grpc.server]")
         })?;
 
         let mut config = ServerTlsConfig::new().identity(Identity::from_pem(certificate, key));
 
-        if let Some(client_ca_root) = &self.tls_client_ca_root {
+        if let Some(client_ca_root) = &self.tls.client_ca_root {
             config = config
                 .client_ca_root(Certificate::from_pem(client_ca_root))
-                .client_auth_optional(self.tls_client_auth_optional);
+                .client_auth_optional(self.tls.client_auth_optional);
         }
 
         Ok(Some(config))
@@ -262,19 +307,130 @@ impl GrpcServerConf {
     }
 }
 
-/// gRPC client configuration.
+/// TLS settings for the gRPC client (`[grpc.client.tls]` TOML section).
+///
+/// PEM material can be inlined (`ca_certificate`, `certificate`, `key`) or
+/// loaded from files (`ca_certificate_file`, `certificate_file`, `key_file`).
+/// TLS requires the `grpc-tls` feature.
+#[derive(Clone, Debug, Default)]
+pub struct GrpcClientTlsConf {
+    /// TLS SNI domain name.
+    pub domain_name: Option<String>,
+    /// PEM-encoded CA certificate.
+    pub ca_certificate: Option<String>,
+    /// PEM-encoded client certificate.
+    pub certificate: Option<String>,
+    /// PEM-encoded client private key.
+    pub key: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for GrpcClientTlsConf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            domain_name: Option<String>,
+            ca_certificate: Option<String>,
+            ca_certificate_file: Option<String>,
+            certificate: Option<String>,
+            certificate_file: Option<String>,
+            key: Option<String>,
+            key_file: Option<String>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+
+        Ok(GrpcClientTlsConf {
+            domain_name: raw.domain_name,
+            ca_certificate: resolve_secret_opt(raw.ca_certificate, raw.ca_certificate_file)
+                .map_err(D::Error::custom)?,
+            certificate: resolve_secret_opt(raw.certificate, raw.certificate_file)
+                .map_err(D::Error::custom)?,
+            key: resolve_secret_opt(raw.key, raw.key_file).map_err(D::Error::custom)?,
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for GrpcClientConf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(default)]
+        struct Raw {
+            endpoint: Option<String>,
+            host: Option<String>,
+            port: Option<u16>,
+            use_tls: Option<bool>,
+            user_agent: Option<String>,
+            timeout_secs: Option<u64>,
+            connect_timeout_secs: Option<u64>,
+            concurrency_limit: Option<usize>,
+            rate_limit_requests: Option<u64>,
+            rate_limit_duration_secs: Option<u64>,
+            initial_stream_window_size: Option<u32>,
+            initial_connection_window_size: Option<u32>,
+            buffer_size: Option<usize>,
+            tcp_keepalive_secs: Option<u64>,
+            tcp_keepalive_interval_secs: Option<u64>,
+            tcp_keepalive_retries: Option<u32>,
+            tcp_nodelay: Option<bool>,
+            http2_keepalive_interval_secs: Option<u64>,
+            keep_alive_timeout_secs: Option<u64>,
+            keep_alive_while_idle: Option<bool>,
+            http2_adaptive_window: Option<bool>,
+            max_frame_size: Option<u32>,
+            tls: Option<GrpcClientTlsConf>,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let defaults = GrpcClientConf::default();
+
+        Ok(GrpcClientConf {
+            endpoint: non_empty(raw.endpoint),
+            host: raw.host.unwrap_or(defaults.host),
+            port: raw.port.unwrap_or(defaults.port),
+            use_tls: raw.use_tls.unwrap_or(defaults.use_tls),
+            user_agent: non_empty(raw.user_agent),
+            timeout_secs: raw.timeout_secs,
+            connect_timeout_secs: raw.connect_timeout_secs,
+            concurrency_limit: raw.concurrency_limit,
+            rate_limit_requests: raw.rate_limit_requests,
+            rate_limit_duration_secs: raw.rate_limit_duration_secs,
+            initial_stream_window_size: raw.initial_stream_window_size,
+            initial_connection_window_size: raw.initial_connection_window_size,
+            buffer_size: raw.buffer_size,
+            tcp_keepalive_secs: raw.tcp_keepalive_secs,
+            tcp_keepalive_interval_secs: raw.tcp_keepalive_interval_secs,
+            tcp_keepalive_retries: raw.tcp_keepalive_retries,
+            tcp_nodelay: raw.tcp_nodelay.unwrap_or(defaults.tcp_nodelay),
+            http2_keepalive_interval_secs: raw.http2_keepalive_interval_secs,
+            keep_alive_timeout_secs: raw.keep_alive_timeout_secs,
+            keep_alive_while_idle: raw.keep_alive_while_idle,
+            http2_adaptive_window: raw.http2_adaptive_window,
+            max_frame_size: raw.max_frame_size,
+            tls: raw.tls.unwrap_or_default(),
+        })
+    }
+}
+
+/// gRPC client configuration (`[grpc.client]` TOML section).
 ///
 /// Supports connecting via endpoint URI or host:port. TLS configuration
 /// requires the `grpc-tls` feature.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GrpcClientConf {
     /// Full endpoint URI (overrides host/port if set).
     pub endpoint: Option<String>,
-    /// Host address.
+    /// Host address (default: `"localhost"`).
     pub host: String,
-    /// Port number.
+    /// Port number (default: `50051`).
     pub port: u16,
-    /// Whether TLS is used.
+    /// Whether TLS is used (default: `false`).
     pub use_tls: bool,
     /// User-Agent string.
     pub user_agent: Option<String>,
@@ -300,7 +456,7 @@ pub struct GrpcClientConf {
     pub tcp_keepalive_interval_secs: Option<u64>,
     /// TCP keepalive retry count.
     pub tcp_keepalive_retries: Option<u32>,
-    /// Whether TCP_NODELAY is enabled.
+    /// Whether TCP_NODELAY is enabled (default: `true`).
     pub tcp_nodelay: bool,
     /// HTTP/2 PING interval in seconds.
     pub http2_keepalive_interval_secs: Option<u64>,
@@ -312,93 +468,41 @@ pub struct GrpcClientConf {
     pub http2_adaptive_window: Option<bool>,
     /// Max HTTP/2 frame size.
     pub max_frame_size: Option<u32>,
-    /// TLS SNI domain name.
-    pub tls_domain_name: Option<String>,
-    /// PEM-encoded CA certificate.
-    pub tls_ca_certificate: Option<String>,
-    /// PEM-encoded client certificate.
-    pub tls_certificate: Option<String>,
-    /// PEM-encoded client private key.
-    pub tls_key: Option<String>,
+    /// TLS settings.
+    pub tls: GrpcClientTlsConf,
+}
+
+impl Default for GrpcClientConf {
+    fn default() -> Self {
+        Self {
+            endpoint: None,
+            host: "localhost".to_string(),
+            port: 50051,
+            use_tls: false,
+            user_agent: None,
+            timeout_secs: None,
+            connect_timeout_secs: None,
+            concurrency_limit: None,
+            rate_limit_requests: None,
+            rate_limit_duration_secs: None,
+            initial_stream_window_size: None,
+            initial_connection_window_size: None,
+            buffer_size: None,
+            tcp_keepalive_secs: None,
+            tcp_keepalive_interval_secs: None,
+            tcp_keepalive_retries: None,
+            tcp_nodelay: true,
+            http2_keepalive_interval_secs: None,
+            keep_alive_timeout_secs: None,
+            keep_alive_while_idle: None,
+            http2_adaptive_window: None,
+            max_frame_size: None,
+            tls: GrpcClientTlsConf::default(),
+        }
+    }
 }
 
 impl GrpcClientConf {
-    /// Reads configuration from environment variables.
-    ///
-    /// See the source for the full list of `GRPC_CLIENT_*` variables.
-    pub fn from_env() -> Self {
-        let endpoint = non_empty(std::env::var("GRPC_CLIENT_ENDPOINT").ok());
-        let host = std::env::var("GRPC_CLIENT_HOST").unwrap_or_else(|_| "localhost".to_string());
-        let port = std::env::var("GRPC_CLIENT_PORT")
-            .unwrap_or_else(|_| "50051".to_string())
-            .parse()
-            .unwrap_or(50051);
-        let use_tls = std::env::var("GRPC_CLIENT_USE_TLS")
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false);
-        let user_agent = non_empty(std::env::var("GRPC_CLIENT_USER_AGENT").ok());
-        let timeout_secs = env_parse::<u64>("GRPC_CLIENT_TIMEOUT_SECS");
-        let connect_timeout_secs = env_parse::<u64>("GRPC_CLIENT_CONNECT_TIMEOUT_SECS");
-        let concurrency_limit = env_parse::<usize>("GRPC_CLIENT_CONCURRENCY_LIMIT");
-        let rate_limit_requests = env_parse::<u64>("GRPC_CLIENT_RATE_LIMIT_REQUESTS");
-        let rate_limit_duration_secs = env_parse::<u64>("GRPC_CLIENT_RATE_LIMIT_DURATION_SECS");
-        let initial_stream_window_size = env_parse::<u32>("GRPC_CLIENT_INITIAL_STREAM_WINDOW_SIZE");
-        let initial_connection_window_size =
-            env_parse::<u32>("GRPC_CLIENT_INITIAL_CONNECTION_WINDOW_SIZE");
-        let buffer_size = env_parse::<usize>("GRPC_CLIENT_BUFFER_SIZE");
-        let tcp_keepalive_secs = env_parse::<u64>("GRPC_CLIENT_TCP_KEEPALIVE_SECS");
-        let tcp_keepalive_interval_secs =
-            env_parse::<u64>("GRPC_CLIENT_TCP_KEEPALIVE_INTERVAL_SECS");
-        let tcp_keepalive_retries = env_parse::<u32>("GRPC_CLIENT_TCP_KEEPALIVE_RETRIES");
-        let tcp_nodelay = std::env::var("GRPC_CLIENT_TCP_NODELAY")
-            .unwrap_or_else(|_| "true".to_string())
-            .parse()
-            .unwrap_or(true);
-        let http2_keepalive_interval_secs =
-            env_parse::<u64>("GRPC_CLIENT_HTTP2_KEEPALIVE_INTERVAL_SECS");
-        let keep_alive_timeout_secs = env_parse::<u64>("GRPC_CLIENT_KEEP_ALIVE_TIMEOUT_SECS");
-        let keep_alive_while_idle = env_parse::<bool>("GRPC_CLIENT_KEEP_ALIVE_WHILE_IDLE");
-        let http2_adaptive_window = env_parse::<bool>("GRPC_CLIENT_HTTP2_ADAPTIVE_WINDOW");
-        let max_frame_size = env_parse::<u32>("GRPC_CLIENT_MAX_FRAME_SIZE");
-
-        let tls_domain_name = non_empty(std::env::var("GRPC_CLIENT_TLS_DOMAIN_NAME").ok());
-        let tls_ca_certificate =
-            env_or_envfile_non_empty("GRPC_CLIENT_TLS_CA_CERT", "GRPC_CLIENT_TLS_CA_CERT_FILE");
-        let tls_certificate =
-            env_or_envfile_non_empty("GRPC_CLIENT_TLS_CERT", "GRPC_CLIENT_TLS_CERT_FILE");
-        let tls_key = env_or_envfile_non_empty("GRPC_CLIENT_TLS_KEY", "GRPC_CLIENT_TLS_KEY_FILE");
-
-        Self {
-            endpoint,
-            host,
-            port,
-            use_tls,
-            user_agent,
-            timeout_secs,
-            connect_timeout_secs,
-            concurrency_limit,
-            rate_limit_requests,
-            rate_limit_duration_secs,
-            initial_stream_window_size,
-            initial_connection_window_size,
-            buffer_size,
-            tcp_keepalive_secs,
-            tcp_keepalive_interval_secs,
-            tcp_keepalive_retries,
-            tcp_nodelay,
-            http2_keepalive_interval_secs,
-            keep_alive_timeout_secs,
-            keep_alive_while_idle,
-            http2_adaptive_window,
-            max_frame_size,
-            tls_domain_name,
-            tls_ca_certificate,
-            tls_certificate,
-            tls_key,
-        }
-    }
-
     /// Returns `"https"` if TLS is enabled, `"http"` otherwise.
     pub fn scheme(&self) -> &'static str {
         if self.tls_enabled() { "https" } else { "http" }
@@ -428,12 +532,12 @@ impl GrpcClientConf {
 
     /// Whether TLS is enabled and both client cert and key are configured.
     pub fn has_tls_identity(&self) -> bool {
-        self.tls_enabled() && self.tls_certificate.is_some() && self.tls_key.is_some()
+        self.tls_enabled() && self.tls.certificate.is_some() && self.tls.key.is_some()
     }
 
     /// Whether TLS is enabled and a CA certificate is configured.
     pub fn has_tls_ca_certificate(&self) -> bool {
-        self.tls_enabled() && self.tls_ca_certificate.is_some()
+        self.tls_enabled() && self.tls.ca_certificate.is_some()
     }
 
     /// Builds a `ClientTlsConfig` if TLS is enabled.
@@ -451,22 +555,22 @@ impl GrpcClientConf {
 
         let mut config = ClientTlsConfig::new().with_enabled_roots();
 
-        if let Some(domain_name) = &self.tls_domain_name {
+        if let Some(domain_name) = &self.tls.domain_name {
             config = config.domain_name(domain_name.clone());
         }
 
-        if let Some(ca_certificate) = &self.tls_ca_certificate {
+        if let Some(ca_certificate) = &self.tls.ca_certificate {
             config = config.ca_certificate(Certificate::from_pem(ca_certificate));
         }
 
-        match (&self.tls_certificate, &self.tls_key) {
+        match (&self.tls.certificate, &self.tls.key) {
             (Some(certificate), Some(key)) => {
                 config = config.identity(Identity::from_pem(certificate, key));
             }
             (None, None) => {}
             _ => {
                 return Err(grpc_config_error(
-                    "GRPC_CLIENT_TLS_CERT and GRPC_CLIENT_TLS_KEY must both be configured",
+                    "tls.certificate and tls.key must both be configured in [grpc.client]",
                 ));
             }
         }
@@ -572,7 +676,7 @@ impl GrpcServerConf {
 #[cfg(not(feature = "grpc-tls"))]
 impl GrpcServerConf {
     fn apply_tls_to_server(&self, server: Server) -> CornettiResult<Server> {
-        if self.tls_enable {
+        if self.tls.enable {
             return Err(grpc_tls_feature_error());
         }
 
@@ -607,17 +711,6 @@ fn grpc_tls_feature_error() -> CornettiError {
     grpc_config_error("Enable `grpc-tls` feature to use gRPC TLS helpers")
 }
 
-fn env_parse<T>(key: &str) -> Option<T>
-where
-    T: std::str::FromStr,
-{
-    std::env::var(key).ok()?.parse().ok()
-}
-
-fn env_or_envfile_non_empty(env: &str, env_file: &str) -> Option<String> {
-    non_empty(env_or_envfile(env, env_file))
-}
-
 fn non_empty(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
         let trimmed = value.trim().to_string();
@@ -634,5 +727,95 @@ fn host_with_port(host: &str, port: u16) -> String {
         format!("[{}]:{}", host, port)
     } else {
         format!("{}:{}", host, port)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn grpc_server_conf_from_toml_defaults() {
+        let conf: GrpcServerConf = toml::from_str("").unwrap();
+        assert_eq!(conf.host, "0.0.0.0");
+        assert_eq!(conf.port, 50051);
+        assert!(conf.tcp_nodelay);
+        assert!(!conf.accept_http1);
+        assert!(!conf.load_shed);
+        assert!(!conf.tls.enable);
+        assert!(conf.tls.certificate.is_none());
+    }
+
+    #[test]
+    fn grpc_server_conf_from_toml_with_tls() {
+        let toml = r#"
+            host = "127.0.0.1"
+            port = 50052
+            load_shed = true
+
+            [tls]
+            enable = true
+            certificate = "CERT"
+            key = "KEY"
+            client_ca_root = "CA"
+            client_auth_optional = true
+        "#;
+        let conf: GrpcServerConf = toml::from_str(toml).unwrap();
+        assert_eq!(conf.host, "127.0.0.1");
+        assert_eq!(conf.port, 50052);
+        assert!(conf.load_shed);
+        assert!(conf.tls.enable);
+        assert_eq!(conf.tls.certificate.as_deref(), Some("CERT"));
+        assert_eq!(conf.tls.key.as_deref(), Some("KEY"));
+        assert_eq!(conf.tls.client_ca_root.as_deref(), Some("CA"));
+        assert!(conf.tls.client_auth_optional);
+        assert!(conf.has_tls_identity());
+        assert!(conf.has_tls_client_auth());
+    }
+
+    #[test]
+    fn grpc_server_conf_tls_both_forms_errors() {
+        let result = toml::from_str::<GrpcServerConf>("[tls]\ncertificate = \"A\"\ncertificate_file = \"/x\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn grpc_client_conf_from_toml_defaults() {
+        let conf: GrpcClientConf = toml::from_str("").unwrap();
+        assert_eq!(conf.host, "localhost");
+        assert_eq!(conf.port, 50051);
+        assert!(!conf.use_tls);
+        assert!(conf.tcp_nodelay);
+        assert_eq!(conf.endpoint_uri(), "http://localhost:50051");
+    }
+
+    #[test]
+    fn grpc_client_conf_from_toml() {
+        let toml = r#"
+            endpoint = "http://grpc.example.com:8080"
+            use_tls = true
+            user_agent = "cornetti-client"
+            timeout_secs = 10
+            connect_timeout_secs = 5
+
+            [tls]
+            domain_name = "grpc.example.com"
+            ca_certificate = "CA"
+        "#;
+        let conf: GrpcClientConf = toml::from_str(toml).unwrap();
+        assert_eq!(conf.endpoint_uri(), "http://grpc.example.com:8080");
+        assert_eq!(conf.user_agent.as_deref(), Some("cornetti-client"));
+        assert_eq!(conf.timeout_secs, Some(10));
+        assert_eq!(conf.connect_timeout_secs, Some(5));
+        assert_eq!(conf.tls.domain_name.as_deref(), Some("grpc.example.com"));
+        assert_eq!(conf.tls.ca_certificate.as_deref(), Some("CA"));
+        assert!(conf.has_tls_ca_certificate());
+    }
+
+    #[test]
+    fn grpc_client_endpoint_implies_tls() {
+        let conf: GrpcClientConf = toml::from_str("endpoint = \"https://grpc.example.com\"").unwrap();
+        assert!(conf.tls_enabled());
+        assert_eq!(conf.scheme(), "https");
     }
 }

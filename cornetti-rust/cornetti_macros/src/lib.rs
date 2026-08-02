@@ -138,7 +138,7 @@ fn parse_error_groups(input: TokenStream2) -> Vec<Group> {
     while i + 2 < tokens.len() {
         match (&tokens[i], &tokens[i + 1], &tokens[i + 2]) {
             (TokenTree::Ident(id), TokenTree::Punct(p), TokenTree::Group(g))
-                if id.to_string() == "include" && p.as_char() == '!' =>
+                if *id == "include" && p.as_char() == '!' =>
             {
                 let inner = g.stream().to_string();
                 let rel_path = inner.trim().trim_matches('"').to_string();

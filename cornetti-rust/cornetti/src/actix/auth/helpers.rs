@@ -33,11 +33,11 @@ async fn generate_access_token(
 
     let access_cookie: Option<Cookie> = if conf.jwt_search_in_cookies {
         Some(
-            Cookie::build(&conf.jwt_access_cookie_name, access_token_encoded.clone())
-                .path(&conf.jwt_access_cookie_path)
+            Cookie::build(&conf.access_cookie.name, access_token_encoded.clone())
+                .path(&conf.access_cookie.path)
                 .http_only(true)
-                .secure(conf.jwt_access_cookie_secure)
-                .same_site((&conf.jwt_access_cookie_same_site).into())
+                .secure(conf.access_cookie.secure)
+                .same_site((&conf.access_cookie.same_site).into())
                 .finish(),
         )
     } else {
@@ -47,10 +47,10 @@ async fn generate_access_token(
     let csrf_access_cookie: Option<Cookie> = if conf.jwt_csrf_cookie_enable {
         Some(
             Cookie::build(
-                &conf.jwt_csrf_access_cookie_name,
+                &conf.csrf_access_cookie.name,
                 access_token.claims.csrf.clone().unwrap(),
             )
-            .path(&conf.jwt_csrf_access_cookie_path)
+            .path(&conf.csrf_access_cookie.path)
             .http_only(false)
             .secure(false)
             .same_site((&conf.jwt_csrf_cookie_same_site).into())
@@ -143,7 +143,7 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
     let (access_token, access_token_encoded, access_cookie, csrf_access_cookie) =
         generate_access_token(conf, identity.clone(), session_id.clone()).await?;
 
-    let refresh_token: Option<JwtDefaultToken> = if conf.jwt_refresh_enable {
+    let refresh_token: Option<JwtDefaultToken> = if conf.refresh_cookie.enable {
         Some(JwtDefaultToken::new(
             conf.clone(),
             identity,
@@ -165,8 +165,8 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         None
     };
 
-    let refresh_expires_result: Option<usize> = if conf.jwt_refresh_enable {
-        Some(conf.jwt_refresh_expire_minutes * 60)
+    let refresh_expires_result: Option<usize> = if conf.refresh_cookie.enable {
+        Some(conf.refresh_cookie.expire_minutes * 60)
     } else {
         None
     };
@@ -175,13 +175,13 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         if conf.jwt_search_in_cookies && refresh_token_encoded.is_some() {
             Some(
                 Cookie::build(
-                    &conf.jwt_refresh_cookie_name,
+                    &conf.refresh_cookie.name,
                     refresh_token_encoded.clone().unwrap(),
                 )
-                .path(&conf.jwt_refresh_cookie_path)
+                .path(&conf.refresh_cookie.path)
                 .http_only(true)
-                .secure(conf.jwt_refresh_cookie_secure)
-                .same_site((&conf.jwt_refresh_cookie_same_site).into())
+                .secure(conf.refresh_cookie.secure)
+                .same_site((&conf.refresh_cookie.same_site).into())
                 .finish(),
             )
         } else {
@@ -192,10 +192,10 @@ pub async fn generate_auth_tokens_and_response<'a, T, S: SessionStore>(
         if let (true, Some(token)) = (conf.jwt_csrf_cookie_enable, refresh_token.as_ref()) {
             Some(
                 Cookie::build(
-                    &conf.jwt_csrf_refresh_cookie_name,
+                    &conf.csrf_refresh_cookie.name,
                     token.claims.csrf.clone().unwrap(),
                 )
-                .path(&conf.jwt_csrf_refresh_cookie_path)
+                .path(&conf.csrf_refresh_cookie.path)
                 .http_only(false)
                 .secure(false)
                 .same_site((&conf.jwt_csrf_cookie_same_site).into())
@@ -314,13 +314,13 @@ pub async fn invalidate_session<'a, S: SessionStore>(
     let mut cookie_rem: Vec<&str> = Vec::new();
 
     if conf.jwt_search_in_cookies {
-        cookie_rem.push(&conf.jwt_access_cookie_name);
-        cookie_rem.push(&conf.jwt_refresh_cookie_name);
+        cookie_rem.push(&conf.access_cookie.name);
+        cookie_rem.push(&conf.refresh_cookie.name);
     }
 
     if conf.jwt_csrf_cookie_enable {
-        cookie_rem.push(&conf.jwt_csrf_access_cookie_name);
-        cookie_rem.push(&conf.jwt_csrf_refresh_cookie_name);
+        cookie_rem.push(&conf.csrf_access_cookie.name);
+        cookie_rem.push(&conf.csrf_refresh_cookie.name);
     }
 
     Ok(cookie_rem)

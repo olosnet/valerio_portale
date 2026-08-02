@@ -40,7 +40,7 @@ When editing `cornetti/src/lib.rs`, every `pub mod <x>;` line is gated by a feat
 
 - Errors: every fallible API returns `CornettiResult<T>` (= `Result<T, CornettiError>`). `CornettiError { status: u16, detail: String }` is the single error type across the framework. Add new error categories under `cornetti/src/core/errors.rs` grouped by HTTP status family.
 - Traits live in `cornetti/src/core/traits.rs` (`BaseModule`, `RepositoryRetry`, `To`, `BaseModel`). `RepositoryRetry` default: 3 attempts, 100ms backoff, 1.5x exponential, only status 503 is transient.
-- Comments and panic messages in the codebase are in Italian. Match the language when editing existing files.
+- Comments and panic messages in the codebase are in English. Match the language when editing existing files.
 - Commit messages: Italian, with optional conventional prefixes (`feat(...)`, `fix(...)`) — both styles appear in history. No enforced format.
 - No tests, so no test fixtures, snapshots, or integration prerequisites to worry about.
 

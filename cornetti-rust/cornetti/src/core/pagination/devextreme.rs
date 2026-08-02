@@ -241,7 +241,7 @@ impl DevExtremePaginationAdapter {
                     .with_internal_detail("Incomplete filter format: missing value"));
             }
 
-            // Determina dove finisce il valore
+            // Determine where the value ends
             let value_start = i + 2;
             let mut value_end = parts.len();
             let mut found_group_op: Option<&str> = None;

@@ -26,11 +26,11 @@ pub mod utoipa {
     ) {
         if auth_conf.enable_auth {
             if auth_conf.jwt_search_in_cookies {
-                if auth_conf.jwt_refresh_enable {
+                if auth_conf.refresh_cookie.enable {
                     components.add_security_scheme(
                         "JWTCookieRefresh",
                         SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new(
-                            &auth_conf.jwt_refresh_cookie_name,
+                            &auth_conf.refresh_cookie.name,
                         ))),
                     );
                 }
@@ -38,17 +38,17 @@ pub mod utoipa {
                 components.add_security_scheme(
                     "JWTCookieAuth",
                     SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new(
-                        &auth_conf.jwt_access_cookie_name,
+                        &auth_conf.access_cookie.name,
                     ))),
                 );
             }
 
             if auth_conf.jwt_search_in_headers {
-                if auth_conf.jwt_refresh_enable {
+                if auth_conf.refresh_cookie.enable {
                     components.add_security_scheme(
                         "JWTBearerRefresh",
                         SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new(
-                            &auth_conf.jwt_refresh_cookie_name,
+                            &auth_conf.refresh_cookie.name,
                         ))),
                     );
                 }

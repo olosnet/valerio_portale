@@ -177,9 +177,9 @@ pub mod authentication {
             let mut status: AuthenticationStatus = AuthenticationStatus::Valid;
 
             let cookie_name: &String = if self.refresh_mode {
-                &auth_conf.jwt_refresh_cookie_name
+                &auth_conf.refresh_cookie.name
             } else {
-                &auth_conf.jwt_access_cookie_name
+                &auth_conf.access_cookie.name
             };
 
             if let Some(cookie) = req.cookie(cookie_name) {

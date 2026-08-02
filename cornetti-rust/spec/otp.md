@@ -10,28 +10,24 @@ Requires the `otp` feature (implies `redisdb`).
 
 ## ADDED Requirements
 
-### Requirement: Simple OTP configuration from environment
+### Requirement: Simple OTP configuration from TOML
 
-`SimpleOtpConf::from_env()` SHALL read OTP parameters from environment variables
-with sensible defaults: 6-digit codes from digits `0-9`, expiring after 10 minutes.
+`SimpleOtpConf` SHALL be deserialized from the `[otp]` TOML section with sensible
+defaults: 6-digit codes from digits `0-9`, expiring after 10 minutes.
 
 See `SimpleOtpConf` in `src/otp/confs.rs`.
 
-Environment variables:
-| Variable | Default | Description |
+TOML keys:
+| Key | Default | Description |
 |---|---|---|
-| `SIMPLE_OTP_LENGTH` | `"6"` | Number of characters in the OTP |
-| `SIMPLE_OTP_EXPIRES_MINUTES` | `"10"` | Expiry time in minutes |
-| `SIMPLE_OTP_CHARS` | `"0123456789"` | Character set to build the OTP from |
+| `otp_length` | `6` | Number of characters in the OTP |
+| `otp_expires_minutes` | `10` | Expiry time in minutes |
+| `otp_chars` | `"0123456789"` | Character set (string or array of single chars) |
 
 #### Scenario: Default configuration
-- WHEN no OTP environment variables are set
-- THEN `SimpleOtpConf::from_env()` SHALL return a config with `otp_length = 6`,
+- WHEN the `[otp]` section is absent
+- THEN `SimpleOtpConf` SHALL have `otp_length = 6`,
   `otp_expires_minutes = 10`, and `otp_chars` containing digits `0` through `9`
-
-#### Scenario: Unparseable length falls back
-- WHEN `SIMPLE_OTP_LENGTH` is set to a non-numeric value
-- THEN `otp_length` SHALL default to 6
 
 ### Requirement: Simple OTP generator
 

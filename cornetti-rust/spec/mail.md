@@ -13,18 +13,20 @@ feature (implies `auth` and `reqwest`).
 
 ### Requirement: Provider dispatch
 
-`MailService::new()` SHALL read `MAIL_PROVIDER` to select the email provider (`SMTP`
-or `GMAIL`), defaulting to SMTP. Constructing with Gmail without the `mail-gmail`
-feature SHALL return a 500 error.
+`MailService::new(&MailSection)` SHALL use the `[mail]` TOML section to select the
+email provider (`provider = "smtp"` or `"gmail"`), defaulting to SMTP, with
+per-provider settings from `[mail.smtp]` and `[mail.gmail]`. Constructing with
+Gmail without the `mail-gmail` feature SHALL return a 500 error. Selecting Gmail
+without a `[mail.gmail]` section SHALL return a 500 configuration error.
 
 See `MailService` in `src/mail/services.rs`.
 
 #### Scenario: SMTP provider selected
-- WHEN `MAIL_PROVIDER` is `"SMTP"` or unset
+- WHEN `provider` is `"smtp"` or unset
 - THEN `MailService::new()` SHALL create an SMTP-backed mail service
 
 #### Scenario: Gmail without feature
-- WHEN `MAIL_PROVIDER` is `"GMAIL"` and `mail-gmail` feature is not enabled
+- WHEN `provider` is `"gmail"` and `mail-gmail` feature is not enabled
 - THEN `MailService::new()` SHALL return a 500 error
 
 ### Requirement: Email sending
@@ -77,10 +79,10 @@ See `SendGmailMailService` in `src/mail/gmail/services.rs`.
 - WHEN the cached token has expired
 - THEN a new JWT SHALL be signed and exchanged for a fresh access token
 
-#### Scenario: GmailConf panics on missing config
-- WHEN `GMAIL_SERVICE_ACCOUNT_JSON` or `GMAIL_SERVICE_ACCOUNT_JSON_FILE` is not set
-- THEN `GmailMailConf::from_env()` SHALL panic (known inconsistency: does not return
-  a `CornettiError`)
+#### Scenario: GmailConf missing service account
+- WHEN the `[mail.gmail]` section has neither `service_account` nor
+  `service_account_file`
+- THEN deserialization SHALL fail with a configuration error
 
 ### Requirement: Error conversion
 

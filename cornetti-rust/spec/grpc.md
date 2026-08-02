@@ -12,10 +12,10 @@ Requires the `grpc` feature.
 
 ### Requirement: gRPC server configuration
 
-`GrpcServerConf` SHALL read all settings from environment variables (`GRPC_SERVER_*`),
-apply them to a tonic `Server` via `builder()`, and support optional TLS (mTLS)
-configuration when the `grpc-tls` feature is enabled. Without `grpc-tls`, enabling
-TLS SHALL return a 500 error.
+`GrpcServerConf` SHALL be deserialized from the `[grpc.server]` TOML section,
+apply settings to a tonic `Server` via `builder()`, and support optional TLS (mTLS)
+configuration in `[grpc.server.tls]` when the `grpc-tls` feature is enabled.
+Without `grpc-tls`, enabling `tls.enable` SHALL return a 500 error.
 
 See `GrpcServerConf` in `src/grpc/confs.rs`.
 
@@ -25,15 +25,16 @@ See `GrpcServerConf` in `src/grpc/confs.rs`.
   settings, connection limits, and timeouts applied from configuration
 
 #### Scenario: TLS without grpc-tls feature
-- WHEN `tls_enable` is true but `grpc-tls` feature is not active
+- WHEN `tls.enable` is true but `grpc-tls` feature is not active
 - THEN `builder()` SHALL return a 500 error
 
 ### Requirement: gRPC client configuration
 
-`GrpcClientConf` SHALL read all settings from environment variables (`GRPC_CLIENT_*`),
-build a tonic `Endpoint` via `builder()`, and support optional TLS (including mTLS
-and custom CA certificates) when the `grpc-tls` feature is enabled. TLS SHALL be
-detected from both `use_tls` flag and `https://` endpoint detection.
+`GrpcClientConf` SHALL be deserialized from the `[grpc.client]` TOML section
+(with TLS material in `[grpc.client.tls]`), build a tonic `Endpoint` via `builder()`,
+and support optional TLS (including mTLS and custom CA certificates) when the
+`grpc-tls` feature is enabled. TLS SHALL be detected from both `use_tls` flag and
+`https://` endpoint detection.
 
 See `GrpcClientConf` in `src/grpc/confs.rs`.
 

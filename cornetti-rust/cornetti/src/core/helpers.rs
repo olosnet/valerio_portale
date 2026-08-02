@@ -111,6 +111,40 @@ pub mod sec {
             .is_ok()
     }
 
+    /// Compares two strings in constant time with respect to their content.
+    ///
+    /// Unlike `==`, this does not short-circuit on the first differing byte,
+    /// so the comparison time does not leak *where* two equal-length values
+    /// diverge. Use it for secrets compared against attacker-supplied input
+    /// (CSRF states, tokens, signatures).
+    ///
+    /// The length of the inputs is not hidden: a length mismatch returns
+    /// immediately. This is acceptable for fixed-length secrets.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use cornetti::core::helpers::sec::constant_time_eq;
+    ///
+    /// assert!(constant_time_eq("abc123", "abc123"));
+    /// assert!(!constant_time_eq("abc123", "abc124"));
+    /// assert!(!constant_time_eq("abc", "abcd"));
+    /// ```
+    pub fn constant_time_eq(a: &str, b: &str) -> bool {
+        let (a, b) = (a.as_bytes(), b.as_bytes());
+
+        if a.len() != b.len() {
+            return false;
+        }
+
+        let mut diff: u8 = 0;
+        for (x, y) in a.iter().zip(b.iter()) {
+            diff |= x ^ y;
+        }
+
+        diff == 0
+    }
+
     /// Generates a random password of the given length.
     ///
     /// `types` is an optional slice of character categories:
