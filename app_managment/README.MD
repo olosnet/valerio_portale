@@ -23,8 +23,8 @@ app_managment [-r] <subcomando>
 | `images generate` | Genera JSON con URL delle immagini DSS partendo dal file catalogo. Il FOV e' calcolato dinamicamente dalle dimensioni apparenti dell'oggetto. |
 | `images import` | Legge gli oggetti `imported=true` dal database, genera URL DSS al volo, scarica le immagini, le carica via filemanager e le associa agli oggetti. Nessun file esterno necessario. |
 | `admin create` | Crea il gruppo `admins` con permessi totali e un utente amministratore. Chiede email e password interattivamente. |
-| `test email` | Invia una email di test usando le configurazioni SMTP correnti. |
-| `redis` | Comandi per la cache Redis (flush, ping). |
+| `test send-mail` | Invia una email di test usando le configurazioni SMTP correnti. |
+| `redis` | Comandi per la cache Redis (list/flush di permessi, token, sessioni). |
 
 ### Esempi
 
@@ -63,11 +63,11 @@ cargo run -p app_managment -- images import --only-missing
 cargo run -p app_managment -- admin create
 
 # Invia email di test
-cargo run -p app_managment -- test email
+cargo run -p app_managment -- test send-mail
 
-# Redis flush / ping
-cargo run -p app_managment -- redis flush
-cargo run -p app_managment -- redis ping
+# Redis flush / list
+cargo run -p app_managment -- redis flush-all
+cargo run -p app_managment -- redis list-permissions
 ```
 
 ### Flusso completo
@@ -110,4 +110,4 @@ cargo run -p app_managment -- images import --only-missing
 
 ### Configurazione
 
-Vedi [CONFS.MD](CONFS.MD) per le variabili d'ambiente necessarie.
+La configurazione (MongoDB, Redis, filemanager, SMTP, templates) vive nel file TOML della root del progetto (`./Config.toml`, gitignorato; template `Config.toml.example`), lo stesso usato dal server API. Vedi [CONFS.MD](CONFS.MD) per le sezioni e le variabili d'ambiente residue.

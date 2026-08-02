@@ -12,16 +12,18 @@
 - `Cargo.lock` gitignored (`.gitignore:24`).
 
 ## Run & setup
+- Config: single TOML file `./Config.toml` (gitignored, template `Config.toml.example`), overridable with `CORNETTI_CONF`; per-section overrides via `CORNETTI_CONF_<SECTION>`. `setenv.sh` only sets `RUST_LOG` + optional `CORNETTI_CONF_*` paths.
 - API server: `cargo run` from root.
 - Client frontend: `trunk serve` from `app_gateway_client/`. Trunk proxies `/api/*` → `localhost:8080/api` (same-origin, cookie auth works automatically). Client serves on port `8082`.
 - Module registration (required before first use, and after changing `app_modules`): `cargo run -p app_managment -- --register-modules`.
-- Default bind `localhost:8080`; Swagger UI at `{APP_API_PREFIX}/swagger/ui/` when `APP_ENABLE_SWAGGER=true`.
+- Default bind `localhost:8080`; Swagger UI at `{api_prefix}/swagger/ui/` when `[app] enable_swagger = true`.
 - Logging: set `RUST_LOG=info` (or `debug`, `warn`).
 
-## Required services & env
-- MongoDB and Redis must be available at startup (read from env via `MongoDBConfig::from_env()`, `RedisDBConfig::from_env()`).
-- Server also loads JWT, filemanager, templates, and SMTP config from env. Full table in `app_gateway_main/CONFS.MD`.
-- API prefix is configurable via `BaseConf` env `APP_API_PREFIX`.
+## Required services & config
+- MongoDB and Redis must be available at startup. Config is TOML-based: every conf struct implements `CornettiConf` (loads its `[section]` from `./Config.toml` via `X::load()`, or use the aggregate `CornettiConfStruct::load()`). No more `from_env()`.
+- Server loads Mongo, Redis, JWT (`[auth.jwt]` + `[auth.jwt.store]`), filemanager, templates, and SMTP (`[mail]`/`[mail.smtp]`) from Config.toml. Full section table in `app_gateway_main/CONFS.MD`.
+- `[app] app_id` is required (`CornettiConfStruct::load()` fails without it); tenant via `[app] tenant_id` (no more `TenantConf`).
+- API prefix via `[app] api_prefix`.
 
 ## Domain modules (in `app_modules/src/`)
 `base/{auth, enums, filemanager, filemanager_images, groups, identity, permissions, users}/`, `astronomia/{oggetti_astronomici, sessioni_osservative, siti_osservativi, strumentazione, common}/`, `statics/`, `core/`.

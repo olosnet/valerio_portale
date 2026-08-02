@@ -24,7 +24,6 @@ use cornetti::core::helpers::utoipa::combine_api_docs;
 use cornetti::core::models::{AppInfo, CornettiHttpFilter, CornettiHttpMethod};
 use cornetti::mongo::confs::MongoDBConfig;
 use cornetti::mongo::services::MongoDBService;
-use cornetti::redis;
 use cornetti::redis::services::RedisDBService;
 use cornetti::templates::services::TemplatesService;
 use std::sync::Arc;
@@ -57,7 +56,6 @@ pub struct AppState {
     pub templates: Arc<TemplatesService>,
     pub auth_conf: Arc<cornetti::auth::confs::JwtAuthConf>,
     pub base_conf: Arc<cornetti::core::confs::BaseConf>,
-    pub tenant_conf: Arc<cornetti::core::confs::TenantConf>,
     pub filemanager_conf: Arc<cornetti::filemanager::confs::FileManagerConf>,
     pub templates_conf: Arc<cornetti::templates::confs::TemplatesConf>,
     pub mail_conf: Arc<cornetti::mail::smtp::confs::SmtpMailConf>,
@@ -85,18 +83,19 @@ async fn main() -> std::io::Result<()> {
         git_branch: env!("GIT_BRANCH").to_string(),
     });
 
-    let mongo_config: MongoDBConfig = MongoDBConfig::from_env();
+    let conf = cornetti::conf::CornettiConfStruct::load()
+        .map_err(|e| std::io::Error::other(e.detail))?;
+
+    let mongo_config: MongoDBConfig = conf.mongo.clone();
     let mongo_service: Arc<MongoDBService> =
         Arc::new(MongoDBService::new(&mongo_config).await.unwrap());
 
-    let redis_config = redis::confs::RedisDBConfig::from_env();
+    let redis_config = conf.redis.clone();
     let redis_service: Arc<RedisDBService> = Arc::new(RedisDBService::new(&redis_config).unwrap());
 
-    let base_conf = Arc::new(cornetti::core::confs::BaseConf::from_env());
-    let tenant_conf = Arc::new(cornetti::core::confs::TenantConf::from_env());
+    let base_conf = Arc::new(conf.app.clone());
 
-    let sessions_store_conf =
-        cornetti::auth::confs::JWTStoreConf::from_env(&base_conf.app_id);
+    let sessions_store_conf = conf.auth.jwt_store.clone();
 
     // Session store for JWT
     let session_store: Arc<cornetti::redis::auth::RedisSessionStore> =
@@ -109,15 +108,12 @@ async fn main() -> std::io::Result<()> {
     let app_state: Arc<AppState> = Arc::new(AppState {
         mongo: mongo_service,
         redis: redis_service,
-        templates: Arc::new(TemplatesService::new(
-            cornetti::templates::confs::TemplatesConf::from_env(),
-        )),
-        auth_conf: Arc::new(cornetti::auth::confs::JwtAuthConf::from_env()),
+        templates: Arc::new(TemplatesService::new(conf.templates.clone())),
+        auth_conf: Arc::new(conf.auth.jwt.clone()),
         base_conf,
-        tenant_conf,
-        filemanager_conf: Arc::new(cornetti::filemanager::confs::FileManagerConf::from_env()),
-        templates_conf: Arc::new(cornetti::templates::confs::TemplatesConf::from_env()),
-        mail_conf: Arc::new(cornetti::mail::smtp::confs::SmtpMailConf::from_env()),
+        filemanager_conf: Arc::new(conf.filemanager.clone()),
+        templates_conf: Arc::new(conf.templates.clone()),
+        mail_conf: Arc::new(conf.mail.smtp.clone()),
         app_info: app_info,
         session_store: session_store.clone(),
     });
@@ -180,7 +176,7 @@ async fn main() -> std::io::Result<()> {
                 .into(),
                 vec![].into(),
                 Some(session_store.clone()),
-                app_state.tenant_conf.tenant_id.clone(),
+                app_state.base_conf.tenant_id.clone(),
             );
 
         // Middleware for JWT refresh
@@ -195,7 +191,7 @@ async fn main() -> std::io::Result<()> {
                 )]
                 .into(),
                 Some(session_store.clone()),
-                app_state.tenant_conf.tenant_id.clone(),
+                app_state.base_conf.tenant_id.clone(),
             );
 
         // User Authorization Service
@@ -215,11 +211,11 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(auth_api::routes());
                     cfg.service(enums_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(groups_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(identity_api::routes());
                     cfg.service(filemanager_images_api::routes(
@@ -228,25 +224,25 @@ async fn main() -> std::io::Result<()> {
                     cfg.service(filemanager_api::routes(app_state.base_conf.test_features));
                     cfg.service(oggetti_astronomici_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(permissions_api::routes());
                     cfg.service(sessioni_osservative_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(siti_osservativi_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(statics_api::routes());
                     cfg.service(strumentazione_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(users_api::routes(
                         user_authorization_service.clone(),
-                        app_state.tenant_conf.tenant_id.clone(),
+                        app_state.base_conf.tenant_id.clone(),
                     ));
                 }
             })];

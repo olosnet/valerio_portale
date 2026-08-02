@@ -1,13 +1,17 @@
 use clap::{Arg, ArgAction, Command};
-use cornetti::redis::{confs::RedisDBConfig, services::RedisDBService};
+use cornetti::{
+    conf::CornettiConf,
+    core::confs::BaseConf,
+    redis::{confs::RedisDBConfig, services::RedisDBService},
+};
 use redis::AsyncCommands;
 
 fn app_id() -> String {
-    std::env::var("APP_ID").unwrap_or_else(|_| "app".to_string())
+    BaseConf::load().map(|c| c.app_id).unwrap_or_else(|_| "app".to_string())
 }
 
 fn tenant_id() -> String {
-    std::env::var("APP_TENANT_ID").unwrap_or_else(|_| "DEFAULT".to_string())
+    BaseConf::load().map(|c| c.tenant_id).unwrap_or_else(|_| "DEFAULT".to_string())
 }
 
 fn confirm_yes() -> bool {
@@ -17,7 +21,7 @@ fn confirm_yes() -> bool {
 }
 
 async fn connect() -> Result<redis::aio::MultiplexedConnection, Box<dyn std::error::Error>> {
-    let cfg = RedisDBConfig::from_env();
+    let cfg = RedisDBConfig::load().map_err(crate::conf_error)?;
     let redis = RedisDBService::new(&cfg)?;
     Ok(redis.client().get_multiplexed_async_connection().await?)
 }

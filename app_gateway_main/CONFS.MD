@@ -1,117 +1,135 @@
 ## Confs — app_gateway_main
 
-Configurazioni di ambiente usate dal server API.
+Configurazioni usate dal server API.
 
-### Log
+### File di configurazione
+
+Le configurazioni non si leggono più da variabili d'ambiente ma da un unico file TOML (default `./Config.toml` nella root del progetto), selezionabile con la variabile `CORNETTI_CONF`. Ogni sezione del file corrisponde a un modulo; le sezioni mancanti usano i default.
+
+È possibile sovrascrivere singole sezioni con variabili `CORNETTI_CONF_<SEZIONE>` che puntano a un file TOML contenente solo le chiavi di quella sezione (es. `CORNETTI_CONF_MONGO=./mongo.toml`).
+
+Template di riferimento: `Config.toml.example` (root) e `cornetti.example.toml` (cornetti-rust).
+
+### Variabili d'ambiente
 
 | EnvVar | Descrizione | Default |
 |--------|-------------|---------|
 | `RUST_LOG` | Livello log (error, warn, info, debug, trace) | |
+| `CORNETTI_CONF` | Percorso file di configurazione principale | `./Config.toml` |
 
-### BaseConf
+### Sezione `[app]` (BaseConf)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `APP_HOST` | Host di ascolto | `localhost` |
-| `APP_PORT` | Porta di ascolto | `8080` |
-| `APP_ENABLE_SWAGGER` | Abilita Swagger UI | `true` |
-| `APP_TMP_DIRECTORY` | Directory temporanea | `/tmp` |
-| `APP_API_PREFIX` | Prefisso path API | (vuoto) |
-| `APP_ID` | Identificativo applicazione | `app_default` |
-| `APP_SHARED_RESOURCES_ID` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
-| `APP_TEST_FEATURES` | Abilita endpoint di test (`/tests/email`) e api_doc filemanager | `false` |
+| `host` | Host di ascolto | `localhost` |
+| `port` | Porta di ascolto | `8080` |
+| `enable_swagger` | Abilita Swagger UI | `true` |
+| `tmp_directory` | Directory temporanea | `/tmp` |
+| `api_prefix` | Prefisso path API | (vuoto) |
+| `app_id` | Identificativo applicazione (obbligatoria, nessun default) | |
+| `shared_resources_id` | Namespace per risorse condivise (filemanager) | `shared_res_app_default` |
+| `test_features` | Abilita endpoint di test (`/tests/email`) e api_doc filemanager | `false` |
+| `tenant_id` | Identificativo tenant (multi-tenancy) | `DEFAULT` |
 
-### TenantConf
+### Sezione `[auth.jwt]` (JwtAuthConf)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `APP_TENANT_ID` | Identificativo tenant (multi-tenancy) | `default` |
+| `enable` | Abilita autenticazione | `true` |
+| `secret` / `secret_file` | Segreto JWT (random 30 char se assente) | |
+| `expire_minutes` | Scadenza access token (minuti) | `60` |
+| `issuer` | Issuer del token | |
+| `audience` | Audience (array di stringhe) | |
+| `search_in_headers` | Cerca JWT negli header HTTP (`Authorization: Bearer`) | `true` |
+| `search_in_cookies` | Cerca JWT nei cookie | `false` |
+| `csrf_cookie_enable` | Abilita protezione CSRF via cookie | `false` |
+| `csrf_cookie_same_site` | SameSite cookie CSRF (`strict`, `lax`, `none`) | `strict` |
+| `csrf_check_header_name` | Nome header per verifica CSRF | `X-CSRF-TOKEN` |
+| `csrf_http_methods` | Metodi HTTP che richiedono CSRF | `["POST", "PUT", "PATCH", "DELETE"]` |
 
-### MongoDBConfig
+#### `[auth.jwt.access_cookie]`
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `MONGO_DB_NAME` | Nome database | `database` |
-| `MONGO_DB_HOST` | Host MongoDB | `localhost` |
-| `MONGO_DB_PORT` | Porta MongoDB | `27017` |
-| `MONGO_DB_USERNAME` | Username | |
-| `MONGO_DB_PASSWORD` | Password | |
-| `MONGO_DB_PASSWORD_FILE` | Password da file (alternativa a `MONGO_DB_PASSWORD`) | |
-| `MONGO_AUTH_SOURCE` | Auth source | `admin` |
-| `MONGO_AUTH_MECHANISM` | Meccanismo auth | `DEFAULT` |
+| `name` | Nome cookie access token | `access_token_cookie` |
+| `path` | Path cookie access token | `/` |
+| `secure` | Flag `Secure` sul cookie | `true` |
+| `same_site` | SameSite (`strict`, `lax`, `none`) | `strict` |
 
-### RedisDBConfig
+#### `[auth.jwt.refresh_cookie]`
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `REDIS_DB_NUMBER` | Numero database Redis | `1` |
-| `REDIS_DB_HOST` | Host Redis | `localhost` |
-| `REDIS_DB_PORT` | Porta Redis | `6379` |
-| `REDIS_DB_USERNAME` | Username | |
-| `REDIS_DB_PASSWORD` | Password | |
-| `REDIS_DB_PASSWORD_FILE` | Password da file | |
-| `REDIS_DB_ENABLE_TLS` | Abilita TLS | `false` |
+| `enable` | Abilita refresh token | `true` |
+| `expire_minutes` | Scadenza refresh token (minuti) | `10080` |
+| `name` | Nome cookie refresh token | `refresh_token_cookie` |
+| `path` | Path cookie refresh token | `/auth/refresh` |
+| `secure` | Flag `Secure` sul cookie | `true` |
+| `same_site` | SameSite (`strict`, `lax`, `none`) | `strict` |
 
-### JwtAuthConf
+#### `[auth.jwt.csrf_access_cookie]` / `[auth.jwt.csrf_refresh_cookie]`
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `AUTH_JWT_ENABLE` | Abilita autenticazione | `true` |
-| `AUTH_JWT_SECRET` | Segreto JWT | (random se assente) |
-| `AUTH_JWT_SECRET_FILE` | Segreto da file | |
-| `AUTH_JWT_EXPIRE_MINUTES` | Scadenza access token (minuti) | `60` |
-| `AUTH_JWT_REFRESH_EXPIRE_MINUTES` | Scadenza refresh token (minuti) | `10080` |
-| `AUTH_JWT_ISSUER` | Issuer del token | |
-| `AUTH_JWT_AUDIENCE` | Audience (array separato da `,`) | |
-| `AUTH_JWT_REFRESH_ENABLE` | Abilita refresh token | `true` |
-| `AUTH_JWT_SEARCH_IN_HEADERS` | Cerca JWT negli header HTTP (`Authorization: Bearer`) | `true` |
-| `AUTH_JWT_SEARCH_IN_COOKIES` | Cerca JWT nei cookie | `false` |
-| `AUTH_JWT_ACCESS_COOKIE_NAME` | Nome cookie access token | `access_token_cookie` |
-| `AUTH_JWT_ACCESS_COOKIE_PATH` | Path cookie access token | `/` |
-| `AUTH_JWT_ACCESS_COOKIE_SECURE` | Flag `Secure` sul cookie access token | `true` |
-| `AUTH_JWT_ACCESS_COOKIE_SAME_SITE` | SameSite cookie access token (`strict`, `lax`, `none`) | `strict` |
-| `AUTH_JWT_REFRESH_COOKIE_NAME` | Nome cookie refresh token | `refresh_token_cookie` |
-| `AUTH_JWT_REFRESH_COOKIE_PATH` | Path cookie refresh token | `/auth/refresh` |
-| `AUTH_JWT_REFRESH_COOKIE_SECURE` | Flag `Secure` sul cookie refresh token | `true` |
-| `AUTH_JWT_REFRESH_COOKIE_SAME_SITE` | SameSite cookie refresh token (`strict`, `lax`, `none`) | `strict` |
-| `AUTH_JWT_CSRF_COOKIE_ENABLE` | Abilita protezione CSRF via cookie | `false` |
-| `AUTH_JWT_CSRF_ACCESS_COOKIE_NAME` | Nome cookie CSRF access token | `csrf_access_token` |
-| `AUTH_JWT_CSRF_ACCESS_COOKIE_PATH` | Path cookie CSRF access token | `/` |
-| `AUTH_JWT_CSRF_REFRESH_COOKIE_NAME` | Nome cookie CSRF refresh token | `csrf_refresh_token` |
-| `AUTH_JWT_CSRF_REFRESH_COOKIE_PATH` | Path cookie CSRF refresh token | `/` |
-| `AUTH_JWT_CSRF_COOKIE_SAME_SITE` | SameSite cookie CSRF (`strict`, `lax`, `none`) | `strict` |
-| `AUTH_JWT_CSRF_CHECK_HEADER_NAME` | Nome header per verifica CSRF | `X-CSRF-TOKEN` |
-| `AUTH_JWT_CSRF_HTTP_METHODS` | Metodi HTTP che richiedono CSRF (separati da `,`) | `POST,PUT,PATCH,DELETE` |
+| `name` | Nome cookie CSRF | `csrf_access_token` / `csrf_refresh_token` |
+| `path` | Path cookie CSRF | `/` |
 
-### JWTStoreConf
+### Sezione `[auth.jwt.store]` (JWTStoreConf)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `AUTH_JWT_STORE_NAME` | Nome store sessioni | `$APP_NAME` |
-| `AUTH_JWT_STORE_SESSION_EXPIRES_MINS` | Scadenza sessione (minuti) | `10081` |
+| `session_expire_mins` | Scadenza sessione (minuti) | `10081` |
 
-### FileManagerConf
+### Sezione `[mongo]` (MongoDBConfig)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `FILEMANAGER_UPLOAD_DIRECTORY` | Directory upload (assoluta) | `/tmp/upload` |
-| `FILEMANAGER_MAX_FILE_SIZE_BYTES` | Dimensione massima file (bytes) | `10485760` |
-| `FILEMANAGER_ALLOWED_FILE_TYPES` | Estensioni consentite (separate da `,`) | `jpg,jpeg,png,pdf` |
+| `db_name` | Nome database | `database` |
+| `db_host` | Host MongoDB | `localhost` |
+| `db_port` | Porta MongoDB | `27017` |
+| `db_username` | Username | |
+| `db_password` / `db_password_file` | Password (inline o da file) | |
+| `auth_source` | Auth source | `admin` |
+| `auth_mechanism` | Meccanismo auth | `SCRAM-SHA-256` |
 
-### TemplatesConf
+### Sezione `[redis]` (RedisDBConfig)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `TEMPLATES_DIRECTORY` | Directory template Jinja | `./templates` |
+| `db_number` | Numero database Redis | `1` |
+| `db_host` | Host Redis | `localhost` |
+| `db_port` | Porta Redis | `6379` |
+| `db_username` | Username | |
+| `db_password` / `db_password_file` | Password (inline o da file) | |
+| `db_enable_tls` | Abilita TLS (`rediss://`) | `false` |
 
-### SmtpMailConf
+### Sezione `[mail]` (BaseMailConfig)
 
-| EnvVar | Descrizione | Default |
+| Chiave | Descrizione | Default |
 |--------|-------------|---------|
-| `MAIL_EMAIL_FROM` | Mittente default | `test@email.com` |
-| `MAIL_SMTP_HOST` | Host SMTP | `localhost` |
-| `MAIL_SMTP_PORT` | Porta SMTP | `587` |
-| `MAIL_SMTP_USERNAME` | Username SMTP | `user` |
-| `MAIL_SMTP_PASSWORD` | Password SMTP | `password` |
-| `MAIL_SMTP_PASSWORD_FILE` | Password da file | |
-| `MAIL_SMTP_TRANSPORT` | Transport (`smtp_tls`, `smtp_starttls`) | `smtp_tls` |
+| `provider` | Provider email (`smtp`, `gmail`) | `smtp` |
+
+### Sezione `[mail.smtp]` (SmtpMailConf)
+
+| Chiave | Descrizione | Default |
+|--------|-------------|---------|
+| `email_from` | Mittente default | `test@email.com` |
+| `smtp_host` | Host SMTP | `localhost` |
+| `smtp_port` | Porta SMTP | `587` |
+| `smtp_username` | Username SMTP | `user` |
+| `smtp_password` / `smtp_password_file` | Password (inline o da file) | `password` |
+| `transport` | Transport (`smtp_tls`, `smtp_starttls`, `unencrypted_localhost`) | `smtp_tls` |
+
+### Sezione `[templates]` (TemplatesConf)
+
+| Chiave | Descrizione | Default |
+|--------|-------------|---------|
+| `templates_directory` | Directory template Jinja | `./templates` |
+
+### Sezione `[filemanager]` (FileManagerConf)
+
+| Chiave | Descrizione | Default |
+|--------|-------------|---------|
+| `upload_directory` | Directory upload (assoluta) | `/tmp/uploads` |
+| `max_file_size` | Dimensione massima file (bytes) | `10485760` |
+| `allowed_file_types` | Estensioni consentite (array) | `["jpg", "jpeg", "png", "pdf"]` |

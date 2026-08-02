@@ -1,0 +1,113 @@
+# Configurazione dell'applicazione (server API + CLI di gestione).
+# Copia questo file in Config.toml (non committato) e imposta i valori reali.
+# In alternativa seleziona un altro file con la variabile CORNETTI_CONF,
+# o sovrascrivi singole sezioni con CORNETTI_CONF_<SEZIONE>=<file.toml>.
+
+[app]
+host = "localhost"
+port = 8080
+enable_swagger = true
+tmp_directory = "/tmp"
+api_prefix = "/api"
+app_id = "my-app"                        # obbligatoria, nessun default
+shared_resources_id = "shared_res_app_default"
+test_features = false
+tenant_id = "DEFAULT"
+
+# ------------------------------------------------------------
+# [auth.jwt] — JWT e cookie
+# ------------------------------------------------------------
+[auth.jwt]
+enable = true
+secret = "change-me"                     # oppure secret_file = "/run/secrets/jwt"
+expire_minutes = 60
+issuer = "my-app"
+audience = ["web", "mobile"]
+search_in_headers = true
+search_in_cookies = false
+csrf_cookie_enable = false
+csrf_cookie_same_site = "strict"
+csrf_check_header_name = "X-CSRF-TOKEN"
+csrf_http_methods = ["POST", "PUT", "PATCH", "DELETE"]
+
+[auth.jwt.access_cookie]
+name = "access_token_cookie"
+path = "/"
+secure = true
+same_site = "strict"
+
+[auth.jwt.refresh_cookie]
+enable = true
+expire_minutes = 10080
+name = "refresh_token_cookie"
+path = "/auth/refresh"
+secure = true
+same_site = "strict"
+
+[auth.jwt.csrf_access_cookie]
+name = "csrf_access_token"
+path = "/"
+
+[auth.jwt.csrf_refresh_cookie]
+name = "csrf_refresh_token"
+path = "/"
+
+[auth.jwt.store]
+session_expire_mins = 10081
+
+# ------------------------------------------------------------
+# [mongo] — connessione MongoDB
+# ------------------------------------------------------------
+[mongo]
+db_name = "database"
+db_host = "localhost"
+db_port = "27017"
+db_username = "mongo"                    # oppure nessuna
+db_password = "..."                      # oppure db_password_file = "/run/secrets/mongo"
+auth_source = "admin"
+auth_mechanism = "SCRAM-SHA-256"
+
+# ------------------------------------------------------------
+# [redis] — connessione Redis
+# ------------------------------------------------------------
+[redis]
+db_number = "1"
+db_host = "localhost"
+db_port = "6379"
+db_username = "redis"
+db_password = "..."                      # oppure db_password_file = "/run/secrets/redis"
+db_enable_tls = false
+
+# ------------------------------------------------------------
+# [mail] — dispatch provider + configurazione per provider
+# ------------------------------------------------------------
+[mail]
+provider = "smtp"                        # smtp | gmail
+
+[mail.smtp]
+email_from = "noreply@example.com"
+smtp_host = "smtp.example.com"
+smtp_port = 587
+smtp_username = "user"
+smtp_password = "..."                    # oppure smtp_password_file = "/run/secrets/smtp"
+transport = "smtp_tls"                   # smtp_tls | smtp_starttls | unencrypted_localhost
+
+# [mail.gmail]
+# email_from = "noreply@example.com"
+# [mail.gmail.service_account]
+# private_key_id = "..."
+# ...
+
+# ------------------------------------------------------------
+# [templates] — motore template (Jinja)
+# ------------------------------------------------------------
+[templates]
+templates_directory = "./templates"
+
+# ------------------------------------------------------------
+# [filemanager] — upload
+# ------------------------------------------------------------
+[filemanager]
+upload_directory = "/tmp/uploads"
+max_file_size = 10485760
+allowed_file_types = ["jpg", "jpeg", "png", "pdf"]

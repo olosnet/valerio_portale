@@ -207,7 +207,7 @@ mod oggetti_astronomici_view {
             state.mongo.clone(),
             &state.filemanager_conf,
             &state.base_conf.shared_resources_id,
-            &state.tenant_conf.tenant_id,
+            &state.base_conf.tenant_id,
         );
 
         match service

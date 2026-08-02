@@ -21,7 +21,8 @@ use app_modules::{
 };
 use clap::{Arg, ArgAction, Command};
 use cornetti::{
-    core::{confs::TenantConf, traits::BaseModel},
+    conf::CornettiConf,
+    core::traits::BaseModel,
     filemanager::{
         confs::FileManagerConf, helpers::upload_file_from_path,
         traits::FileManagerRepositoryTrait,
@@ -37,6 +38,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use validator::Validate;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Converte un `CornettiError` in `Box<dyn Error>` per i comandi CLI.
+pub(crate) fn conf_error(err: cornetti::core::models::CornettiError) -> Box<dyn std::error::Error> {
+    format!("{}: {}", err.detail, err.internal_detail).into()
+}
 
 // ---------------------------------------------------------------------------
 // Match types
@@ -222,7 +232,7 @@ async fn cmd_catalog_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::
     let match_path = args.get_one::<String>("match-file").map(|s| s.as_str()).unwrap_or("oggetti_import_match.json");
     let purge = !args.get_flag("no-purge");
 
-    let cfg = MongoDBConfig::from_env();
+    let cfg = MongoDBConfig::load().map_err(conf_error)?;
     let mongo = Arc::new(MongoDBService::new(&cfg).await?);
     OggettiAstronomiciModule::register(&mongo).await?;
 
@@ -243,9 +253,10 @@ async fn cmd_catalog_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::
             .await
             .map_err(|e| format!("query imported images: {e}"))?;
 
-        let fm_conf = FileManagerConf::from_env();
-        let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
-        let tenant = TenantConf::from_env().tenant_id;
+        let fm_conf = FileManagerConf::load().map_err(conf_error)?;
+        let base_conf = cornetti::core::confs::BaseConf::load().map_err(conf_error)?;
+        let ns = base_conf.shared_resources_id;
+        let tenant = base_conf.tenant_id;
 
         for obj in &with_images {
             if let Some(ref img) = obj.image_filename {
@@ -420,7 +431,7 @@ async fn cmd_images_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::e
     let survey = args.get_one::<String>("survey").map(|s| s.as_str()).unwrap_or("poss2ukstu_red");
     let only_missing = args.get_flag("only-missing");
 
-    let cfg = MongoDBConfig::from_env();
+    let cfg = MongoDBConfig::load().map_err(conf_error)?;
     let mongo = Arc::new(MongoDBService::new(&cfg).await?);
     OggettiAstronomiciModule::register(&mongo).await?;
     FileManagerModule::register(&mongo).await?;
@@ -448,9 +459,10 @@ async fn cmd_images_import(args: &clap::ArgMatches) -> Result<(), Box<dyn std::e
 
     println!("Oggetti da processare: {}", objects.len());
 
-    let fm_conf = FileManagerConf::from_env();
-    let ns = std::env::var("APP_SHARED_RESOURCES_ID").unwrap_or_else(|_| "shared_res_app_default".into());
-    let tenant = TenantConf::from_env().tenant_id;
+    let fm_conf = FileManagerConf::load().map_err(conf_error)?;
+    let base_conf = cornetti::core::confs::BaseConf::load().map_err(conf_error)?;
+    let ns = base_conf.shared_resources_id;
+    let tenant = base_conf.tenant_id;
     let identity_email = std::env::var("APP_IMPORT_IDENTITY").unwrap_or_else(|_| "import@system".into());
 
     // Risolvi identity_id (ObjectId) cercando l'utente per email
@@ -556,7 +568,7 @@ fn images_import_cmd() -> Command {
 // ===========================================================================
 
 async fn cmd_admin_create() -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = MongoDBConfig::from_env();
+    let cfg = MongoDBConfig::load().map_err(conf_error)?;
     let mongo = Arc::new(MongoDBService::new(&cfg).await?);
     register_all_modules(&mongo).await?;
 
@@ -712,7 +724,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli.clone().get_matches();
 
     if matches.get_flag("register-modules") {
-        let cfg = MongoDBConfig::from_env();
+        let cfg = MongoDBConfig::load().map_err(conf_error)?;
         let mongo = MongoDBService::new(&cfg).await?;
         return register_all_modules(&mongo).await;
     }

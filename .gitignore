@@ -23,4 +23,5 @@ app_gateway_client/dist
 
 Cargo.lock
 setenv.sh
+Config.toml
 *.pyc

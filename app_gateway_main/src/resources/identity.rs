@@ -32,7 +32,7 @@ mod identity_view {
             &state.filemanager_conf,
             &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
-            &state.tenant_conf.tenant_id,
+            &state.base_conf.tenant_id,
         );
 
         match service.get_identity(claims).await {
@@ -62,7 +62,7 @@ mod identity_view {
             &state.filemanager_conf,
             &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
-            &state.tenant_conf.tenant_id,
+            &state.base_conf.tenant_id,
         );
 
         match service.update_profile(claims, body.into_inner()).await {
@@ -93,7 +93,7 @@ mod identity_view {
             &state.filemanager_conf,
             &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
-            &state.tenant_conf.tenant_id,
+            &state.base_conf.tenant_id,
         );
 
         match service.update_profile_image(claims.clone(), form).await {
@@ -126,7 +126,7 @@ mod identity_view {
             &state.filemanager_conf,
             &state.base_conf.app_id,
             &state.base_conf.shared_resources_id,
-            &state.tenant_conf.tenant_id,
+            &state.base_conf.tenant_id,
         );
 
         match service.update_password(claims, body.into_inner()).await {

@@ -1,5 +1,6 @@
 use clap::{Arg, Command};
 use cornetti::{
+    conf::CornettiConf,
     core::models::{CornettiError, CornettiGenericResponse},
     mail::smtp::{confs::SmtpMailConf, services::SendSmtpMailService},
     templates::{confs::TemplatesConf, services::TemplatesService},
@@ -61,8 +62,8 @@ async fn cmd_send_mail(args: &clap::ArgMatches) -> Result<(), Box<dyn std::error
     let subject = args.get_one::<String>("subject").expect("required").clone();
     let body = args.get_one::<String>("body").expect("required").clone();
 
-    let mail_conf = SmtpMailConf::from_env();
-    let templates_conf = TemplatesConf::from_env();
+    let mail_conf = SmtpMailConf::load().map_err(crate::conf_error)?;
+    let templates_conf = TemplatesConf::load().map_err(crate::conf_error)?;
     let service = TestsMailService::new(&mail_conf, &templates_conf);
 
     let data = TestMailSendBody {
