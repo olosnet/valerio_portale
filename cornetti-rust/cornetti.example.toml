@@ -88,6 +88,7 @@ header_name = "X-API-Key"
 enable = false
 state_cookie_name = "oauth2_state"
 post_login_redirect = "https://app.example.com/login"
+post_login_error_redirect = "https://app.example.com/login"   # default: post_login_redirect; redirect con ?oauth2_error=<codice> sui fallimenti del callback web
 enable_api_mode = false
 state_ttl_secs = 600
 auto_register_users = true            # false = reject users not registered locally

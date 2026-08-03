@@ -80,6 +80,38 @@ Template di riferimento: `Config.toml.example` (root) e `cornetti.example.toml` 
 |--------|-------------|---------|
 | `session_expire_mins` | Scadenza sessione (minuti) | `10081` |
 
+### Sezione `[auth.oauth2]` (OAuth2AuthConf)
+
+| Chiave | Descrizione | Default |
+|--------|-------------|---------|
+| `enable` | Abilita autenticazione OAuth2 | `false` |
+| `post_login_redirect` | URL di redirect dopo il callback web (se `None`, API mode). In sviluppo col proxy Trunk va bene `/` (il Location relativo è risolto dal browser contro l'origin del client); in produzione: URL assoluto del frontend | |
+| `post_login_error_redirect` | URL di redirect quando il callback web fallisce (es. `auto_register_users = false` con utente inesistente). Il browser viene rimandato con `?oauth2_error=<codice>` (es. `BE_USER_NOT_FOUND`), letto dalla pagina login; il JSON grezzo non viene mostrato. Default: `post_login_redirect` (poi `/`) | |
+| `state_cookie_name` | Nome cookie anti-CSRF state | `oauth2_state` |
+| `enable_api_mode` | Abilita il flusso API/mobile (token nel body, PKCE client) | `false` |
+| `state_ttl_secs` | TTL (secondi) di state + PKCE verifier nello store | `600` |
+| `auto_register_users` | Registra automaticamente gli utenti non esistenti | `true` |
+
+#### `[[auth.oauth2.providers]]` (OAuth2ProviderConf)
+
+| Chiave | Descrizione | Default |
+|--------|-------------|---------|
+| `name` | Nome provider: built-in (google, github, microsoft, apple, facebook) o custom | (obbligatoria) |
+| `client_id` | Client ID dell'app OAuth2 | (obbligatoria) |
+| `client_secret` / `client_secret_file` | Client secret (inline o da file) | (obbligatoria) |
+| `redirect_uri` | URI di callback registrato sul provider | (obbligatoria) |
+| `scopes` | Scope richiesti (array) — obbligatori per i provider custom | |
+| `auth_url` | URL di autorizzazione (obbligatorio per i provider custom) | |
+| `token_url` | URL di scambio token (obbligatorio per i provider custom) | |
+| `userinfo_url` | Endpoint OIDC userinfo (obbligatorio per i provider custom) | |
+| `extra` | Dati specifici provider (es. apple: `key_id`, `team_id`, `private_key`) | |
+
+Provider custom: qualsiasi nome fuori dall'insieme built-in viene trattato come OIDC generico (es. Kanidm, Keycloak, Authentik) — gli endpoint vengono dalla config e il parse dei dati utente usa i claim OIDC standard (`sub`, `email`, `email_verified`, `name`, `picture`).
+
+Validazione al load (hook `CornettiConf::validate`): provider duplicati → errore; provider custom senza `auth_url`/`token_url`/`userinfo_url` o senza scope → errore. Il flusso web richiede `[auth.jwt] search_in_cookies = true` (verificato a startup da `validate_web_mode`).
+
+Endpoint pubblici (esclusi dal middleware JWT, **esposti solo quando `enable = true`**): `GET /auth/oauth2/providers`, `GET /auth/oauth2/{provider}/login`, `GET /auth/oauth2/{provider}/callback` — con OAuth2 disabilitato non vengono registrati né mostrati in Swagger (404).
+
 ### Sezione `[mongo]` (MongoDBConfig)
 
 | Chiave | Descrizione | Default |

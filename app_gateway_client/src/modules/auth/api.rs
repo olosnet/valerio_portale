@@ -1,4 +1,4 @@
-use crate::modules::auth::models::DefaultLoginResponse;
+use crate::modules::auth::models::{DefaultLoginResponse, OAuth2ProvidersResponse};
 use crate::modules::base::api_client::ApiClient;
 use crate::modules::base::models::ApiError;
 
@@ -24,4 +24,18 @@ pub async fn refresh(
     let dto: crate::modules::auth::models::RefreshAuthResponse =
         serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))?;
     Ok(dto.identity)
+}
+
+/// Provider OAuth2 esposti dal server. Endpoint presente solo quando OAuth2 è
+/// abilitato: con 404 (disabilitato) ritorna `None`.
+pub async fn oauth2_providers(
+    client: &ApiClient,
+) -> Result<Option<OAuth2ProvidersResponse>, ApiError> {
+    match client.request("GET", "/auth/oauth2/providers", None).await {
+        Ok(resp) => serde_json::from_str(&resp)
+            .map(Some)
+            .map_err(|e| ApiError::Network(e.to_string())),
+        Err(ApiError::Http(404, _)) => Ok(None),
+        Err(e) => Err(e),
+    }
 }

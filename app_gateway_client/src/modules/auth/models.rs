@@ -21,3 +21,15 @@ pub struct RefreshAuthResponse {
     pub expires_in: Option<usize>,
     pub identity: app_modules::base::identity::models::UserIdentity,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OAuth2ProviderInfo {
+    pub name: String,
+    pub login_path: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OAuth2ProvidersResponse {
+    pub enable_auth: bool,
+    pub providers: Vec<OAuth2ProviderInfo>,
+}

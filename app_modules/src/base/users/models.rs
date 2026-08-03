@@ -5,9 +5,9 @@ use utoipa::{IntoParams, ToSchema};
 #[cfg(feature = "server")]
 use validator::{Validate, ValidationError};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[cfg_attr(feature = "server", derive(ToSchema))]
-#[cfg_attr(feature = "client", derive(Deserialize, Clone, PartialEq))]
+#[cfg_attr(feature = "client", derive(Deserialize, PartialEq))]
 pub struct User {
     pub id: Option<String>,
     pub name: Option<String>,

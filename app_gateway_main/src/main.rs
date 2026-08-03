@@ -7,6 +7,7 @@ use crate::resources::filemanager_images::filemanager_images_api;
 use crate::resources::groups::groups_api;
 use crate::resources::identity::identity_api;
 use crate::resources::info::info_api;
+use crate::resources::oauth2::oauth2_api;
 use crate::resources::oggetti_astronomici::oggetti_astronomici_api;
 use crate::resources::permissions::permissions_api;
 use crate::resources::sessioni_osservative::sessioni_osservative_api;
@@ -16,10 +17,14 @@ use crate::resources::strumentazione::strumentazione_api;
 use crate::resources::users::users_api;
 use actix_web::{App, HttpServer, web};
 use app_modules::base::auth::services::UserAuthorizationService;
+use app_modules::base::oauth2::handler::OAuth2UserHandlerImpl;
+use app_modules::base::users::models::User;
 use cornetti::actix::auth::middlewares::authentication::JWTMiddleware;
 use cornetti::actix::helpers::default_404_json;
 use cornetti::auth::confs::{JWTStoreConf, JwtAuthConf};
 use cornetti::auth::helpers::utoipa::get_jwt_auth_security_schemes;
+use cornetti::auth_oauth2::confs::OAuth2AuthConf;
+use cornetti::auth_oauth2::services::OAuth2Service;
 use cornetti::conf::CornettiConf;
 use cornetti::core::confs::BaseConf;
 use cornetti::core::helpers::common::apply_api_prefix;
@@ -29,6 +34,7 @@ use cornetti::filemanager::confs::FileManagerConf;
 use cornetti::mail::smtp::confs::SmtpMailConf;
 use cornetti::mongo::confs::MongoDBConfig;
 use cornetti::mongo::services::MongoDBService;
+use cornetti::redis::auth_oauth2::RedisOAuth2SessionStore;
 use cornetti::redis::confs::RedisDBConfig;
 use cornetti::redis::services::RedisDBService;
 use cornetti::templates::confs::TemplatesConf;
@@ -70,6 +76,8 @@ pub struct AppState {
     pub filemanager_conf: Arc<cornetti::filemanager::confs::FileManagerConf>,
     pub templates_conf: Arc<cornetti::templates::confs::TemplatesConf>,
     pub mail_conf: Arc<cornetti::mail::smtp::confs::SmtpMailConf>,
+    pub oauth2_conf: Arc<OAuth2AuthConf>,
+    pub oauth2_service: Arc<OAuth2Service<OAuth2UserHandlerImpl, User, RedisOAuth2SessionStore>>,
     pub app_info: Arc<AppInfo>,
     pub session_store: Arc<cornetti::redis::auth::RedisSessionStore>,
 }
@@ -103,6 +111,12 @@ async fn main() -> std::io::Result<()> {
     let redis_service: Arc<RedisDBService> = Arc::new(RedisDBService::new(&redis_config).unwrap());
 
     let sessions_store_conf = JWTStoreConf::load().map_err(map_conf_err)?;
+    let auth_conf = Arc::new(JwtAuthConf::load().map_err(map_conf_err)?);
+
+    let oauth2_conf = Arc::new(OAuth2AuthConf::load().map_err(map_conf_err)?);
+    oauth2_conf
+        .validate_web_mode(&auth_conf)
+        .map_err(map_conf_err)?;
 
     // Session store for JWT
     let session_store: Arc<cornetti::redis::auth::RedisSessionStore> =
@@ -112,17 +126,32 @@ async fn main() -> std::io::Result<()> {
             &base_conf.app_id,
         ));
 
+    // OAuth2 service (web flow: state + PKCE server-side, JWT via cookie)
+    let oauth2_service: Arc<
+        OAuth2Service<OAuth2UserHandlerImpl, User, RedisOAuth2SessionStore>,
+    > = Arc::new(OAuth2Service::new(
+        oauth2_conf.clone(),
+        Arc::new(OAuth2UserHandlerImpl::new(mongo_service.clone())),
+        Arc::new(RedisOAuth2SessionStore::new(
+            redis_service.clone(),
+            &base_conf.app_id,
+        )),
+        base_conf.tenant_id.clone(),
+    ));
+
     let app_state: Arc<AppState> = Arc::new(AppState {
         mongo: mongo_service,
         redis: redis_service,
         templates: Arc::new(TemplatesService::new(
             TemplatesConf::load().map_err(map_conf_err)?,
         )),
-        auth_conf: Arc::new(JwtAuthConf::load().map_err(map_conf_err)?),
+        auth_conf,
         base_conf,
         filemanager_conf: Arc::new(FileManagerConf::load().map_err(map_conf_err)?),
         templates_conf: Arc::new(TemplatesConf::load().map_err(map_conf_err)?),
         mail_conf: Arc::new(SmtpMailConf::load().map_err(map_conf_err)?),
+        oauth2_conf,
+        oauth2_service,
         app_info,
         session_store: session_store.clone(),
     });
@@ -135,7 +164,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let api_prefix = &app_state.base_conf.api_prefix;
 
-        let mut apidocs: utoipa::openapi::OpenApi = combine_api_docs::<BaseApiDoc>(vec![
+        let mut apidocs_list = vec![
             info_api::api_doc(&app_state.base_conf),
             auth_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             enums_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
@@ -158,7 +187,14 @@ async fn main() -> std::io::Result<()> {
             statics_api::api_doc(&app_state.base_conf),
             strumentazione_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
             users_api::api_doc(&app_state.base_conf, &app_state.auth_conf),
-        ]);
+        ];
+
+        // Endpoint OAuth2 esposti solo se abilitato dalla configurazione
+        if app_state.oauth2_conf.enable_auth {
+            apidocs_list.push(oauth2_api::api_doc(&app_state.base_conf));
+        }
+
+        let mut apidocs: utoipa::openapi::OpenApi = combine_api_docs::<BaseApiDoc>(apidocs_list);
 
         if let Some(components) = apidocs.components.as_mut() {
             get_jwt_auth_security_schemes(components, &app_state.auth_conf);
@@ -180,6 +216,10 @@ async fn main() -> std::io::Result<()> {
                     CornettiHttpFilter::Match(
                         apply_api_prefix(&api_prefix, "/auth/refresh"),
                         vec![CornettiHttpMethod::POST].into(),
+                    ),
+                    CornettiHttpFilter::StartsWith(
+                        apply_api_prefix(&api_prefix, "/auth/oauth2/"),
+                        vec![CornettiHttpMethod::GET].into(),
                     ),
                 ]
                 .into(),
@@ -217,6 +257,17 @@ async fn main() -> std::io::Result<()> {
                 move |cfg: &mut web::ServiceConfig| {
                     cfg.app_data(web::Data::from(app_state.clone()));
                     cfg.service(info_api::routes());
+                    // Endpoint OAuth2 esposti solo se abilitato dalla
+                    // configurazione. Ordine importante: lo scope prefix
+                    // `/auth` oscurerebbe `/auth/oauth2/*` se registrato prima
+                    // (actix matcha il primo resource prefix).
+                    if app_state.oauth2_conf.enable_auth {
+                        cfg.app_data(web::Data::new(app_state.oauth2_service.clone()));
+                        cfg.app_data(web::Data::new(app_state.auth_conf.clone()));
+                        cfg.app_data(web::Data::new(Some(app_state.session_store.clone())));
+                        cfg.app_data(web::Data::new(app_state.base_conf.tenant_id.clone()));
+                        cfg.service(oauth2_api::routes());
+                    }
                     cfg.service(auth_api::routes());
                     cfg.service(enums_api::routes(
                         user_authorization_service.clone(),
@@ -227,6 +278,7 @@ async fn main() -> std::io::Result<()> {
                         app_state.base_conf.tenant_id.clone(),
                     ));
                     cfg.service(identity_api::routes());
+                    cfg.service(oauth2_api::routes());
                     cfg.service(filemanager_images_api::routes(
                         app_state.base_conf.test_features,
                     ));

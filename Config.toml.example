@@ -56,6 +56,53 @@ path = "/"
 session_expire_mins = 10081
 
 # ------------------------------------------------------------
+# [auth.oauth2] — OAuth2 (web flow)
+# Richiede jwt search_in_cookies = true (i token viaggiano via cookie).
+# Provider built-in: google, github, microsoft, apple, facebook.
+# post_login_redirect: dove atterra il browser dopo il callback. In sviluppo
+# con il proxy Trunk (client :8082 -> /api) va bene "/" (il Location relativo
+# viene risolto contro l'origin del client). In produzione impostare l'URL
+# assoluto del frontend (es. https://app.example.com/).
+# post_login_error_redirect: dove il browser viene reindirizzato quando il
+# callback fallisce (es. auto_register_users = false con utente inesistente),
+# con ?oauth2_error=<codice> (es. BE_USER_NOT_FOUND) letto dalla pagina login.
+# Default: post_login_redirect.
+# ------------------------------------------------------------
+[auth.oauth2]
+enable = false
+post_login_redirect = "/"
+post_login_error_redirect = "/login"
+state_cookie_name = "oauth2_state"
+state_ttl_secs = 600
+auto_register_users = true
+
+[[auth.oauth2.providers]]
+name = "google"
+client_id = "xxx.apps.googleusercontent.com"
+client_secret = "xxx"                  # oppure client_secret_file = "/run/secrets/google"
+redirect_uri = "http://localhost:8080/api/auth/oauth2/google/callback"
+scopes = ["openid", "email", "profile"]
+
+[[auth.oauth2.providers]]
+name = "github"
+client_id = "xxx"
+client_secret = "xxx"
+redirect_uri = "http://localhost:8080/api/auth/oauth2/github/callback"
+scopes = ["read:user", "user:email"]
+
+# Provider custom (OIDC generico): richiede auth_url, token_url, userinfo_url
+# e almeno uno scope. Esempio Kanidm:
+[[auth.oauth2.providers]]
+name = "kanidm"
+client_id = "valerio-portale"
+client_secret = "xxx"
+redirect_uri = "http://localhost:8080/api/auth/oauth2/kanidm/callback"
+scopes = ["openid", "email", "profile"]
+auth_url = "https://idm.example.com/oauth2/openid_connect/authorize"
+token_url = "https://idm.example.com/oauth2/openid_connect/token"
+userinfo_url = "https://idm.example.com/oauth2/openid_connect/userinfo"
+
+# ------------------------------------------------------------
 # [mongo] — connessione MongoDB
 # ------------------------------------------------------------
 [mongo]

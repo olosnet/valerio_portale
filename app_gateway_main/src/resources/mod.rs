@@ -5,6 +5,7 @@ pub mod filemanager_images;
 pub mod groups;
 pub mod identity;
 pub mod info;
+pub mod oauth2;
 pub mod oggetti_astronomici;
 pub mod permissions;
 pub mod sessioni_osservative;

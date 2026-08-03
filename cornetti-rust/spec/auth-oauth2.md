@@ -251,7 +251,12 @@ functions for the OAuth2 flow:
   SHALL verify the state cookie, call `handle_callback`, issue JWT via
   `generate_auth_tokens_and_response`, set cookie tokens, remove the state cookie,
   and redirect to `conf.post_login_redirect`. SHALL return `web_mode_misconfigured`
-  (500) if `jwt_conf.jwt_search_in_cookies` is `false`.
+  (500) if `jwt_conf.jwt_search_in_cookies` is `false`. On callback failure
+  (e.g. `user_not_found` when `auto_register_users` is disabled) the handler
+  SHALL NOT return a raw JSON error: it SHALL redirect the browser to
+  `conf.post_login_error_redirect` (fallback `conf.post_login_redirect`, then
+  `/`) with an `oauth2_error` query parameter carrying the error `corr_id`
+  (e.g. `BE_USER_NOT_FOUND`), and SHALL still remove the state cookie.
 - `oauth2_api_callback_handler` (mobile, `POST /auth/oauth2/{provider}/token`):
   SHALL verify `enable_api_mode`, call `handle_callback` with the client's
   `code_verifier`, issue JWT, and respond with JSON. SHALL return

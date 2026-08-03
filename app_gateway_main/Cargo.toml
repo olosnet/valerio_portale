@@ -10,7 +10,7 @@ serde = { version = "1", features = ["derive"] }
 chrono = { version ="0.4", features = ["serde"] }
 mongodb = { version = "3" }
 bson = { version = "2", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
-cornetti = { path = "../cornetti-rust/cornetti", features = ["mongo", "auth", "actix", "actix-auth", "redisdb", "filemanager" ] }
+cornetti = { path = "../cornetti-rust/cornetti", features = ["mongo", "auth", "actix", "actix-auth", "auth-oauth2", "actix-auth-oauth2", "redisdb", "filemanager" ] }
 cornetti_macros = { path = "../cornetti-rust/cornetti_macros" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

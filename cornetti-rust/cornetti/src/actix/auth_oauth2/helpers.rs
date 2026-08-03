@@ -100,12 +100,33 @@ where
     Ok(HttpResponse::Ok().json(OAuth2LoginResponse { auth_url, state }))
 }
 
+/// Builds a removal cookie for the OAuth2 state cookie.
+///
+/// Used both on success (the flow is complete) and on failure (a stale cookie
+/// would poison the next login attempt).
+fn state_cookie_removal(cookie_name: &str) -> Cookie<'static> {
+    let mut removal = Cookie::build(cookie_name.to_string(), "")
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(actix_web::cookie::SameSite::Lax)
+        .max_age(actix_web::cookie::time::Duration::seconds(0))
+        .finish();
+    removal.make_removal();
+    removal
+}
+
 /// Builds the callback route in WEB mode.
 ///
 /// GET /auth/oauth2/{provider}/callback?code=...&state=...
 ///
 /// Verifies the state from the cookie, exchanges the code, looks up/creates
 /// the user, issues JWT (access + refresh token), sets cookies and redirects.
+///
+/// On failure the browser is redirected to `post_login_error_redirect`
+/// (fallback `post_login_redirect`, then `/`) with an `oauth2_error` query
+/// parameter carrying the error `corr_id` (e.g. `BE_USER_NOT_FOUND`): the
+/// client renders a readable message instead of raw JSON.
 ///
 /// Requires `jwt_search_in_cookies` enabled: tokens are delivered exclusively
 /// via cookies, so without that flag the redirect would happen without
@@ -154,9 +175,35 @@ where
         .unwrap_or_default();
 
     // Il flusso web usa sempre PKCE lato server: nessun verifier dal client.
-    let (user, _metadata) = service
+    let (user, _metadata) = match service
         .handle_callback(&provider_name, code, state, Some(&expected_state), None)
-        .await?;
+        .await
+    {
+        Ok(result) => result,
+        Err(err) => {
+            // In web mode the failure reaches a browser: redirect to the
+            // error page with the error code instead of returning raw JSON.
+            // The client maps the code (e.g. `BE_USER_NOT_FOUND`) to a
+            // readable message.
+            err.write_log();
+
+            let redirect_url = service
+                .conf()
+                .post_login_error_redirect
+                .clone()
+                .or_else(|| service.conf().post_login_redirect.clone())
+                .unwrap_or_else(|| "/".to_string());
+
+            let separator = if redirect_url.contains('?') { '&' } else { '?' };
+            let location = format!("{redirect_url}{separator}oauth2_error={}", err.corr_id);
+
+            let mut response = HttpResponse::Found();
+            response.insert_header((header::LOCATION, location));
+            response.cookie(state_cookie_removal(&service.conf().state_cookie_name));
+
+            return Ok(response.finish());
+        }
+    };
 
     let identity = user.subject();
 
@@ -194,15 +241,7 @@ where
     }
 
     // Rimuovi il cookie di state
-    let mut removal = Cookie::build(&service.conf().state_cookie_name, "")
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(actix_web::cookie::SameSite::Lax)
-        .max_age(actix_web::cookie::time::Duration::seconds(0))
-        .finish();
-    removal.make_removal();
-    response.cookie(removal);
+    response.cookie(state_cookie_removal(&service.conf().state_cookie_name));
 
     Ok(response.finish())
 }

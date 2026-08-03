@@ -14,6 +14,7 @@ server = [
     "cornetti/mongo",
     "cornetti/actix",
     "cornetti/actix-auth",
+    "cornetti/auth-oauth2",
     "cornetti/redisdb",
     "cornetti/templates",
     "cornetti/mail",

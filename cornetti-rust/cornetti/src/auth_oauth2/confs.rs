@@ -96,6 +96,12 @@ pub struct OAuth2AuthConf {
     pub state_cookie_name: String,
     /// Post-login redirect URL (for web mode). If None, API mode is assumed.
     pub post_login_redirect: Option<String>,
+    /// Redirect URL for failed web logins (for web mode). When set, the web
+    /// callback redirects the browser here with an `oauth2_error` query
+    /// parameter (the error `corr_id`, e.g. `BE_USER_NOT_FOUND`) instead of
+    /// returning a raw JSON error. When `None`, falls back to
+    /// `post_login_redirect` (`/` if that is also unset).
+    pub post_login_error_redirect: Option<String>,
     /// Enables API/mobile mode (token in response body, no cookie).
     pub enable_api_mode: bool,
     /// TTL in seconds for the CSRF state and PKCE verifier in the store.
@@ -113,6 +119,7 @@ impl Default for OAuth2AuthConf {
             providers: Vec::new(),
             state_cookie_name: "oauth2_state".to_string(),
             post_login_redirect: None,
+            post_login_error_redirect: None,
             enable_api_mode: false,
             state_ttl_secs: 600,
             auto_register_users: true,
@@ -132,6 +139,7 @@ impl<'de> Deserialize<'de> for OAuth2AuthConf {
             providers: Vec<OAuth2ProviderConf>,
             state_cookie_name: Option<String>,
             post_login_redirect: Option<String>,
+            post_login_error_redirect: Option<String>,
             enable_api_mode: Option<bool>,
             state_ttl_secs: Option<u64>,
             auto_register_users: Option<bool>,
@@ -147,6 +155,7 @@ impl<'de> Deserialize<'de> for OAuth2AuthConf {
                 .state_cookie_name
                 .unwrap_or(defaults.state_cookie_name),
             post_login_redirect: raw.post_login_redirect,
+            post_login_error_redirect: raw.post_login_error_redirect,
             enable_api_mode: raw.enable_api_mode.unwrap_or(defaults.enable_api_mode),
             state_ttl_secs: raw.state_ttl_secs.unwrap_or(defaults.state_ttl_secs),
             auto_register_users: raw
@@ -277,6 +286,7 @@ mod tests {
             providers: Vec::new(),
             state_cookie_name: "oauth2_state".into(),
             post_login_redirect: None,
+            post_login_error_redirect: None,
             enable_api_mode: false,
             state_ttl_secs: 600,
             auto_register_users: true,
@@ -401,6 +411,7 @@ mod tests {
             enable = true
             state_cookie_name = "oauth2_state"
             post_login_redirect = "https://example.test/login"
+            post_login_error_redirect = "https://example.test/login?err=oauth2"
             enable_api_mode = true
             state_ttl_secs = 120
 
@@ -427,6 +438,10 @@ mod tests {
         assert_eq!(conf.providers.len(), 2);
         assert_eq!(conf.state_ttl_secs, 120);
         assert!(conf.enable_api_mode);
+        assert_eq!(
+            conf.post_login_error_redirect.as_deref(),
+            Some("https://example.test/login?err=oauth2")
+        );
 
         let google = conf.find_provider("google").unwrap();
         assert_eq!(google.client_id, "id-google");

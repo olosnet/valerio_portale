@@ -7,5 +7,9 @@ port = 8082
 [[proxies]]
 backend = "http://127.0.0.1:8080/api"
 rewrite = "/api"
+# Fondamentale per OAuth2: senza, Trunk segue il 302 del backend verso
+# l'IdP (es. Kanidm) e serve la sua pagina di login come se fosse del client
+# (URL bar invariata, form con action relativo che rompe il flusso).
+no_redirect = true
 
 

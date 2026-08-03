@@ -16,7 +16,8 @@ use app_modules::{
     },
     base::{
         enums::EnumsModule, filemanager::FileManagerModule,
-        filemanager_images::FileManagerImagesModule, groups::GroupsModule, users::UsersModule,
+        filemanager_images::FileManagerImagesModule, groups::GroupsModule, oauth2::OAuth2Module,
+        users::UsersModule,
     },
 };
 use clap::{Arg, ArgAction, Command};
@@ -126,6 +127,7 @@ async fn register_all_modules(mongo: &MongoDBService) -> Result<(), Box<dyn std:
     StrumentazioneModule::register(mongo).await?;
     FileManagerModule::register(mongo).await?;
     FileManagerImagesModule::register(mongo).await?;
+    OAuth2Module::register(mongo).await?;
     log::info!("All modules registered successfully.");
     Ok(())
 }

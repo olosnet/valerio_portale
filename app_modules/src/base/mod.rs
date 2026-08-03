@@ -5,5 +5,6 @@ pub mod filemanager_images;
 pub mod groups;
 pub mod identity;
 pub mod models;
+pub mod oauth2;
 pub mod permissions;
 pub mod users;
