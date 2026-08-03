@@ -62,8 +62,8 @@ use crate::sqlx::confs::SqlxDBConfig;
 #[cfg(feature = "templates")]
 use crate::templates::confs::TemplatesConf;
 
-/// Default configuration file name used by [`CornettiConfStruct::load`] and
-/// [`CornettiConf::load`] when `CORNETTI_CONF` is unset.
+/// Default configuration file name used by [`CornettiConf::load`] when
+/// `CORNETTI_CONF` is unset.
 pub const DEFAULT_CONFIG_FILE: &str = "./Config.toml";
 
 /// Environment variable selecting the main configuration file.
@@ -102,6 +102,16 @@ pub trait CornettiConf: Clone + std::fmt::Debug + Default + for<'de> Deserialize
         }
     }
 
+    /// Per-section validation hook, called at the end of [`Self::load`],
+    /// [`Self::from_toml_str`] and [`Self::from_toml_file`].
+    ///
+    /// Framework sections override this to enforce required values (e.g.
+    /// `app_id` for [`BaseConf`]) or cross-field rules (e.g. OAuth2 provider
+    /// checks).
+    fn validate(&self) -> CornettiResult<()> {
+        Ok(())
+    }
+
     /// Default reader: loads this section from the main configuration file
     /// (`CORNETTI_CONF` or `./Config.toml`; a missing file is tolerated),
     /// then merges the per-section override file selected by
@@ -109,8 +119,8 @@ pub trait CornettiConf: Clone + std::fmt::Debug + Default + for<'de> Deserialize
     ///
     /// # Errors
     ///
-    /// Returns a configuration error if a configured file is unreadable or
-    /// invalid.
+    /// Returns a configuration error if a configured file is unreadable,
+    /// invalid, or fails validation.
     fn load() -> CornettiResult<Self>
     where
         Self: Sized,
@@ -150,7 +160,9 @@ pub trait CornettiConf: Clone + std::fmt::Debug + Default + for<'de> Deserialize
             }
         }
 
-        Ok(section.try_into()?)
+        let conf: Self = section.try_into()?;
+        conf.validate()?;
+        Ok(conf)
     }
 
     /// Deserializes this section from a TOML string containing the section
@@ -158,12 +170,15 @@ pub trait CornettiConf: Clone + std::fmt::Debug + Default + for<'de> Deserialize
     ///
     /// # Errors
     ///
-    /// Returns a configuration error if the TOML is invalid.
+    /// Returns a configuration error if the TOML is invalid or fails
+    /// validation.
     fn from_toml_str(toml: &str) -> CornettiResult<Self>
     where
         Self: Sized,
     {
-        Ok(toml::from_str(toml)?)
+        let conf: Self = toml::from_str(toml)?;
+        conf.validate()?;
+        Ok(conf)
     }
 
     /// Deserializes this section from a TOML file containing the section
@@ -218,280 +233,6 @@ fn main_file_content() -> CornettiResult<Option<String>> {
     }
 }
 
-/// Authentication section (`[auth]` TOML section).
-#[cfg(any(feature = "auth", feature = "auth-apikey"))]
-#[derive(Clone, Debug, Deserialize, Default)]
-pub struct AuthSection {
-    /// JWT authentication (`[auth.jwt]`).
-    #[cfg(feature = "auth")]
-    #[serde(default)]
-    pub jwt: JwtAuthConf,
-    /// JWT session store (`[auth.jwt.store]`).
-    #[cfg(feature = "auth")]
-    #[serde(default)]
-    pub jwt_store: JWTStoreConf,
-    /// API key authentication (`[auth.apikey]`).
-    #[cfg(feature = "auth-apikey")]
-    #[serde(default)]
-    pub apikey: ApiKeyAuthConf,
-    /// OAuth2 authentication (`[auth.oauth2]`).
-    #[cfg(feature = "auth-oauth2")]
-    #[serde(default)]
-    pub oauth2: OAuth2AuthConf,
-}
-
-/// Mail section (`[mail]` TOML section).
-#[cfg(feature = "mail")]
-#[derive(Clone, Debug, Deserialize, Default)]
-pub struct MailSection {
-    /// Provider selection (`provider = "smtp" | "gmail"`).
-    #[serde(default)]
-    pub base: BaseMailConfig,
-    /// SMTP settings (`[mail.smtp]`).
-    #[serde(default)]
-    pub smtp: SmtpMailConf,
-    /// Gmail settings (`[mail.gmail]`); required only when
-    /// `provider = "gmail"`.
-    #[cfg(feature = "mail-gmail")]
-    #[serde(default)]
-    pub gmail: Option<GmailMailConf>,
-}
-
-/// gRPC section (`[grpc]` TOML section).
-#[cfg(feature = "grpc")]
-#[derive(Clone, Debug, Deserialize, Default)]
-pub struct GrpcSection {
-    /// Server settings (`[grpc.server]`).
-    #[serde(default)]
-    pub server: GrpcServerConf,
-    /// Client settings (`[grpc.client]`).
-    #[serde(default)]
-    pub client: GrpcClientConf,
-}
-
-/// Root configuration, deserialized from a TOML file.
-///
-/// Every section is optional: missing sections fall back to their defaults,
-/// so a minimal file containing only `app_id` is valid.
-///
-/// Custom application sections registered via the [`CornettiConf`] trait are
-/// not stored in typed fields; they can be extracted with
-/// [`Self::section`] / [`Self::has_section`].
-#[derive(Clone, Debug, Deserialize, Default)]
-pub struct CornettiConfStruct {
-    /// Base server + tenant settings (`[app]`).
-    #[serde(default)]
-    pub app: BaseConf,
-    /// Authentication settings (`[auth]`).
-    #[cfg(any(feature = "auth", feature = "auth-apikey"))]
-    #[serde(default)]
-    pub auth: AuthSection,
-    /// Redis connection (`[redis]`).
-    #[cfg(feature = "redisdb")]
-    #[serde(default)]
-    pub redis: RedisDBConfig,
-    /// SQL pool (`[sqlx]`).
-    #[cfg(feature = "sqlxdb")]
-    #[serde(default)]
-    pub sqlx: SqlxDBConfig,
-    /// MongoDB connection (`[mongo]`).
-    #[cfg(feature = "mongo")]
-    #[serde(default)]
-    pub mongo: MongoDBConfig,
-    /// Mail settings (`[mail]`).
-    #[cfg(feature = "mail")]
-    #[serde(default)]
-    pub mail: MailSection,
-    /// gRPC settings (`[grpc]`).
-    #[cfg(feature = "grpc")]
-    #[serde(default)]
-    pub grpc: GrpcSection,
-    /// Simple OTP generator (`[otp]`).
-    #[cfg(feature = "otp")]
-    #[serde(default)]
-    pub otp: SimpleOtpConf,
-    /// Template engine (`[templates]`).
-    #[cfg(feature = "templates")]
-    #[serde(default)]
-    pub templates: TemplatesConf,
-    /// File manager (`[filemanager]`).
-    #[cfg(feature = "filemanager")]
-    #[serde(default)]
-    pub filemanager: FileManagerConf,
-    /// Merged root table retained for [`Self::section`] extraction of custom
-    /// application sections.
-    #[serde(skip)]
-    raw_sections: Option<toml::Value>,
-}
-
-impl CornettiConfStruct {
-    /// Loads the configuration from the path given by the `CORNETTI_CONF`
-    /// environment variable, or from [`DEFAULT_CONFIG_FILE`] (`./Config.toml`)
-    /// when unset.
-    ///
-    /// A missing default file is tolerated (an empty configuration is used),
-    /// so setups that provide every section through the `CORNETTI_CONF_*`
-    /// environment variables work without a main file.
-    ///
-    /// Per-section overrides from the `CORNETTI_CONF_*` environment variables
-    /// are applied on top of the main file (see [`Self::load_from`]).
-    ///
-    /// # Errors
-    ///
-    /// Returns a configuration error if a configured file is unreadable,
-    /// invalid, or fails validation.
-    pub fn load() -> CornettiResult<Self> {
-        let content = main_file_content()?.unwrap_or_default();
-        Self::from_str_with_overrides(&content)
-    }
-
-    /// Loads the configuration from the given TOML file.
-    ///
-    /// Per-section overrides from the `CORNETTI_CONF_*` environment variables
-    /// are applied on top of the file: each variable points at a standalone
-    /// TOML file containing only that section's keys, merged key-by-key into
-    /// the corresponding section of the main file. The environment is scanned
-    /// dynamically, so sections registered by application modules via the
-    /// [`CornettiConf`] trait are supported as well.
-    ///
-    /// # Errors
-    ///
-    /// Returns a configuration error if a file is missing, unreadable, or
-    /// fails validation.
-    pub fn load_from(path: impl AsRef<Path>) -> CornettiResult<Self> {
-        let path = path.as_ref();
-        let content = std::fs::read_to_string(path).map_err(|err| {
-            crate::errors::conf::conf_missing_file().with_internal_detail(format!(
-                "Failed to read configuration file '{}': {err}",
-                path.display()
-            ))
-        })?;
-        Self::from_str_with_overrides(&content)
-    }
-
-    /// Parses a TOML string into a validated configuration.
-    ///
-    /// Unlike [`Self::load`] and [`Self::load_from`], no environment variables
-    /// are read and no files are accessed.
-    ///
-    /// # Errors
-    ///
-    /// Returns a configuration error if the TOML is invalid, required values
-    /// are missing, or cross-section validation fails.
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(toml: &str) -> CornettiResult<Self> {
-        let value: toml::Value = toml::from_str(toml)?;
-        let mut conf: Self = value.clone().try_into()?;
-        conf.raw_sections = Some(value);
-        Self::finalize(conf)
-    }
-
-    /// Parses the main TOML, overlays the per-section files selected by the
-    /// `CORNETTI_CONF_*` environment variables, and validates the result.
-    fn from_str_with_overrides(toml: &str) -> CornettiResult<Self> {
-        let mut root: toml::map::Map<String, toml::Value> = toml::from_str(toml)?;
-        apply_env_overrides(&mut root)?;
-
-        let value = toml::Value::Table(root);
-        let mut conf: Self = value.clone().try_into()?;
-        conf.raw_sections = Some(value);
-        Self::finalize(conf)
-    }
-
-    /// Whether the given custom section is present in the loaded raw table.
-    pub fn has_section<T: CornettiConf>(&self) -> bool {
-        self.raw_sections
-            .as_ref()
-            .is_some_and(|value| get_dotted(value, T::section_name()).is_some())
-    }
-
-    /// Extracts a custom section registered via the [`CornettiConf`] trait.
-    ///
-    /// Returns `T::default()` when the section is absent from the loaded
-    /// configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns a configuration error if the section content does not match
-    /// the custom type.
-    pub fn section<T: CornettiConf>(&self) -> CornettiResult<T> {
-        match self
-            .raw_sections
-            .as_ref()
-            .and_then(|value| get_dotted(value, T::section_name()))
-        {
-            Some(value) => Ok(value.clone().try_into()?),
-            None => Ok(T::default()),
-        }
-    }
-
-    /// Runs cross-section validation and the `app_id` check.
-    fn finalize(conf: Self) -> CornettiResult<Self> {
-        conf.validate()?;
-
-        if conf.app.app_id.is_empty() {
-            return Err(crate::errors::conf::conf_parse_error()
-                .with_internal_detail("app_id is required in the [app] section"));
-        }
-
-        Ok(conf)
-    }
-
-    /// Runs cross-section validation (OAuth2 provider names, duplicates, ...).
-    fn validate(&self) -> CornettiResult<()> {
-        #[cfg(feature = "auth-oauth2")]
-        self.auth.oauth2.validate()?;
-
-        Ok(())
-    }
-}
-
-/// Merges every `CORNETTI_CONF_<SECTION>` environment variable into `root`:
-/// the variable value is a path to a TOML file containing only that section's
-/// keys, merged key-by-key into `root[section]`. Dotted section names are
-/// skipped (nested sections are covered by their parent's override file).
-fn apply_env_overrides(root: &mut toml::map::Map<String, toml::Value>) -> CornettiResult<()> {
-    for (env_var, path) in std::env::vars() {
-        let Some(section) = env_var.strip_prefix(SECTION_CONFIG_ENV_PREFIX) else {
-            continue;
-        };
-
-        let section = section.to_lowercase();
-        if section.is_empty() || section.contains('.') {
-            continue;
-        }
-
-        let content = std::fs::read_to_string(&path).map_err(|err| {
-            crate::errors::conf::conf_missing_file().with_internal_detail(format!(
-                "Failed to read {env_var} file '{path}': {err}"
-            ))
-        })?;
-
-        let section_value: toml::Value = toml::from_str(&content).map_err(|err| {
-            crate::errors::conf::conf_parse_error().with_internal_detail(format!(
-                "{env_var} file '{path}' is not valid TOML: {err}"
-            ))
-        })?;
-
-        let toml::Value::Table(section_table) = section_value else {
-            return Err(crate::errors::conf::conf_parse_error().with_internal_detail(format!(
-                "{env_var} file '{path}' must contain a TOML table"
-            )));
-        };
-
-        match root.get_mut(&section) {
-            Some(toml::Value::Table(base_table)) => {
-                merge_tables(base_table, section_table);
-            }
-            _ => {
-                root.insert(section, toml::Value::Table(section_table));
-            }
-        }
-    }
-
-    Ok(())
-}
-
 /// Recursively merges `overlay` into `base`: scalar and array values replace
 /// the base value, tables are merged key-by-key.
 fn merge_tables(
@@ -513,6 +254,14 @@ fn merge_tables(
 impl CornettiConf for BaseConf {
     fn section_name() -> &'static str {
         "app"
+    }
+
+    fn validate(&self) -> CornettiResult<()> {
+        if self.app_id.is_empty() {
+            return Err(crate::errors::conf::conf_parse_error()
+                .with_internal_detail("app_id is required in the [app] section"));
+        }
+        Ok(())
     }
 }
 
@@ -541,6 +290,10 @@ impl CornettiConf for ApiKeyAuthConf {
 impl CornettiConf for OAuth2AuthConf {
     fn section_name() -> &'static str {
         "auth.oauth2"
+    }
+
+    fn validate(&self) -> CornettiResult<()> {
+        OAuth2AuthConf::validate(self)
     }
 }
 
@@ -648,28 +401,28 @@ mod tests {
 
     #[test]
     fn empty_toml_errors_without_app_id() {
-        let err = CornettiConfStruct::from_str("").unwrap_err();
+        let err = BaseConf::from_toml_str("").unwrap_err();
         assert_eq!(err.corr_id, "BE_CONF_PARSE_ERROR");
     }
 
     #[test]
     fn minimal_toml_is_valid() {
-        let conf = CornettiConfStruct::from_str("[app]\napp_id = \"test\"").unwrap();
-        assert_eq!(conf.app.app_id, "test");
-        assert_eq!(conf.app.port, 8080);
+        let conf = BaseConf::from_toml_str("app_id = \"test\"").unwrap();
+        assert_eq!(conf.app_id, "test");
+        assert_eq!(conf.port, 8080);
     }
 
     #[test]
     fn invalid_toml_errors() {
-        let err = CornettiConfStruct::from_str("[app\napp_id = ").unwrap_err();
+        let err = BaseConf::from_toml_str("host = [").unwrap_err();
         assert_eq!(err.corr_id, "BE_CONF_PARSE_ERROR");
         assert!(!err.internal_detail.is_empty());
     }
 
     #[test]
-    fn defaults_apply_without_features_section() {
-        let conf = CornettiConfStruct::default();
-        assert_eq!(conf.app.host, "localhost");
+    fn defaults_apply_without_section() {
+        let conf = BaseConf::default();
+        assert_eq!(conf.host, "localhost");
     }
 
     #[test]
@@ -688,21 +441,14 @@ mod tests {
 
     #[test]
     fn custom_section_extraction() {
-        let conf = CornettiConfStruct::from_str(
-            "[app]\napp_id = \"t\"\n[test_app]\napi_key = \"k\"\nretries = 3\n",
-        )
-        .unwrap();
-        assert!(conf.has_section::<TestAppConf>());
-        let custom = conf.section::<TestAppConf>().unwrap();
+        let custom = TestAppConf::from_toml_str("api_key = \"k\"\nretries = 3\n").unwrap();
         assert_eq!(custom.api_key, "k");
         assert_eq!(custom.retries, 3);
     }
 
     #[test]
     fn custom_section_missing_returns_default() {
-        let conf = CornettiConfStruct::from_str("[app]\napp_id = \"t\"").unwrap();
-        assert!(!conf.has_section::<TestAppConf>());
-        let custom = conf.section::<TestAppConf>().unwrap();
+        let custom = TestAppConf::from_toml_str("").unwrap();
         assert_eq!(custom.api_key, "");
         assert_eq!(custom.retries, 0);
     }
@@ -764,13 +510,14 @@ mod tests {
             std::env::set_var("CORNETTI_CONF_REDIS", &redis);
         }
 
-        let conf = CornettiConfStruct::load().unwrap();
-        assert_eq!(conf.app.app_id, "env-app");
-        assert_eq!(conf.app.port, 9090);
+        let base_conf = BaseConf::load().unwrap();
+        assert_eq!(base_conf.app_id, "env-app");
+        assert_eq!(base_conf.port, 9090);
         #[cfg(feature = "redisdb")]
         {
-            assert_eq!(conf.redis.db_host, "override-host");
-            assert_eq!(conf.redis.db_port, "6379");
+            let redis_conf = RedisDBConfig::load().unwrap();
+            assert_eq!(redis_conf.db_host, "override-host");
+            assert_eq!(redis_conf.db_port, "6379");
         }
 
         // SAFETY: restore clean env.
@@ -791,45 +538,12 @@ mod tests {
         unsafe {
             std::env::set_var("CORNETTI_CONF", &missing);
         }
-        let err = CornettiConfStruct::load().unwrap_err();
+        let err = BaseConf::load().unwrap_err();
         assert_eq!(err.corr_id, "BE_CONF_PARSE_ERROR");
+        assert!(err.internal_detail.contains("app_id"));
         // SAFETY: restore clean env.
         unsafe {
             std::env::remove_var("CORNETTI_CONF");
-        }
-    }
-
-    #[test]
-    fn nested_auth_section_merges() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        #[cfg(feature = "auth")]
-        {
-            let dir = std::env::temp_dir();
-            let auth = dir.join("cornetti-test-auth.toml");
-            std::fs::write(
-                &auth,
-                "[jwt]\nexpire_minutes = 30\n[jwt.access_cookie]\nname = \"at\"\n",
-            )
-            .unwrap();
-
-            // SAFETY: test-only env mutation.
-            unsafe {
-                std::env::set_var("CORNETTI_CONF_AUTH", &auth);
-            }
-
-            let conf = CornettiConfStruct::from_str_with_overrides(
-                "[app]\napp_id = \"t\"\n[auth.jwt]\nexpire_minutes = 60\n[auth.jwt.refresh_cookie]\npath = \"/custom\"\n",
-            )
-            .unwrap();
-            assert_eq!(conf.auth.jwt.jwt_expire_minutes, 30);
-            assert_eq!(conf.auth.jwt.refresh_cookie.path, "/custom");
-            assert_eq!(conf.auth.jwt.access_cookie.name, "at");
-
-            // SAFETY: restore clean env.
-            unsafe {
-                std::env::remove_var("CORNETTI_CONF_AUTH");
-            }
-            let _ = std::fs::remove_file(&auth);
         }
     }
 
@@ -845,12 +559,8 @@ mod tests {
             std::env::set_var("CORNETTI_CONF_TEST_APP", &custom);
         }
 
-        let conf = CornettiConfStruct::from_str_with_overrides(
-            "[app]\napp_id = \"t\"\n[test_app]\napi_key = \"k\"\nretries = 3\n",
-        )
-        .unwrap();
-        let custom_conf = conf.section::<TestAppConf>().unwrap();
-        assert_eq!(custom_conf.api_key, "k");
+        let custom_conf = TestAppConf::load().unwrap();
+        assert_eq!(custom_conf.api_key, "");
         assert_eq!(custom_conf.retries, 7);
 
         // SAFETY: restore clean env.
@@ -860,48 +570,46 @@ mod tests {
         let _ = std::fs::remove_file(&custom);
     }
 
-    #[cfg(feature = "mongo")]
+    #[cfg(feature = "redisdb")]
     #[test]
     fn section_env_file_invalid_toml_errors() {
         let _guard = ENV_LOCK.lock().unwrap();
         let dir = std::env::temp_dir();
-        let mongo = dir.join("cornetti-test-mongo-bad.toml");
-        std::fs::write(&mongo, "db_host = [not valid").unwrap();
+        let redis = dir.join("cornetti-test-redis-bad.toml");
+        std::fs::write(&redis, "db_host = [not valid").unwrap();
 
         // SAFETY: test-only env mutation.
         unsafe {
-            std::env::set_var("CORNETTI_CONF_MONGO", &mongo);
+            std::env::set_var("CORNETTI_CONF_REDIS", &redis);
         }
 
-        let err = CornettiConfStruct::from_str_with_overrides("[app]\napp_id = \"t\"")
-            .unwrap_err();
+        let err = RedisDBConfig::load().unwrap_err();
         assert_eq!(err.corr_id, "BE_CONF_PARSE_ERROR");
-        assert!(err.internal_detail.contains("CORNETTI_CONF_MONGO"));
+        assert!(err.internal_detail.contains("CORNETTI_CONF_REDIS"));
 
         // SAFETY: restore clean env.
         unsafe {
-            std::env::remove_var("CORNETTI_CONF_MONGO");
+            std::env::remove_var("CORNETTI_CONF_REDIS");
         }
-        let _ = std::fs::remove_file(&mongo);
+        let _ = std::fs::remove_file(&redis);
     }
 
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "redisdb")]
     #[test]
     fn section_env_file_missing_errors() {
         let _guard = ENV_LOCK.lock().unwrap();
-        let missing = std::env::temp_dir().join("cornetti-test-grpc-missing.toml");
+        let missing = std::env::temp_dir().join("cornetti-test-redis-missing.toml");
         // SAFETY: test-only env mutation.
         unsafe {
-            std::env::set_var("CORNETTI_CONF_GRPC", &missing);
+            std::env::set_var("CORNETTI_CONF_REDIS", &missing);
         }
 
-        let err = CornettiConfStruct::from_str_with_overrides("[app]\napp_id = \"t\"")
-            .unwrap_err();
+        let err = RedisDBConfig::load().unwrap_err();
         assert_eq!(err.corr_id, "BE_CONF_MISSING_FILE");
 
         // SAFETY: restore clean env.
         unsafe {
-            std::env::remove_var("CORNETTI_CONF_GRPC");
+            std::env::remove_var("CORNETTI_CONF_REDIS");
         }
     }
 

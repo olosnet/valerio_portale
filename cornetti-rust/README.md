@@ -30,7 +30,7 @@ No workspace manifest. Rustc 1.85+ required.
 | `filemanager` | `filemanager` | File metadata models, upload/validation helpers, unique filename generation, MIME detection |
 | `filemanager::images` | `filemanager-images` | Image read (JPEG/PNG/WebP with format fallback), resize (Fit/Fill/Stretch, Lanczos3), write |
 | `templates` | `templates` | Minijinja template rendering with filesystem path loader |
-| `conf` | (always) | TOML configuration loader: `CornettiConfStruct` + `CornettiConf` trait, one section per module |
+| `conf` | (always) | TOML configuration loader: `CornettiConf` trait, one section per module |
 | `cornetti_macros` | (separate crate) | Proc-macro crate (v0.1.0): `AutoFromPartial` and `AutoToFull` derives |
 
 ## Configuration
@@ -55,40 +55,37 @@ override with the `CORNETTI_CONF` environment variable), one section per module:
 [filemanager]          # uploads
 ```
 
-Load it with:
+Every configuration struct implements the `CornettiConf` trait, which provides
+the default reader: each conf loads its own section from the default
+`Config.toml` (or the `CORNETTI_CONF` file), overridable with its per-section
+environment variable. Bring the trait into scope and load sections
+individually — there is no aggregate configuration struct:
 
 ```rust
-use cornetti::conf::CornettiConfStruct;
+use cornetti::conf::CornettiConf;
 
-let conf = CornettiConfStruct::from_str(r#"
-    [app]
-    app_id = "my-app"
-    host = "0.0.0.0"
-"#).unwrap();
-assert_eq!(conf.app.app_id, "my-app");
+// Parse a section from its own TOML string (no section header):
+let base = cornetti::core::confs::BaseConf::from_toml_str("app_id = \"my-app\"").unwrap();
+assert_eq!(base.app_id, "my-app");
+assert_eq!(base.port, 8080);
 ```
 
 Every section is optional and falls back to defaults; only `app_id` is
-required. Secrets (passwords, PEM keys, service accounts) can be inlined or
-given via a sibling `{field}_file = "/path"` key, read at load time. A fully
-commented example is in `cornetti.example.toml` at the repository root.
+required — `BaseConf` validates it at load time (its `validate()` hook is
+invoked by the trait reader). Secrets (passwords, PEM keys, service accounts)
+can be inlined or given via a sibling `{field}_file = "/path"` key, read at
+load time. A fully commented example is in `cornetti.example.toml` at the
+repository root.
 
 ### The `CornettiConf` trait
 
-Every configuration struct (framework or application-defined) implements the
-`CornettiConf` trait, which provides a default reader: each conf loads its own
-section from the default `Config.toml` (or the `CORNETTI_CONF` file),
-overridable with its per-section environment variable:
+Framework and application-defined configuration structs implement the
+`CornettiConf` trait to register their own TOML section. The trait provides
+the default reader (`load`, `from_toml_str`, `from_toml_file`) plus an
+overridable `validate()` hook for required values and cross-field rules:
 
 ```rust
-use cornetti::conf::{CornettiConf, CornettiConfStruct};
-
-// Parse a section from its own TOML string:
-let redis = cornetti::redis::confs::RedisDBConfig::from_toml_str(r#"
-    db_host = "cache.internal"
-    db_port = "6380"
-"#).unwrap();
-assert_eq!(redis.db_host, "cache.internal");
+use cornetti::conf::CornettiConf;
 
 // Register an application-specific section:
 #[derive(serde::Deserialize, Clone, Debug, Default)]
@@ -101,13 +98,9 @@ impl CornettiConf for MyAppConf {
     fn section_name() -> &'static str { "my_app" }
 }
 
-let conf = CornettiConfStruct::from_str(r#"
-    [app]
-    app_id = "my-app"
-    [my_app]
+let my_app = MyAppConf::from_toml_str(r#"
     api_key = "sk-..."
 "#).unwrap();
-let my_app: MyAppConf = conf.section().unwrap();
 assert_eq!(my_app.api_key, "sk-...");
 ```
 
@@ -115,18 +108,18 @@ assert_eq!(my_app.api_key, "sk-...");
 
 Each section can also be loaded from its own TOML file, selected by an
 environment variable (`CORNETTI_CONF_<SECTION>`, derived from
-`section_name()` — custom sections included):
+`section_name()` — custom sections included). Dotted (nested) section names
+such as `[auth.jwt]` or `[grpc.server]` have no per-section environment
+variable: configure them in the main file.
 
 | Env var | Section |
 |---|---|
 | `CORNETTI_CONF` | Main file (default `./Config.toml`) |
 | `CORNETTI_CONF_APP` | `[app]` |
-| `CORNETTI_CONF_AUTH` | `[auth]` |
 | `CORNETTI_CONF_REDIS` | `[redis]` |
 | `CORNETTI_CONF_SQLX` | `[sqlx]` |
 | `CORNETTI_CONF_MONGO` | `[mongo]` |
 | `CORNETTI_CONF_MAIL` | `[mail]` |
-| `CORNETTI_CONF_GRPC` | `[grpc]` |
 | `CORNETTI_CONF_OTP` | `[otp]` |
 | `CORNETTI_CONF_TEMPLATES` | `[templates]` |
 | `CORNETTI_CONF_FILEMANAGER` | `[filemanager]` |
@@ -149,14 +142,14 @@ scope):
 
 ```rust
 use cornetti::conf::CornettiConf;
-use cornetti::redis::confs::RedisDBConfig;
+use cornetti::core::confs::BaseConf;
 
-let conf = RedisDBConfig::from_toml_str(r#"
-    db_host = "cache.internal"
-    db_number = "2"
+let conf = BaseConf::from_toml_str(r#"
+    app_id = "my-app"
+    host = "0.0.0.0"
 "#).unwrap();
-assert_eq!(conf.db_host, "cache.internal");
-assert_eq!(conf.db_number, "2");
+assert_eq!(conf.host, "0.0.0.0");
+assert_eq!(conf.app_id, "my-app");
 ```
 
 See `cornetti/src/conf/mod.rs` for the loader and each subsystem's `confs.rs`

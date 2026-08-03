@@ -13,17 +13,26 @@ feature (implies `auth` and `reqwest`).
 
 ### Requirement: Provider dispatch
 
-`MailService::new(&MailSection)` SHALL use the `[mail]` TOML section to select the
-email provider (`provider = "smtp"` or `"gmail"`), defaulting to SMTP, with
-per-provider settings from `[mail.smtp]` and `[mail.gmail]`. Constructing with
-Gmail without the `mail-gmail` feature SHALL return a 500 error. Selecting Gmail
-without a `[mail.gmail]` section SHALL return a 500 configuration error.
+`MailService::new()` SHALL use the `[mail]` TOML section to select the
+email provider (`provider = "smtp"` or `"gmail"`), defaulting to SMTP, and
+load the per-provider settings itself from `[mail.smtp]` and `[mail.gmail]`.
+No default mail configuration SHALL be used: selecting a provider without its
+configuration section SHALL return a 500 configuration error. Constructing
+with Gmail without the `mail-gmail` feature SHALL return a 500 error.
 
 See `MailService` in `src/mail/services.rs`.
 
 #### Scenario: SMTP provider selected
-- WHEN `provider` is `"smtp"` or unset
+- WHEN `provider` is `"smtp"` or unset and `[mail.smtp]` is configured
 - THEN `MailService::new()` SHALL create an SMTP-backed mail service
+
+#### Scenario: SMTP provider without section
+- WHEN `provider` is `"smtp"` and the `[mail.smtp]` section is missing or empty
+- THEN `MailService::new()` SHALL return a 500 configuration error
+
+#### Scenario: Gmail without section
+- WHEN `provider` is `"gmail"` and the `[mail.gmail]` section is missing or empty
+- THEN `MailService::new()` SHALL return a 500 configuration error
 
 #### Scenario: Gmail without feature
 - WHEN `provider` is `"gmail"` and `mail-gmail` feature is not enabled

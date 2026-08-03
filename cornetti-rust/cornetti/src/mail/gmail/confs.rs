@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer};
 ///
 /// Deserialized from the `[mail.gmail.service_account]` TOML table (or, with
 /// `service_account_file`, from a JSON file in Google's export format).
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
 pub struct ServiceAccountJson {
     /// Private key ID from the service account key.
     #[serde(rename = "private_key_id")]
@@ -22,7 +22,7 @@ pub struct ServiceAccountJson {
 }
 
 /// Gmail API email configuration (`[mail.gmail]` TOML section).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct GmailMailConf {
     /// Default from address (defaults to the service account `client_email`).
     pub email_from: String,

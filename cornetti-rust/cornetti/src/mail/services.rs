@@ -1,15 +1,18 @@
 use crate::{
+    conf::CornettiConf,
     core::models::CornettiResult,
     mail::{
         EmailAttachment,
         confs::{AvailableProviders, BaseMailConfig, MailContentType},
-        smtp::services::SendSmtpMailService,
+        smtp::{confs::SmtpMailConf, services::SendSmtpMailService},
     },
 };
 #[cfg(not(feature = "mail-gmail"))]
 use crate::errors::mail;
 use lettre::message::header::ContentType;
 
+#[cfg(feature = "mail-gmail")]
+use crate::mail::gmail::confs::GmailMailConf;
 #[cfg(feature = "mail-gmail")]
 use crate::mail::gmail::services::SendGmailMailService;
 
@@ -28,29 +31,40 @@ pub struct MailService {
 impl MailService {
     /// Creates a new mail service based on the configured provider.
     ///
-    /// The provider and per-provider settings come from the `[mail]` section
-    /// of the TOML configuration.
+    /// The provider and per-provider settings are loaded from the TOML
+    /// configuration (`[mail]`, `[mail.smtp]` and `[mail.gmail]` sections).
+    /// No default mail settings are used: selecting a provider without its
+    /// configuration section returns an error.
     ///
     /// # Errors
     ///
     /// Returns a 500 error if Gmail is selected but the `mail-gmail` feature
-    /// is not enabled, or if the `[mail.gmail]` section is missing.
-    pub fn new(mail_conf: &crate::conf::MailSection) -> CornettiResult<Self> {
-        let conf = mail_conf.base.clone();
+    /// is not enabled, or if the selected provider's section (`[mail.smtp]`
+    /// or `[mail.gmail]`) is missing or empty.
+    pub fn new() -> CornettiResult<Self> {
+        let conf = BaseMailConfig::load()?;
 
         let inner = match conf.used_provider {
             AvailableProviders::Smtp => {
-                InnerMailService::Smtp(SendSmtpMailService::new(mail_conf.smtp.clone()))
+                let smtp_conf = SmtpMailConf::load()?;
+                if smtp_conf == SmtpMailConf::default() {
+                    return Err(crate::errors::conf::conf_invalid_value().with_internal_detail(
+                        "provider = \"smtp\" but the [mail.smtp] section is missing or empty",
+                    ));
+                }
+                InnerMailService::Smtp(SendSmtpMailService::new(smtp_conf))
             }
             AvailableProviders::Gmail => {
                 #[cfg(feature = "mail-gmail")]
                 {
-                    let gmail_conf = mail_conf.gmail.as_ref().ok_or_else(|| {
-                        crate::errors::conf::conf_invalid_value().with_internal_detail(
-                            "provider = \"gmail\" but the [mail.gmail] section is missing",
-                        )
-                    })?;
-                    InnerMailService::Gmail(SendGmailMailService::new(gmail_conf.clone()))
+                    let gmail_conf = GmailMailConf::load()?;
+                    if gmail_conf == GmailMailConf::default() {
+                        return Err(crate::errors::conf::conf_invalid_value()
+                            .with_internal_detail(
+                                "provider = \"gmail\" but the [mail.gmail] section is missing or empty",
+                            ));
+                    }
+                    InnerMailService::Gmail(SendGmailMailService::new(gmail_conf))
                 }
                 #[cfg(not(feature = "mail-gmail"))]
                 {

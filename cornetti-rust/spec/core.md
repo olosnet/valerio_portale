@@ -148,41 +148,42 @@ See `BaseModule` in `src/core/traits.rs`.
 ### Requirement: Configuration from TOML
 
 `BaseConf` SHALL be deserialized from the `[app]` TOML section with sensible
-defaults. `app_id` SHALL be required: `CornettiConfStruct::from_str` and
-`CornettiConfStruct::load_from` SHALL return a configuration error when it is missing.
+defaults. `app_id` SHALL be required: the `CornettiConf` reader for `BaseConf`
+SHALL return a configuration error when it is missing (via its `validate()`
+hook).
 `tenant_id` SHALL fall back to `DEFAULT_TENANT_ID` when absent or empty.
 `api_prefix` SHALL have trailing slashes trimmed.
 Middleware (`JWTMiddleware`, `JwtAuthorizationMiddleware`) SHALL require an explicit `tenant_id` parameter — no fallback.
 
 `shared_resources_id` SHALL default to `"shared_res_app_default"` when unset.
 
-The configuration loader (`CornettiConfStruct`) SHALL support three sources:
-- a main TOML file, from `CORNETTI_CONF` or `./Config.toml` (`load()`, or an
-  explicit path with `load_from()`)
+The `CornettiConf` trait SHALL support three sources:
+- a main TOML file, from `CORNETTI_CONF` or `./Config.toml` (`load()`)
 - per-section TOML files selected by `CORNETTI_CONF_<SECTION>` environment
-  variables (`CORNETTI_CONF_APP`, `CORNETTI_CONF_AUTH`, `CORNETTI_CONF_REDIS`,
+  variables (`CORNETTI_CONF_APP`, `CORNETTI_CONF_REDIS`,
   `CORNETTI_CONF_SQLX`, `CORNETTI_CONF_MONGO`, `CORNETTI_CONF_MAIL`,
-  `CORNETTI_CONF_GRPC`, `CORNETTI_CONF_OTP`, `CORNETTI_CONF_TEMPLATES`,
+  `CORNETTI_CONF_OTP`, `CORNETTI_CONF_TEMPLATES`,
   `CORNETTI_CONF_FILEMANAGER`), containing only that section's keys
-- `from_str()` for pure string parsing (no environment access)
+- `from_toml_str()` for pure string parsing (no environment access) and
+  `from_toml_file()` for standalone section files
 
 Per-section files SHALL be merged key-by-key into the main file: nested tables
 merge recursively, scalars and arrays replace. A missing main file SHALL be
-tolerated by `load()` when the sections come from the environment files. The
-environment SHALL be scanned dynamically, so sections registered by
-application modules are supported as well.
+tolerated by `load()` when the sections come from the environment files. Each
+conf loads only its own section; there is no aggregate configuration struct.
+Dotted (nested) section names (`auth.jwt`, `grpc.server`, ...) SHALL have no
+per-section environment variable — they are configured in the main file.
 
-Each section conf struct SHALL implement the `CornettiConf` trait, which
+Every section conf struct SHALL implement the `CornettiConf` trait, which
 SHALL provide a default reader `load()` (section from the main file,
 overridable with the per-section environment variable derived from
 `section_name()`), plus `from_toml_str()` and `from_toml_file()` standalone
-constructors using the section content format. Application modules SHALL be
-able to register custom sections by implementing `CornettiConf`; the loader
-SHALL expose them via `CornettiConfStruct::section::<T>()` (defaults when the
-section is absent) and `has_section::<T>()`.
+constructors using the section content format, and a `validate()` hook
+(default no-op) invoked by all three readers. Application modules SHALL be
+able to register custom sections by implementing `CornettiConf` and load them
+with `MyConf::load()` / `MyConf::from_toml_str()`.
 
-See `BaseConf` in `src/core/confs.rs` and `CornettiConfStruct`/`CornettiConf`
-in `src/conf/mod.rs`.
+See `BaseConf` in `src/core/confs.rs` and `CornettiConf` in `src/conf/mod.rs`.
 
 #### Scenario: Default configuration
 - WHEN the `[app]` section contains only `app_id`

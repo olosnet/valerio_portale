@@ -5,7 +5,7 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer};
 
 /// SMTP transport security mode.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SmtpMailTransport {
     /// Direct TLS connection (SMTPS).
     SmtpTls,
@@ -16,7 +16,7 @@ pub enum SmtpMailTransport {
 }
 
 /// Error for unrecognized SMTP transport strings.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SmtpMailTransportParseError;
 
 impl FromStr for SmtpMailTransport {
@@ -50,7 +50,7 @@ impl<'de> Deserialize<'de> for SmtpMailTransport {
 }
 
 /// SMTP email configuration (`[mail.smtp]` TOML section).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SmtpMailConf {
     /// Default from address (default: `"test@email.com"`).
     pub email_from: String,

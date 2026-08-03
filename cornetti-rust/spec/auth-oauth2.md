@@ -371,8 +371,9 @@ the user SHALL be created via `OAuth2UserHandler::create_from_oauth2`; when
 `false` the callback SHALL fail with `user_not_found` (404) and no user SHALL
 be created.
 
-`OAuth2AuthConf::validate()` SHALL run at configuration load time
-(`CornettiConfStruct::from_str`) when OAuth2 is enabled:
+`OAuth2AuthConf::validate()` SHALL run at configuration load time via the
+`CornettiConf::validate()` hook (invoked by `OAuth2AuthConf::load()` and
+`from_toml_str()`) when OAuth2 is enabled:
 - an unknown provider name (not a built-in: google, github, microsoft, apple,
   facebook) SHALL produce a configuration error
 - a duplicated provider name SHALL produce a configuration error

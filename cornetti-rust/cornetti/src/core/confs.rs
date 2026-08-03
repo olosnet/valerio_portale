@@ -4,8 +4,8 @@ use serde::{Deserialize, Deserializer};
 /// Base application configuration, read from the `[app]` TOML section.
 ///
 /// All fields fall back to defaults when absent from the configuration file.
-/// `app_id` is the only required value: [`crate::conf::CornettiConfStruct::from_str`]
-/// and [`crate::conf::CornettiConfStruct::load_from`] reject a configuration
+/// `app_id` is the only required value: the [`crate::conf::CornettiConf`]
+/// reader for `BaseConf` (its `validate()` hook) rejects a configuration
 /// without it.
 #[derive(Clone, Debug)]
 pub struct BaseConf {

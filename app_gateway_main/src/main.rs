@@ -18,17 +18,28 @@ use actix_web::{App, HttpServer, web};
 use app_modules::base::auth::services::UserAuthorizationService;
 use cornetti::actix::auth::middlewares::authentication::JWTMiddleware;
 use cornetti::actix::helpers::default_404_json;
+use cornetti::auth::confs::{JWTStoreConf, JwtAuthConf};
 use cornetti::auth::helpers::utoipa::get_jwt_auth_security_schemes;
+use cornetti::conf::CornettiConf;
+use cornetti::core::confs::BaseConf;
 use cornetti::core::helpers::common::apply_api_prefix;
 use cornetti::core::helpers::utoipa::combine_api_docs;
-use cornetti::core::models::{AppInfo, CornettiHttpFilter, CornettiHttpMethod};
+use cornetti::core::models::{AppInfo, CornettiError, CornettiHttpFilter, CornettiHttpMethod};
+use cornetti::filemanager::confs::FileManagerConf;
+use cornetti::mail::smtp::confs::SmtpMailConf;
 use cornetti::mongo::confs::MongoDBConfig;
 use cornetti::mongo::services::MongoDBService;
+use cornetti::redis::confs::RedisDBConfig;
 use cornetti::redis::services::RedisDBService;
+use cornetti::templates::confs::TemplatesConf;
 use cornetti::templates::services::TemplatesService;
 use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+
+fn map_conf_err(e: CornettiError) -> std::io::Error {
+    std::io::Error::other(e.detail)
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -83,19 +94,15 @@ async fn main() -> std::io::Result<()> {
         git_branch: env!("GIT_BRANCH").to_string(),
     });
 
-    let conf = cornetti::conf::CornettiConfStruct::load()
-        .map_err(|e| std::io::Error::other(e.detail))?;
-
-    let mongo_config: MongoDBConfig = conf.mongo.clone();
+    let base_conf = Arc::new(BaseConf::load().map_err(map_conf_err)?);
+    let mongo_config: MongoDBConfig = MongoDBConfig::load().map_err(map_conf_err)?;
     let mongo_service: Arc<MongoDBService> =
         Arc::new(MongoDBService::new(&mongo_config).await.unwrap());
 
-    let redis_config = conf.redis.clone();
+    let redis_config = RedisDBConfig::load().map_err(map_conf_err)?;
     let redis_service: Arc<RedisDBService> = Arc::new(RedisDBService::new(&redis_config).unwrap());
 
-    let base_conf = Arc::new(conf.app.clone());
-
-    let sessions_store_conf = conf.auth.jwt_store.clone();
+    let sessions_store_conf = JWTStoreConf::load().map_err(map_conf_err)?;
 
     // Session store for JWT
     let session_store: Arc<cornetti::redis::auth::RedisSessionStore> =
@@ -108,13 +115,15 @@ async fn main() -> std::io::Result<()> {
     let app_state: Arc<AppState> = Arc::new(AppState {
         mongo: mongo_service,
         redis: redis_service,
-        templates: Arc::new(TemplatesService::new(conf.templates.clone())),
-        auth_conf: Arc::new(conf.auth.jwt.clone()),
+        templates: Arc::new(TemplatesService::new(
+            TemplatesConf::load().map_err(map_conf_err)?,
+        )),
+        auth_conf: Arc::new(JwtAuthConf::load().map_err(map_conf_err)?),
         base_conf,
-        filemanager_conf: Arc::new(conf.filemanager.clone()),
-        templates_conf: Arc::new(conf.templates.clone()),
-        mail_conf: Arc::new(conf.mail.smtp.clone()),
-        app_info: app_info,
+        filemanager_conf: Arc::new(FileManagerConf::load().map_err(map_conf_err)?),
+        templates_conf: Arc::new(TemplatesConf::load().map_err(map_conf_err)?),
+        mail_conf: Arc::new(SmtpMailConf::load().map_err(map_conf_err)?),
+        app_info,
         session_store: session_store.clone(),
     });
 

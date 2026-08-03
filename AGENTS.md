@@ -20,9 +20,9 @@
 - Logging: set `RUST_LOG=info` (or `debug`, `warn`).
 
 ## Required services & config
-- MongoDB and Redis must be available at startup. Config is TOML-based: every conf struct implements `CornettiConf` (loads its `[section]` from `./Config.toml` via `X::load()`, or use the aggregate `CornettiConfStruct::load()`). No more `from_env()`.
+- MongoDB and Redis must be available at startup. Config is TOML-based: every conf struct implements `CornettiConf` (loads its `[section]` from `./Config.toml` via `X::load()`). No aggregate config struct, no `from_env()`.
 - Server loads Mongo, Redis, JWT (`[auth.jwt]` + `[auth.jwt.store]`), filemanager, templates, and SMTP (`[mail]`/`[mail.smtp]`) from Config.toml. Full section table in `app_gateway_main/CONFS.MD`.
-- `[app] app_id` is required (`CornettiConfStruct::load()` fails without it); tenant via `[app] tenant_id` (no more `TenantConf`).
+- `[app] app_id` is required (`BaseConf` validates it at load via its `validate()` hook); tenant via `[app] tenant_id` (no more `TenantConf`).
 - API prefix via `[app] api_prefix`.
 
 ## Domain modules (in `app_modules/src/`)
