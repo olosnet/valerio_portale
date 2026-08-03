@@ -8,7 +8,7 @@ use oauth2::{
 
 use crate::auth_oauth2::confs::{OAuth2AuthConf, OAuth2ProviderConf};
 use crate::auth_oauth2::models::{OAuth2Metadata, OAuth2StateData};
-use crate::auth_oauth2::providers::{apple, BuiltinProvider};
+use crate::auth_oauth2::providers::{apple, custom, BuiltinProvider};
 use crate::auth_oauth2::traits::{OAuth2Provider, OAuth2SessionStore, OAuth2UserHandler};
 use crate::core::helpers::sec::constant_time_eq;
 use crate::core::models::CornettiResult;
@@ -88,17 +88,45 @@ fn validate_pkce_verifier(verifier: &str) -> CornettiResult<()> {
 ///
 /// Note: does NOT emit JWTs — it returns the data. JWT issuance and cookie
 /// management is delegated to the actix integration (`actix/auth_oauth2/helpers.rs`).
-pub struct OAuth2Service<U, T, S>
-where
-    U: OAuth2UserHandler<T>,
-    S: OAuth2SessionStore,
-{
+pub struct OAuth2Service<U, T, S> {
     conf: Arc<OAuth2AuthConf>,
     user_handler: Arc<U>,
     http_client: reqwest::Client,
     state_store: Arc<S>,
     tenant_id: String,
     _marker: std::marker::PhantomData<T>,
+}
+
+impl<U, T, S> OAuth2Service<U, T, S> {
+    /// Resolves the auth and token URLs for a provider: static URLs for
+    /// built-ins, configured `auth_url`/`token_url` for custom providers.
+    ///
+    /// # Errors
+    /// Returns `invalid_provider` if a custom provider has no URL configured
+    /// (should be caught earlier by `OAuth2AuthConf::validate`).
+    fn provider_urls(
+        provider_conf: &OAuth2ProviderConf,
+    ) -> CornettiResult<(String, String)> {
+        match BuiltinProvider::from_name(&provider_conf.name) {
+            Some(builtin) => Ok((
+                builtin.auth_url().to_string(),
+                builtin.token_url().to_string(),
+            )),
+            None => {
+                let auth_url = provider_conf.auth_url.clone().ok_or_else(|| {
+                    errors::auth_oauth2_errors::invalid_provider().with_internal_detail(
+                        format!("Custom provider '{}' has no auth_url configured", provider_conf.name),
+                    )
+                })?;
+                let token_url = provider_conf.token_url.clone().ok_or_else(|| {
+                    errors::auth_oauth2_errors::invalid_provider().with_internal_detail(
+                        format!("Custom provider '{}' has no token_url configured", provider_conf.name),
+                    )
+                })?;
+                Ok((auth_url, token_url))
+            }
+        }
+    }
 }
 
 impl<U, T, S> OAuth2Service<U, T, S>
@@ -147,17 +175,18 @@ where
     fn build_client(
         &self,
         provider_conf: &OAuth2ProviderConf,
-        builtin: BuiltinProvider,
     ) -> CornettiResult<BuiltBasicClient> {
         let client_id = ClientId::new(provider_conf.client_id.clone());
         let client_secret = ClientSecret::new(provider_conf.client_secret.clone());
 
-        let auth_url = AuthUrl::new(builtin.auth_url().to_string()).map_err(|e| {
+        let (auth_url_str, token_url_str) = Self::provider_urls(provider_conf)?;
+
+        let auth_url = AuthUrl::new(auth_url_str).map_err(|e| {
             errors::auth_oauth2_errors::provider_error()
                 .with_internal_detail(format!("Invalid auth URL: {e}"))
         })?;
 
-        let token_url = TokenUrl::new(builtin.token_url().to_string()).map_err(|e| {
+        let token_url = TokenUrl::new(token_url_str).map_err(|e| {
             errors::auth_oauth2_errors::provider_error()
                 .with_internal_detail(format!("Invalid token URL: {e}"))
         })?;
@@ -215,20 +244,18 @@ where
                     .with_internal_detail(format!("Provider '{provider_name}' is not configured"))
             })?;
 
-        let builtin = BuiltinProvider::from_name(provider_name).ok_or_else(|| {
-            errors::auth_oauth2_errors::invalid_provider().with_internal_detail(format!(
-                "Provider '{provider_name}' is not a built-in provider"
-            ))
-        })?;
+        let client = self.build_client(provider_conf)?;
 
-        let client = self.build_client(provider_conf, builtin)?;
-
-        // Scopes: union of defaults + the ones in the config
-        let mut scopes: Vec<Scope> = builtin
-            .default_scopes()
-            .iter()
-            .map(|s| Scope::new(s.to_string()))
-            .collect();
+        // Scopes: built-ins get their defaults plus the configured ones;
+        // custom providers use only the configured scopes (validated non-empty).
+        let mut scopes: Vec<Scope> = match BuiltinProvider::from_name(provider_name) {
+            Some(builtin) => builtin
+                .default_scopes()
+                .iter()
+                .map(|s| Scope::new(s.to_string()))
+                .collect(),
+            None => Vec::new(),
+        };
         for s in &provider_conf.scopes {
             scopes.push(Scope::new(s.clone()));
         }
@@ -338,11 +365,7 @@ where
                     .with_internal_detail(format!("Provider '{provider_name}' is not configured"))
             })?;
 
-        let builtin = BuiltinProvider::from_name(provider_name).ok_or_else(|| {
-            errors::auth_oauth2_errors::invalid_provider().with_internal_detail(format!(
-                "Provider '{provider_name}' is not a built-in provider"
-            ))
-        })?;
+        let builtin = BuiltinProvider::from_name(provider_name);
 
         // Retrieve and remove (one-shot) the flow state associated with the state
         let state_payload = self
@@ -385,7 +408,7 @@ where
 
         // Exchange the code for tokens and retrieve user data
         let (access_token, refresh_token, expires_at, scopes, user_data) =
-            if builtin == BuiltinProvider::Apple {
+            if builtin == Some(BuiltinProvider::Apple) {
                 // Apple has no userinfo endpoint: user data is in the id_token.
                 // The exchange is done manually to capture the id_token (the oauth2
                 // crate does not expose extra fields beyond the standard ones).
@@ -405,7 +428,7 @@ where
 
                 (access_token, refresh_token, expires_at, scopes, user_data)
             } else {
-                let client = self.build_client(provider_conf, builtin)?;
+                let client = self.build_client(provider_conf)?;
 
                 let token_result = client
                     .exchange_code(AuthorizationCode::new(code))
@@ -427,7 +450,17 @@ where
                     .map(|s| s.iter().map(|s| s.to_string()).collect())
                     .unwrap_or_default();
 
-                let user_data = builtin.get_user_info(&self.http_client, &access_token).await?;
+                // User info: built-in providers parse their own shape, custom
+                // providers use the standard OIDC /userinfo endpoint.
+                let user_data = match builtin {
+                    Some(builtin) => {
+                        builtin.get_user_info(&self.http_client, &access_token).await?
+                    }
+                    None => {
+                        custom::get_user_info(&self.http_client, &access_token, provider_conf)
+                            .await?
+                    }
+                };
 
                 (access_token, refresh_token, expires_at, scopes, user_data)
             };
@@ -569,6 +602,20 @@ mod tests {
     /// Valid S256 challenge: 43 base64url characters without padding.
     const VALID_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
 
+    fn provider_conf(name: &str) -> OAuth2ProviderConf {
+        OAuth2ProviderConf {
+            name: name.into(),
+            client_id: "id".into(),
+            client_secret: "secret".into(),
+            redirect_uri: "https://example.test/cb".into(),
+            scopes: vec!["openid".into()],
+            auth_url: None,
+            token_url: None,
+            userinfo_url: None,
+            extra: None,
+        }
+    }
+
     #[test]
     fn state_key_binds_provider_and_state() {
         assert_eq!(state_key("google", "abc"), "google:abc");
@@ -645,5 +692,31 @@ mod tests {
         let json = serde_json::to_string(&client_side).unwrap();
         let back: OAuth2StateData = serde_json::from_str(&json).unwrap();
         assert!(back.pkce_verifier.is_none());
+    }
+
+    #[test]
+    fn provider_urls_uses_static_urls_for_builtin() {
+        let mut p = provider_conf("google");
+        p.auth_url = Some("https://evil.example.test/authorize".into());
+        let (auth, token) = OAuth2Service::<(), (), ()>::provider_urls(&p).unwrap();
+        assert_eq!(auth, "https://accounts.google.com/o/oauth2/v2/auth");
+        assert_eq!(token, "https://oauth2.googleapis.com/token");
+    }
+
+    #[test]
+    fn provider_urls_uses_config_urls_for_custom() {
+        let mut p = provider_conf("kanidm");
+        p.auth_url = Some("https://idm.example.test/oauth2/openid_connect/authorize".into());
+        p.token_url = Some("https://idm.example.test/oauth2/openid_connect/token".into());
+        let (auth, token) = OAuth2Service::<(), (), ()>::provider_urls(&p).unwrap();
+        assert_eq!(auth, "https://idm.example.test/oauth2/openid_connect/authorize");
+        assert_eq!(token, "https://idm.example.test/oauth2/openid_connect/token");
+    }
+
+    #[test]
+    fn provider_urls_custom_missing_url_errors() {
+        let p = provider_conf("kanidm");
+        let err = OAuth2Service::<(), (), ()>::provider_urls(&p).unwrap_err();
+        assert_eq!(err.corr_id, "BE_INVALID_PROVIDER");
     }
 }

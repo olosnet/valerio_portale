@@ -374,21 +374,60 @@ be created.
 `OAuth2AuthConf::validate()` SHALL run at configuration load time via the
 `CornettiConf::validate()` hook (invoked by `OAuth2AuthConf::load()` and
 `from_toml_str()`) when OAuth2 is enabled:
-- an unknown provider name (not a built-in: google, github, microsoft, apple,
-  facebook) SHALL produce a configuration error
+- a custom provider name (not a built-in: google, github, microsoft, apple,
+  facebook) SHALL require `auth_url`, `token_url` and `userinfo_url` plus at
+  least one scope, otherwise a configuration error SHALL be produced
 - a duplicated provider name SHALL produce a configuration error
 
 See `OAuth2ProviderConf` in `src/auth_oauth2/confs.rs`.
 
-#### Scenario: Unknown provider name fails at load time
+#### Scenario: Custom provider missing URLs fails at load time
 
-- WHEN a provider has `name = "my-idp"`
+- WHEN a provider has `name = "kanidm"` and no `auth_url`/`token_url`/`userinfo_url`
 - THEN `validate()` SHALL return a 500 configuration error
+
+#### Scenario: Custom provider with URLs and scopes is accepted
+
+- WHEN a provider has `name = "kanidm"` with `auth_url`, `token_url`,
+  `userinfo_url` and non-empty `scopes`
+- THEN `validate()` SHALL pass
 
 #### Scenario: Duplicate provider name fails at load time
 
 - WHEN two providers have the same `name`
 - THEN `validate()` SHALL return a 500 configuration error
+
+### Requirement: Custom (configured) providers
+
+Any provider name outside the built-in set is treated as a custom OIDC
+provider. Its endpoints come from the configuration
+(`OAuth2ProviderConf.auth_url`, `token_url`, `userinfo_url`) instead of the
+hardcoded `OAuth2Provider` trait values. The authorization and token exchange
+SHALL use the configured URLs; the user info SHALL be fetched from
+`userinfo_url` with the access token and parsed with the standard OIDC claims
+(`sub`, `email`, `email_verified`, `name`, `picture`).
+
+`OAuth2Service::provider_urls` SHALL resolve the endpoints: static for
+built-ins, configured for custom providers. The scope union SHALL be: for
+built-ins, trait defaults plus configured scopes; for custom providers, only
+the configured scopes.
+
+See `custom` in `src/auth_oauth2/providers/custom.rs`.
+
+#### Scenario: Custom provider uses configured URLs
+
+- WHEN `build_auth_url` is called for a custom provider with `auth_url`
+  configured
+- THEN the returned authorization URL SHALL start with the configured
+  `auth_url`
+- AND the token exchange SHALL hit the configured `token_url`
+
+#### Scenario: Custom provider user info from OIDC endpoint
+
+- WHEN `handle_callback` exchanges the code for a custom provider
+- THEN `custom::get_user_info` SHALL call `userinfo_url` with the access token
+- AND the parsed `OAuth2UserTransportData` SHALL contain the standard claims
+  (`sub` as `provider_user_id`)
 
 ### Requirement: Auto-registration of unknown users
 

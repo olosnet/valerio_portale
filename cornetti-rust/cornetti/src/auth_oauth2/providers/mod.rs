@@ -1,4 +1,5 @@
 pub mod apple;
+pub mod custom;
 pub mod facebook;
 pub mod github;
 pub mod google;

@@ -120,6 +120,19 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
 -----END PRIVATE KEY-----
 """
 
+# Custom providers (any name outside the built-in set) require
+# auth_url, token_url, userinfo_url and at least one scope.
+# Example: Kanidm (standard OIDC endpoints)
+[[auth.oauth2.providers]]
+name = "kanidm"
+client_id = "valerio-portale"
+client_secret = "..."                    # or client_secret_file = "/run/secrets/kanidm"
+redirect_uri = "https://app.example.com/auth/callback"
+scopes = ["openid", "email", "profile"]
+auth_url = "https://idm.example.com/oauth2/openid_connect/authorize"
+token_url = "https://idm.example.com/oauth2/openid_connect/token"
+userinfo_url = "https://idm.example.com/oauth2/openid_connect/userinfo"
+
 # ------------------------------------------------------------
 # [redis] — Redis connection
 # ------------------------------------------------------------

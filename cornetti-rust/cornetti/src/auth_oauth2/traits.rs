@@ -4,8 +4,11 @@ use std::future::Future;
 
 /// OAuth2 provider.
 ///
-/// Built-in providers implement this trait. For custom providers,
-/// the consumer can implement and register them.
+/// Implemented by the built-in providers, whose endpoints are hardcoded here.
+/// Custom providers (e.g. Kanidm) do **not** implement this trait: they are
+/// configured entirely through `OAuth2ProviderConf` (`auth_url`, `token_url`,
+/// `userinfo_url`) and handled by the generic OIDC flow in
+/// `providers::custom`.
 pub trait OAuth2Provider: Send + Sync {
     /// Unique provider name (e.g. "google", "github").
     fn name() -> &'static str;

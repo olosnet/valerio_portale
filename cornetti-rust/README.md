@@ -43,7 +43,7 @@ override with the `CORNETTI_CONF` environment variable), one section per module:
 [auth.jwt]             # JWT tokens and cookies
 [auth.jwt.store]       # JWT session store
 [auth.apikey]          # API key authentication
-[auth.oauth2]          # OAuth2 — [[auth.oauth2.providers]] for providers
+[auth.oauth2]          # OAuth2 — [[auth.oauth2.providers]] for providers (built-in or custom OIDC)
 [redis]                # Redis connection
 [sqlx]                 # SQL pool ([sqlx.pool] for pool settings)
 [mongo]                # MongoDB connection
@@ -76,6 +76,11 @@ invoked by the trait reader). Secrets (passwords, PEM keys, service accounts)
 can be inlined or given via a sibling `{field}_file = "/path"` key, read at
 load time. A fully commented example is in `cornetti.example.toml` at the
 repository root.
+
+OAuth2 providers can be built-in (google, github, microsoft, apple, facebook,
+with hardcoded endpoints) or custom: any other `name` is treated as a generic
+OIDC provider and requires `auth_url`, `token_url`, `userinfo_url` and at
+least one scope in the provider config (e.g. Kanidm, Keycloak, Authentik).
 
 ### The `CornettiConf` trait
 

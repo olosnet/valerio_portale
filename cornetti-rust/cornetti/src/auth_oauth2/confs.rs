@@ -9,16 +9,29 @@ use serde::{Deserialize, Deserializer};
 /// hardcoded in the trait — only client_id, client_secret, redirect_uri, and
 /// scopes go here. The `extra` table holds provider-specific data (e.g. Apple:
 /// key_id, team_id, private_key).
+///
+/// Custom providers (any name not in the built-in set, e.g. Kanidm) must
+/// specify `auth_url`, `token_url` and `userinfo_url` explicitly — see
+/// [`OAuth2AuthConf::validate`].
 #[derive(Debug, Clone)]
 pub struct OAuth2ProviderConf {
-    /// Provider name — must match a built-in provider
-    /// (`google`, `github`, `microsoft`, `apple`, `facebook`).
+    /// Provider name — a built-in provider
+    /// (`google`, `github`, `microsoft`, `apple`, `facebook`) or a custom one.
     pub name: String,
     pub client_id: String,
     /// Client secret, or `client_secret_file` for a path to the secret file.
     pub client_secret: String,
     pub redirect_uri: String,
     pub scopes: Vec<String>,
+    /// Custom providers: authorization URL (required when `name` is not
+    /// built-in; ignored otherwise).
+    pub auth_url: Option<String>,
+    /// Custom providers: token exchange URL (required when `name` is not
+    /// built-in; ignored otherwise).
+    pub token_url: Option<String>,
+    /// Custom providers: userinfo endpoint URL (required when `name` is not
+    /// built-in; ignored otherwise).
+    pub userinfo_url: Option<String>,
     /// Provider-specific data as a free-form TOML table.
     pub extra: Option<toml::Value>,
 }
@@ -37,6 +50,9 @@ impl<'de> Deserialize<'de> for OAuth2ProviderConf {
             client_secret_file: Option<String>,
             redirect_uri: Option<String>,
             scopes: Vec<String>,
+            auth_url: Option<String>,
+            token_url: Option<String>,
+            userinfo_url: Option<String>,
             extra: Option<toml::Value>,
         }
 
@@ -61,6 +77,9 @@ impl<'de> Deserialize<'de> for OAuth2ProviderConf {
             client_secret,
             redirect_uri,
             scopes: raw.scopes,
+            auth_url: raw.auth_url,
+            token_url: raw.token_url,
+            userinfo_url: raw.userinfo_url,
             extra: raw.extra,
         })
     }
@@ -143,17 +162,33 @@ impl OAuth2AuthConf {
         self.providers.iter().find(|p| p.name == name)
     }
 
+    /// Returns the names of the configured providers.
+    ///
+    /// Empty when OAuth2 is disabled (`enable_auth = false`), so callers
+    /// (e.g. a client-facing endpoint listing the login options) never
+    /// advertise providers that cannot actually be used.
+    pub fn available_providers(&self) -> Vec<String> {
+        if !self.enable_auth {
+            Vec::new()
+        } else {
+            self.providers.iter().map(|p| p.name.clone()).collect()
+        }
+    }
+
     /// Validates the provider list at configuration load time:
-    /// every provider name must be a known built-in provider, and no name may
-    /// appear twice (duplicates would be silently shadowed by
-    /// `find_provider`).
+    /// no name may appear twice (duplicates would be silently shadowed by
+    /// `find_provider`), and every custom provider (a name not in the
+    /// built-in set) must declare `auth_url`, `token_url`, `userinfo_url`
+    /// and at least one scope — without them the flow cannot work and the
+    /// failure would only surface at the first login attempt.
     ///
     /// Should be called by the configuration loader; fails immediately at
     /// startup instead of surfacing the problem at the first login attempt.
     /// No-op when `enable_auth` is `false`.
     ///
     /// # Errors
-    /// Returns a configuration error if a provider name is unknown or duplicated.
+    /// Returns a configuration error if a provider name is duplicated or a
+    /// custom provider misses its URLs or scopes.
     pub fn validate(&self) -> crate::core::models::CornettiResult<()> {
         if !self.enable_auth {
             return Ok(());
@@ -162,13 +197,26 @@ impl OAuth2AuthConf {
         let mut seen = std::collections::HashSet::new();
         for provider in &self.providers {
             if BuiltinProvider::from_name(&provider.name).is_none() {
-                return Err(crate::errors::conf::conf_invalid_value().with_internal_detail(
-                    format!(
-                        "OAuth2 provider '{}' is not a built-in provider \
-                         (google, github, microsoft, apple, facebook)",
-                        provider.name
-                    ),
-                ));
+                if provider.auth_url.is_none()
+                    || provider.token_url.is_none()
+                    || provider.userinfo_url.is_none()
+                {
+                    return Err(crate::errors::conf::conf_invalid_value().with_internal_detail(
+                        format!(
+                            "Custom OAuth2 provider '{}' requires auth_url, token_url \
+                             and userinfo_url",
+                            provider.name
+                        ),
+                    ));
+                }
+                if provider.scopes.is_empty() {
+                    return Err(crate::errors::conf::conf_invalid_value().with_internal_detail(
+                        format!(
+                            "Custom OAuth2 provider '{}' requires at least one scope",
+                            provider.name
+                        ),
+                    ));
+                }
             }
             if !seen.insert(provider.name.clone()) {
                 return Err(crate::errors::conf::conf_invalid_value()
@@ -242,6 +290,9 @@ mod tests {
             client_secret: "secret".into(),
             redirect_uri: "https://example.test/cb".into(),
             scopes: Vec::new(),
+            auth_url: None,
+            token_url: None,
+            userinfo_url: None,
             extra: None,
         }
     }
@@ -264,12 +315,48 @@ mod tests {
     }
 
     #[test]
-    fn validate_rejects_unknown_provider() {
+    fn validate_rejects_custom_provider_without_urls() {
         let mut c = conf(true);
-        c.providers.push(provider("my-idp"));
+        c.providers.push(provider("kanidm"));
         let err = c.validate().unwrap_err();
         assert_eq!(err.status, HttpStatus::InternalServerError);
         assert_eq!(err.corr_id, "BE_CONF_INVALID_VALUE");
+        assert!(err.internal_detail.contains("auth_url"));
+    }
+
+    #[test]
+    fn validate_accepts_custom_provider_with_urls() {
+        let mut c = conf(true);
+        let mut p = provider("kanidm");
+        p.auth_url = Some("https://idm.example.test/oauth2/openid_connect/authorize".into());
+        p.token_url = Some("https://idm.example.test/oauth2/openid_connect/token".into());
+        p.userinfo_url = Some("https://idm.example.test/oauth2/openid_connect/userinfo".into());
+        p.scopes = vec!["openid".into(), "email".into()];
+        c.providers.push(p);
+        assert!(c.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_custom_provider_without_scopes() {
+        let mut c = conf(true);
+        let mut p = provider("kanidm");
+        p.auth_url = Some("https://idm.example.test/oauth2/openid_connect/authorize".into());
+        p.token_url = Some("https://idm.example.test/oauth2/openid_connect/token".into());
+        p.userinfo_url = Some("https://idm.example.test/oauth2/openid_connect/userinfo".into());
+        c.providers.push(p);
+        let err = c.validate().unwrap_err();
+        assert_eq!(err.corr_id, "BE_CONF_INVALID_VALUE");
+        assert!(err.internal_detail.contains("scope"));
+    }
+
+    #[test]
+    fn custom_provider_urls_ignored_for_builtin() {
+        let mut c = conf(true);
+        let mut p = provider("google");
+        p.auth_url = Some("https://evil.example.test/authorize".into());
+        p.scopes = vec!["openid".into()];
+        c.providers.push(p);
+        assert!(c.validate().is_ok());
     }
 
     #[test]
@@ -285,6 +372,27 @@ mod tests {
         let mut c = conf(false);
         c.providers.push(provider("not-builtin"));
         assert!(c.validate().is_ok());
+    }
+
+    #[test]
+    fn available_providers_lists_configured_names() {
+        let mut c = conf(true);
+        c.providers.push(provider("google"));
+        c.providers.push(provider("github"));
+        assert_eq!(c.available_providers(), vec!["google", "github"]);
+    }
+
+    #[test]
+    fn available_providers_empty_when_disabled() {
+        let mut c = conf(false);
+        c.providers.push(provider("google"));
+        assert!(c.available_providers().is_empty());
+    }
+
+    #[test]
+    fn available_providers_empty_without_providers() {
+        let c = conf(true);
+        assert!(c.available_providers().is_empty());
     }
 
     #[test]
