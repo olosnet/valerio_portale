@@ -1,22 +1,22 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use leptos::prelude::*;
 
 use crate::modules::auth::api as auth_api;
 use crate::modules::base::api_client::ApiClient;
-use app_modules::base::models::AuthorizationPermission;
 use crate::modules::identity::api as identity_api;
 use app_modules::base::identity::models::UserIdentity;
+use app_modules::base::models::AuthorizationPermission;
 
-#[derive(Clone)]
 pub struct AuthContext {
-    pub user: RwSignal<Option<UserIdentity>>,
-    pub api_client: ApiClient,
-    pub initial_check_done: RwSignal<bool>,
+    user: RwSignal<Option<UserIdentity>>,
+    api_client: Arc<ApiClient>,
+    initial_check_done: RwSignal<bool>,
 }
 
 impl AuthContext {
-    pub fn new(api_client: ApiClient) -> Self {
+    pub fn new(api_client: Arc<ApiClient>) -> Self {
         Self {
             user: RwSignal::new(None),
             api_client,
@@ -99,14 +99,29 @@ impl AuthContext {
         }
         self.initial_check_done.set(true);
     }
+
+    pub fn get_user(&self) -> Option<UserIdentity> {
+        self.user.get()
+    }
+
+    pub fn unset_user(&self) {
+        self.user.set(None)
+    }
+
+    pub fn get_api_client(&self) -> Arc<ApiClient> {
+        self.api_client.clone()
+    }
+
+    pub fn initial_check_done(&self) -> bool {
+        self.initial_check_done.get()
+    }
+}
+pub fn use_auth() -> Arc<AuthContext> {
+    expect_context::<Arc<AuthContext>>()
 }
 
-pub fn use_auth() -> AuthContext {
-    expect_context::<AuthContext>()
-}
-
-pub fn provide_auth(api_client: ApiClient) -> AuthContext {
-    let ctx = AuthContext::new(api_client);
+pub fn provide_auth(api_client: Arc<ApiClient>) -> Arc<AuthContext> {
+    let ctx = Arc::new(AuthContext::new(api_client));
     provide_context(ctx.clone());
     ctx
 }

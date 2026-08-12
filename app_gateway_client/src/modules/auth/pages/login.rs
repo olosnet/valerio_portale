@@ -1,9 +1,9 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::Title;
+use leptos_router::NavigateOptions;
 use leptos_router::components::Redirect;
 use leptos_router::hooks::{use_navigate, use_query_map};
-use leptos_router::NavigateOptions;
 use valerios_ui_toolkit::alert::{Alert, AlertDescription, AlertTitle, AlertVariant};
 use valerios_ui_toolkit::password_input::PasswordInput;
 
@@ -47,11 +47,9 @@ fn provider_label(name: &str) -> String {
 /// messaggi leggibili dall'utente.
 fn oauth2_error_message(code: &str) -> String {
     match code {
-        "BE_USER_NOT_FOUND" => {
-            "La creazione dell'account tramite provider non è consentita: \
+        "BE_USER_NOT_FOUND" => "La creazione dell'account tramite provider non è consentita: \
              contatta l'amministratore per ottenere un account."
-                .to_string()
-        }
+            .to_string(),
         "BE_PKCE_NOT_FOUND" | "BE_STATE_MISMATCH" => {
             "La richiesta di login è scaduta o non valida: riprova.".to_string()
         }
@@ -95,7 +93,7 @@ pub fn Login() -> impl IntoView {
 
     let oauth2_providers = RwSignal::new(Vec::<OAuth2ProviderInfo>::new());
     let oauth2_loaded = RwSignal::new(false);
-    let oauth2_client = auth.api_client.clone();
+    let api_client = auth.get_api_client();
 
     // Errore riportato dal callback OAuth2 (es. creazione utente disabilitata):
     // banner inline + toast, poi pulisce l'URL.
@@ -123,16 +121,16 @@ pub fn Login() -> impl IntoView {
     });
 
     spawn_local(async move {
-        match auth_api::oauth2_providers(&oauth2_client).await {
+        match auth_api::oauth2_providers(&api_client).await {
             Ok(Some(response)) => oauth2_providers.set(response.providers),
             Ok(None) => {} // OAuth2 disabilitato: nessun provider mostrato
-            Err(_) => {} // Errore di rete: il form classico resta disponibile
+            Err(_) => {}   // Errore di rete: il form classico resta disponibile
         }
         oauth2_loaded.set(true);
     });
 
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>

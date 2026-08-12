@@ -6,7 +6,7 @@ use gloo_net::http::Request;
 use gloo_net::http::RequestBuilder;
 use wasm_bindgen::JsCast;
 
-use crate::modules::base::models::ApiError;
+use crate::modules::base::models::{ApiError, ApiHttpMethod};
 
 thread_local! {
     static ON_SESSION_EXPIRED: RefCell<Option<Box<dyn Fn()>>> = const { RefCell::new(None) };
@@ -57,20 +57,20 @@ impl ApiClient {
         }
     }
 
-    fn request_builder(method: &str, url: &str) -> Result<RequestBuilder, ApiError> {
+    fn request_builder(method: &ApiHttpMethod, url: &str) -> Result<RequestBuilder, ApiError> {
         let builder = match method {
-            "GET" => Request::get(url),
-            "POST" => Request::post(url),
-            "PUT" => Request::put(url),
-            "DELETE" => Request::delete(url),
-            _ => return Err(ApiError::Network(format!("unsupported method {method}"))),
+            ApiHttpMethod::GET => Request::get(url),
+            ApiHttpMethod::POST => Request::post(url),
+            ApiHttpMethod::PUT => Request::put(url),
+            ApiHttpMethod::PATCH => Request::patch(url),
+            ApiHttpMethod::DELETE => Request::delete(url),
         };
         Ok(builder)
     }
 
     pub async fn request(
         &self,
-        method: &str,
+        method: &ApiHttpMethod,
         path: &str,
         body: Option<&str>,
     ) -> Result<String, ApiError> {
@@ -78,7 +78,10 @@ impl ApiClient {
         let resp = self.fetch(method, &url, body).await?;
 
         if resp.ok() {
-            return resp.text().await.map_err(|e| ApiError::Network(e.to_string()));
+            return resp
+                .text()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()));
         }
 
         if resp.status() == 401 {
@@ -96,16 +99,17 @@ impl ApiClient {
 
     async fn fetch(
         &self,
-        method: &str,
+        method: &ApiHttpMethod,
         url: &str,
         body: Option<&str>,
     ) -> Result<gloo_net::http::Response, ApiError> {
-        self.fetch_inner(method, url, body, &self.csrf_cookie_name).await
+        self.fetch_inner(method, url, body, &self.csrf_cookie_name)
+            .await
     }
 
     async fn fetch_inner(
         &self,
-        method: &str,
+        method: &ApiHttpMethod,
         url: &str,
         body: Option<&str>,
         csrf_cookie_name: &str,
@@ -113,7 +117,10 @@ impl ApiClient {
         let mut builder = Self::request_builder(method, url)?;
         builder = builder.credentials(web_sys::RequestCredentials::Include);
 
-        if matches!(method, "POST" | "PUT" | "DELETE") {
+        if matches!(
+            method,
+            ApiHttpMethod::POST | ApiHttpMethod::PUT | ApiHttpMethod::DELETE
+        ) {
             if let Some(csrf_token) = get_cookie(csrf_cookie_name) {
                 builder = builder.header("X-CSRF-TOKEN", &csrf_token);
             }
@@ -124,15 +131,21 @@ impl ApiClient {
             let request = builder
                 .body(b)
                 .map_err(|e| ApiError::Network(e.to_string()))?;
-            request.send().await.map_err(|e| ApiError::Network(e.to_string()))
+            request
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))
         } else {
-            builder.send().await.map_err(|e| ApiError::Network(e.to_string()))
+            builder
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))
         }
     }
 
     async fn try_refresh_and_retry(
         &self,
-        method: &str,
+        method: &ApiHttpMethod,
         url: &str,
         body: Option<&str>,
     ) -> Result<gloo_net::http::Response, ApiError> {
@@ -142,7 +155,14 @@ impl ApiClient {
         }
 
         let refresh_url = format!("{}/auth/refresh", self.base_url);
-        let refresh_resp = self.fetch_inner("POST", &refresh_url, None, &self.csrf_refresh_cookie_name).await;
+        let refresh_resp = self
+            .fetch_inner(
+                &ApiHttpMethod::POST,
+                &refresh_url,
+                None,
+                &self.csrf_refresh_cookie_name,
+            )
+            .await;
         self.refreshing.store(false, Ordering::SeqCst);
 
         match refresh_resp {
@@ -162,14 +182,21 @@ impl ApiClient {
         mime_type: &str,
     ) -> Result<String, ApiError> {
         let url = format!("{}{}", self.base_url, path);
-        let resp = self.send_upload("POST", &url, &bytes, file_name, mime_type).await?;
+        let resp = self
+            .send_upload(&ApiHttpMethod::POST, &url, &bytes, file_name, mime_type)
+            .await?;
 
         if resp.ok() {
-            return resp.text().await.map_err(|e| ApiError::Network(e.to_string()));
+            return resp
+                .text()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()));
         }
 
         if resp.status() == 401 {
-            let new_resp = self.try_refresh_and_retry_upload(&url, &bytes, file_name, mime_type).await?;
+            let new_resp = self
+                .try_refresh_and_retry_upload(&url, &bytes, file_name, mime_type)
+                .await?;
             return new_resp
                 .text()
                 .await
@@ -209,7 +236,7 @@ impl ApiClient {
 
     async fn send_upload(
         &self,
-        method: &str,
+        method: &ApiHttpMethod,
         url: &str,
         bytes: &[u8],
         file_name: &str,
@@ -223,7 +250,10 @@ impl ApiClient {
         if let Some(csrf_token) = get_cookie(&self.csrf_cookie_name) {
             builder = builder.header("X-CSRF-TOKEN", &csrf_token);
         }
-        builder = builder.header("Content-Type", &format!("multipart/form-data; boundary={boundary}"));
+        builder = builder.header(
+            "Content-Type",
+            &format!("multipart/form-data; boundary={boundary}"),
+        );
 
         builder
             .body(body)
@@ -246,11 +276,21 @@ impl ApiClient {
         }
 
         let refresh_url = format!("{}/auth/refresh", self.base_url);
-        let refresh_resp = self.fetch_inner("POST", &refresh_url, None, &self.csrf_refresh_cookie_name).await;
+        let refresh_resp = self
+            .fetch_inner(
+                &ApiHttpMethod::POST,
+                &refresh_url,
+                None,
+                &self.csrf_refresh_cookie_name,
+            )
+            .await;
         self.refreshing.store(false, Ordering::SeqCst);
 
         match refresh_resp {
-            Ok(r) if r.ok() => self.send_upload("POST", url, bytes, file_name, mime_type).await,
+            Ok(r) if r.ok() => {
+                self.send_upload(&ApiHttpMethod::POST, url, bytes, file_name, mime_type)
+                    .await
+            }
             _ => {
                 trigger_on_session_expired();
                 Err(ApiError::RefreshFailed)

@@ -6,9 +6,12 @@ use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
+use crate::modules::base::traits::CrudApi;
+use crate::modules::groups::api::GroupsApi;
+use crate::modules::users::api::UsersApi;
+use crate::stores::auth_store::use_auth;
 use app_modules::base::groups::models::Group;
 use app_modules::base::users::models::{SetPasswordBody, UserUpdate};
-use crate::stores::auth_store::use_auth;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::confirm_delete::ConfirmDeleteDialog;
 use valerios_ui_toolkit::icon::Icon;
@@ -19,7 +22,9 @@ pub fn UserDetail() -> impl IntoView {
     let auth = use_auth();
     let navigate = use_navigate();
     let toast = use_toast_ctx();
-    let client = auth.api_client.clone();
+    let users_api = Arc::new(UsersApi::new(auth.get_api_client()));
+    let groups_api = Arc::new(GroupsApi::new(auth.get_api_client()));
+
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
@@ -40,11 +45,12 @@ pub fn UserDetail() -> impl IntoView {
         Signal::derive(move || user.get().as_ref().map(|u| u.default).unwrap_or(false));
 
     {
-        let client = client.clone();
+        let users_api = Arc::clone(&users_api);
+        let groups_api = Arc::clone(&groups_api);
         let id = get_id();
         spawn_local(async move {
             if let Some(ref id_val) = id {
-                match crate::modules::users::api::get_user(&client, id_val).await {
+                match users_api.get(id_val).await {
                     Ok(u) => {
                         name.set(u.name.clone().unwrap_or_default());
                         surname.set(u.surname.clone().unwrap_or_default());
@@ -54,7 +60,7 @@ pub fn UserDetail() -> impl IntoView {
                     }
                     Err(e) => toast_error(&toast, &e.to_string()),
                 }
-                match crate::modules::groups::api::list_groups(&client).await {
+                match groups_api.list().await {
                     Ok(g) => groups.set(g),
                     Err(e) => toast_error(&toast, &e.to_string()),
                 }
@@ -63,19 +69,22 @@ pub fn UserDetail() -> impl IntoView {
     }
 
     let on_delete = {
-        let client = client.clone();
         let toast = toast.clone();
         let navigate = navigate.clone();
         let get_id = get_id.clone();
+
+        let users_api = Arc::clone(&users_api);
+
         Callback::new(move |_| {
             let id = get_id();
             let navigate = navigate.clone();
             let toast = toast.clone();
+            let users_api = Arc::clone(&users_api);
+
             spawn_local({
-                let client = client.clone();
                 async move {
                     if let Some(ref id_val) = id {
-                        match crate::modules::users::api::delete_user(&client, id_val).await {
+                        match users_api.delete(id_val).await {
                             Ok(()) => {
                                 toast_success(&toast, "Utente eliminato");
                                 let _ = navigate("/settings/users", Default::default());
@@ -188,7 +197,7 @@ pub fn UserDetail() -> impl IntoView {
 
                 <div class="flex items-center justify-between">
                     <button on:click={
-                        let client = client.clone();
+                        let users_api = Arc::clone(&users_api);
                         move |_| {
                             let id = get_id();
                             let body = UserUpdate {
@@ -197,10 +206,10 @@ pub fn UserDetail() -> impl IntoView {
                             };
                             let toast = toast.clone();
                             spawn_local({
-                                let client = client.clone();
+                                let users_api = Arc::clone(&users_api);
                                 async move {
                                     if let Some(ref id_val) = id {
-                                        match crate::modules::users::api::update_user(&client, id_val, &body).await {
+                                        match users_api.update(id_val, &body).await {
                                             Ok(u) => { user.set(Some(u)); toast_success(&toast, "Utente aggiornato"); }
                                             Err(e) => toast_error(&toast, &e.to_string()),
                                         }
@@ -227,18 +236,17 @@ pub fn UserDetail() -> impl IntoView {
                 </div>
                 <div class="flex items-center justify-between">
                     <button on:click={
-                        let client = client.clone();
                         move |_| {
                             let id = get_id();
                             let body = SetPasswordBody {
                                 password: password.get(), confirm_password: confirm_password.get(),
                             };
                             let toast = toast.clone();
+                            let users_api = Arc::clone(&users_api);
                             spawn_local({
-                                let client = client.clone();
                                 async move {
                                     if let Some(ref id_val) = id {
-                                        match crate::modules::users::api::set_password(&client, id_val, &body).await {
+                                        match users_api.set_password(id_val, &body).await {
                                             Ok(u) => {
                                                 user.set(Some(u));
                                                 password.set(String::new());

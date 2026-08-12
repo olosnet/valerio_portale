@@ -1,36 +1,26 @@
 use crate::modules::base::api_client::ApiClient;
-use crate::modules::base::models::ApiError;
+use crate::modules::base::traits::{BaseApi, CrudApi};
 use app_modules::base::groups::models::{Group, GroupCreate, GroupUpdate};
+use std::sync::Arc;
 
-pub async fn list_groups(client: &ApiClient) -> Result<Vec<Group>, ApiError> {
-    let resp = client.request("GET", "/groups", None).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+pub struct GroupsApi {
+    api_client: Arc<ApiClient>,
 }
 
-pub async fn get_group(client: &ApiClient, group_id: &str) -> Result<Group, ApiError> {
-    let resp = client.request("GET", &format!("/groups/{group_id}"), None).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+impl GroupsApi {
+    pub fn new(api_client: Arc<ApiClient>) -> Self {
+        Self { api_client }
+    }
 }
 
-pub async fn create_group(client: &ApiClient, body: &GroupCreate) -> Result<Group, ApiError> {
-    let json = serde_json::to_string(body).map_err(|e| ApiError::Network(e.to_string()))?;
-    let resp = client.request("POST", "/groups", Some(&json)).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+impl BaseApi for GroupsApi {
+    fn base_path(&self) -> &str {
+        "/groups"
+    }
+
+    fn api_client(&self) -> Arc<ApiClient> {
+        self.api_client.clone()
+    }
 }
 
-pub async fn update_group(
-    client: &ApiClient,
-    group_id: &str,
-    body: &GroupUpdate,
-) -> Result<Group, ApiError> {
-    let json = serde_json::to_string(body).map_err(|e| ApiError::Network(e.to_string()))?;
-    let resp = client
-        .request("PUT", &format!("/groups/{group_id}"), Some(&json))
-        .await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
-}
-
-pub async fn delete_group(client: &ApiClient, group_id: &str) -> Result<(), ApiError> {
-    client.request("DELETE", &format!("/groups/{group_id}"), None).await?;
-    Ok(())
-}
+impl CrudApi<Group, GroupCreate, GroupUpdate> for GroupsApi {}

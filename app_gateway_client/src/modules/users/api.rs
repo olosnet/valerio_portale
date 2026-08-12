@@ -1,48 +1,45 @@
 use crate::modules::base::api_client::ApiClient;
-use crate::modules::base::models::ApiError;
+use crate::modules::base::models::{ApiError, ApiHttpMethod};
+use crate::modules::base::traits::{BaseApi, CrudApi};
 use app_modules::base::users::models::{SetPasswordBody, User, UserCreate, UserUpdate};
+use std::sync::Arc;
 
-pub async fn list_users(client: &ApiClient) -> Result<Vec<User>, ApiError> {
-    let resp = client.request("GET", "/users", None).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+pub struct UsersApi {
+    api_client: Arc<ApiClient>,
 }
 
-pub async fn get_user(client: &ApiClient, user_id: &str) -> Result<User, ApiError> {
-    let resp = client.request("GET", &format!("/users/{user_id}"), None).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+impl UsersApi {
+    pub fn new(api_client: Arc<ApiClient>) -> Self {
+        Self { api_client }
+    }
+
+    pub async fn set_password(
+        &self,
+        user_id: &str,
+        body: &SetPasswordBody,
+    ) -> Result<User, ApiError> {
+        let json = serde_json::to_string(body)
+            .map_err(|e| ApiError::SerializationFailed(e.to_string()))?;
+        let resp = self
+            .api_client()
+            .request(
+                &ApiHttpMethod::POST,
+                &format!("{}/{}/set_password", self.base_path(), user_id),
+                Some(&json),
+            )
+            .await?;
+        serde_json::from_str(&resp).map_err(|e| ApiError::DeserializationFailed(e.to_string()))
+    }
 }
 
-pub async fn create_user(client: &ApiClient, body: &UserCreate) -> Result<User, ApiError> {
-    let json = serde_json::to_string(body).map_err(|e| ApiError::Network(e.to_string()))?;
-    let resp = client.request("POST", "/users", Some(&json)).await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
+impl BaseApi for UsersApi {
+    fn base_path(&self) -> &str {
+        "/users"
+    }
+
+    fn api_client(&self) -> Arc<ApiClient> {
+        Arc::clone(&self.api_client)
+    }
 }
 
-pub async fn update_user(
-    client: &ApiClient,
-    user_id: &str,
-    body: &UserUpdate,
-) -> Result<User, ApiError> {
-    let json = serde_json::to_string(body).map_err(|e| ApiError::Network(e.to_string()))?;
-    let resp = client
-        .request("PUT", &format!("/users/{user_id}"), Some(&json))
-        .await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
-}
-
-pub async fn delete_user(client: &ApiClient, user_id: &str) -> Result<(), ApiError> {
-    client.request("DELETE", &format!("/users/{user_id}"), None).await?;
-    Ok(())
-}
-
-pub async fn set_password(
-    client: &ApiClient,
-    user_id: &str,
-    body: &SetPasswordBody,
-) -> Result<User, ApiError> {
-    let json = serde_json::to_string(body).map_err(|e| ApiError::Network(e.to_string()))?;
-    let resp = client
-        .request("POST", &format!("/users/{user_id}/set_password"), Some(&json))
-        .await?;
-    serde_json::from_str(&resp).map_err(|e| ApiError::Network(e.to_string()))
-}
+impl CrudApi<User, UserCreate, UserUpdate> for UsersApi {}

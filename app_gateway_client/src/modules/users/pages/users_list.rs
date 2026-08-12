@@ -1,17 +1,21 @@
 #![allow(dead_code)]
-use std::sync::Arc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
+use std::sync::Arc;
 
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
-use app_modules::base::users::models::{User, UserCreate};
+use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
+use crate::modules::base::traits::CrudApi as _;
+use crate::modules::users::api::UsersApi;
 use crate::stores::auth_store::use_auth;
+use app_modules::base::users::models::{User, UserCreate};
 
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::data_table::{ColumnDef, DataTable, DataTableSource};
-use valerios_ui_toolkit::dialog::{Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose};
+use valerios_ui_toolkit::dialog::{
+    Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+};
 
 #[component]
 fn CreateUserDialog(
@@ -70,7 +74,7 @@ pub fn UsersList() -> impl IntoView {
     let auth = use_auth();
     let toast = use_toast_ctx();
     let navigate = use_navigate();
-    let client = auth.api_client.clone();
+    let users_api = Arc::new(UsersApi::new(auth.get_api_client()));
 
     let users: RwSignal<Vec<User>> = RwSignal::new(Vec::new());
     let loading = RwSignal::new(true);
@@ -82,9 +86,9 @@ pub fn UsersList() -> impl IntoView {
     let new_enabled = RwSignal::new(true);
 
     {
-        let client = client.clone();
+        let users_api = Arc::clone(&users_api);
         spawn_local(async move {
-            match crate::modules::users::api::list_users(&client).await {
+            match users_api.list().await {
                 Ok(list) => users.set(list),
                 Err(e) => toast_error(&toast, &e.to_string()),
             }
@@ -93,7 +97,6 @@ pub fn UsersList() -> impl IntoView {
     }
 
     let on_create = Callback::new({
-        let client = client.clone();
         let toast = toast;
         let users = users;
         let create_open = create_open;
@@ -106,11 +109,11 @@ pub fn UsersList() -> impl IntoView {
                 groups_ids: Vec::new(),
             };
             let t = toast;
+            let users_api = Arc::clone(&users_api);
             spawn_local({
-                let client = client.clone();
                 let users = users;
                 async move {
-                    match crate::modules::users::api::create_user(&client, &body).await {
+                    match users_api.create(&body).await {
                         Ok(u) => {
                             users.update(|list| list.push(u));
                             new_name.set(String::new());
@@ -160,10 +163,14 @@ pub fn UsersList() -> impl IntoView {
             sortable: true,
             searchable: false,
             backend_field: None,
-            cell: Arc::new(|u: &User| if u.enabled {
-                view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }.into_any()
-            } else {
-                view! { <span class="text-destructive text-xs font-medium">"No"</span> }.into_any()
+            cell: Arc::new(|u: &User| {
+                if u.enabled {
+                    view! { <span class="text-green-500 text-xs font-medium">"S&igrave;"</span> }
+                        .into_any()
+                } else {
+                    view! { <span class="text-destructive text-xs font-medium">"No"</span> }
+                        .into_any()
+                }
             }),
             sort_key: Some(Arc::new(|u| u.enabled.to_string())),
             search_key: None,
@@ -182,7 +189,8 @@ pub fn UsersList() -> impl IntoView {
                     class="text-sm text-primary underline hover:no-underline">
                     "Dettaglio"
                 </button>
-            }.into_any()
+            }
+            .into_any()
         })
     };
 

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_meta::*;
@@ -7,28 +9,28 @@ use leptos_router::{
     hooks::use_navigate,
 };
 
-use crate::modules::base::components::main_layout::with_layout;
 use crate::modules::auth::pages::login::Login;
+use crate::modules::base::api_client::{ApiClient, set_on_session_expired};
+use crate::modules::base::components::main_layout::with_layout;
+use crate::modules::base::components::not_found::NotFound;
 use crate::modules::groups::pages::group_detail::GroupDetail;
 use crate::modules::groups::pages::groups_list::GroupsList;
 use crate::modules::identity::pages::profile::Profile;
 use crate::modules::oggetti_astronomici::pages::oggetti_list::OggettiList;
 use crate::modules::oggetti_astronomici::pages::oggetto_detail::OggettoDetail;
-use crate::modules::siti_osservativi::pages::sito_detail::SitoDetail;
 use crate::modules::siti_osservativi::pages::siti_list::SitiList;
+use crate::modules::siti_osservativi::pages::sito_detail::SitoDetail;
 use crate::modules::users::pages::user_detail::UserDetail;
 use crate::modules::users::pages::users_list::UsersList;
+use crate::stores::auth_store::{provide_auth, use_auth};
 use valerios_ui_toolkit::sonner::Sonner;
 use valerios_ui_toolkit::theme::ThemeProvider;
-use crate::modules::base::api_client::{ApiClient, set_on_session_expired};
-use crate::modules::base::components::not_found::NotFound;
-use crate::stores::auth_store::{provide_auth, use_auth};
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let api_client = ApiClient::new("/api");
+    let api_client = Arc::new(ApiClient::new("/api"));
     let auth = provide_auth(api_client);
 
     spawn_local(async move {
@@ -82,12 +84,13 @@ pub fn App() -> impl IntoView {
 fn ProtectedDashboard() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -100,12 +103,13 @@ fn ProtectedDashboard() -> impl IntoView {
 fn ProtectedProfile() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -118,12 +122,13 @@ fn ProtectedProfile() -> impl IntoView {
 fn ProtectedSitiList() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -136,12 +141,13 @@ fn ProtectedSitiList() -> impl IntoView {
 fn ProtectedSitoDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -154,12 +160,13 @@ fn ProtectedSitoDetail() -> impl IntoView {
 fn ProtectedOggettiList() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -172,12 +179,13 @@ fn ProtectedOggettiList() -> impl IntoView {
 fn ProtectedOggettoDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -190,12 +198,13 @@ fn ProtectedOggettoDetail() -> impl IntoView {
 fn ProtectedUsersList() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -208,12 +217,13 @@ fn ProtectedUsersList() -> impl IntoView {
 fn ProtectedUserDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -226,12 +236,13 @@ fn ProtectedUserDetail() -> impl IntoView {
 fn ProtectedGroupsList() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -244,12 +255,13 @@ fn ProtectedGroupsList() -> impl IntoView {
 fn ProtectedGroupDetail() -> impl IntoView {
     let auth = use_auth();
     move || {
-        if !auth.initial_check_done.get() {
+        if !auth.initial_check_done() {
             return view! {
                 <div class="flex min-h-screen bg-secondary items-center justify-center">
                     <p class="text-muted-foreground">"Caricamento..."</p>
                 </div>
-            }.into_any();
+            }
+            .into_any();
         }
         if !auth.is_authenticated() {
             return view! { <Redirect path="/login"/> }.into_any();
@@ -268,8 +280,8 @@ fn DashboardBody() -> impl IntoView {
             <div>
                 <h2 class="text-2xl font-bold text-foreground mb-1">
                     "Benvenuto, "
-                    {move || {
-                        auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()
+                    { let auth = Arc::clone(&auth);  move || {
+                        auth.get_user().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()
                     }}
                 </h2>
                 <p class="text-muted-foreground">"Panoramica del sistema"</p>
@@ -333,7 +345,7 @@ fn SessionExpiredHandler() -> impl IntoView {
     let navigate = use_navigate();
 
     set_on_session_expired(Box::new(move || {
-        auth.user.set(None);
+        auth.unset_user();
         navigate("/login", Default::default());
     }));
 

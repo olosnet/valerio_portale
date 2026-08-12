@@ -1,18 +1,18 @@
 #![allow(dead_code)]
-use std::sync::Arc;
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_navigate;
+use std::sync::Arc;
 
 use crate::modules::identity::api::profile_image_url;
 use crate::stores::auth_store::use_auth;
 
 use valerios_ui_toolkit::icon::Icon;
-use valerios_ui_toolkit::sidebar::{
-    use_sidebar, Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
-    SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail,
-};
 use valerios_ui_toolkit::sheet::{Sheet, SheetContent, SheetSide};
+use valerios_ui_toolkit::sidebar::{
+    Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader,
+    SidebarMenu, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem, SidebarRail, use_sidebar,
+};
 
 fn menu_btn_class() -> &'static str {
     "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate"
@@ -31,8 +31,18 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
     let show = RwSignal::new(false);
     let nav = Arc::new(use_navigate());
 
-    let on_users = { let n = nav.clone(); move |_| { n("/settings/users", Default::default()); } };
-    let on_groups = { let n = nav.clone(); move |_| { n("/settings/groups", Default::default()); } };
+    let on_users = {
+        let n = nav.clone();
+        move |_| {
+            n("/settings/users", Default::default());
+        }
+    };
+    let on_groups = {
+        let n = nav.clone();
+        move |_| {
+            n("/settings/groups", Default::default());
+        }
+    };
 
     view! {
         <SidebarGroup>
@@ -71,8 +81,18 @@ fn AdminSection(can_see_users: Signal<bool>, can_see_groups: Signal<bool>) -> im
 #[component]
 fn AstronomiaSection() -> impl IntoView {
     let nav = Arc::new(use_navigate());
-    let on_siti = { let n = nav.clone(); move |_| { n("/siti_osservativi", Default::default()); } };
-    let on_oggetti = { let n = nav.clone(); move |_| { n("/oggetti_astronomici", Default::default()); } };
+    let on_siti = {
+        let n = nav.clone();
+        move |_| {
+            n("/siti_osservativi", Default::default());
+        }
+    };
+    let on_oggetti = {
+        let n = nav.clone();
+        move |_| {
+            n("/oggetti_astronomici", Default::default());
+        }
+    };
 
     let show_sub = RwSignal::new(false);
 
@@ -107,7 +127,7 @@ fn AstronomiaSection() -> impl IntoView {
 }
 
 #[component]
-fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
+fn DesktopSidebar(auth: Arc<crate::stores::auth_store::AuthContext>) -> impl IntoView {
     let nav = Arc::new(use_navigate());
     let can_see_users = auth.can_read_signal("users");
     let can_see_groups = auth.can_read_signal("groups");
@@ -115,7 +135,6 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
     let has_astronomia = Signal::derive(move || can_see_siti.get());
     let n = nav.clone();
-    let a = auth.clone();
     let n_profile = nav.clone();
     let n_logout = nav.clone();
 
@@ -123,14 +142,21 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
         let img = user.map(|u| u.profile_image.clone()).unwrap_or_default();
         let url = profile_image_url("/api", &img);
         if url.is_empty() {
-            let initial = user.and_then(|u| u.name.as_ref().and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))).unwrap_or_default();
+            let initial = user
+                .and_then(|u| {
+                    u.name
+                        .as_ref()
+                        .and_then(|n| n.chars().next().map(|c| c.to_uppercase().to_string()))
+                })
+                .unwrap_or_default();
             view! {
                 <div class="flex size-8 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground font-medium text-sm shrink-0">{initial}</div>
             }.into_any()
         } else {
             view! {
                 <img src=url class="size-8 rounded-md object-cover shrink-0" alt="Avatar" />
-            }.into_any()
+            }
+            .into_any()
         }
     }
 
@@ -166,14 +192,14 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
                         <div class="flex items-center gap-1">
                             <button on:click=move |_| { let _ = n_profile("/profile", Default::default()); }
                                 class="peer/menu-button flex flex-1 items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate">
-                                {move || avatar_view(auth.user.get().as_ref())}
+                                {let auth = Arc::clone(&auth); move || avatar_view(auth.get_user().as_ref())}
                                 <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden group-data-[collapsible=icon]:hidden">
-                                    <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
-                                    <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
+                                    <span class="truncate font-medium">{let auth = Arc::clone(&auth); move || auth.get_user().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
+                                    <span class="truncate text-xs text-sidebar-foreground/60">{let auth = Arc::clone(&auth); move || auth.get_user().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
                                 </div>
                             </button>
                             <button on:click=move |_| {
-                                let x = a.clone();
+                                let x = auth.clone();
                                 spawn_local(async move { x.logout().await; });
                                 let _ = n_logout("/login", Default::default());
                             }
@@ -192,7 +218,7 @@ fn DesktopSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView
 }
 
 #[component]
-fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView {
+fn MobileSidebar(auth: Arc<crate::stores::auth_store::AuthContext>) -> impl IntoView {
     let nav = Arc::new(use_navigate());
     let sctx = use_sidebar();
     let can_see_users = auth.can_read_signal("users");
@@ -201,7 +227,6 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
     let has_admin = Signal::derive(move || can_see_users.get() || can_see_groups.get());
     let has_astronomia = Signal::derive(move || can_see_siti.get());
     let n = nav.clone();
-    let a = auth.clone();
     let n_profile = nav.clone();
     let n_logout = nav.clone();
 
@@ -239,8 +264,8 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                                 <div class="flex items-center gap-1">
                                     <button on:click=move |_| { let _ = n_profile("/profile", Default::default()); sctx.open_mobile.set(false); }
                                         class="flex flex-1 items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>span:last-child]:truncate">
-                                        {move || {
-                                            let user = auth.user.get();
+                                        {let auth = Arc::clone(&auth); move || {
+                                            let user = auth.get_user();
                                             let img = user.as_ref().map(|u| u.profile_image.clone()).unwrap_or_default();
                                             let url = profile_image_url("/api", &img);
                                             if url.is_empty() {
@@ -255,13 +280,13 @@ fn MobileSidebar(auth: crate::stores::auth_store::AuthContext) -> impl IntoView 
                                             }
                                         }}
                                         <div class="grid flex-1 text-left text-sm leading-tight overflow-hidden">
-                                            <span class="truncate font-medium">{move || auth.user.get().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
-                                            <span class="truncate text-xs text-sidebar-foreground/60">{move || auth.user.get().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
+                                            <span class="truncate font-medium">{let auth = Arc::clone(&auth); move || auth.get_user().as_ref().and_then(|u| u.name.clone()).unwrap_or_default()}</span>
+                                            <span class="truncate text-xs text-sidebar-foreground/60">{let auth = Arc::clone(&auth); move || auth.get_user().as_ref().and_then(|u| u.email.clone()).unwrap_or_default()}</span>
                                         </div>
                                     </button>
                                     <button on:click=move |_| {
-                                        let x = a.clone();
-                                        spawn_local(async move { x.logout().await; });
+                                        let auth = Arc::clone(&auth);
+                                        spawn_local(async move { auth.logout().await; });
                                         let _ = n_logout("/login", Default::default());
                                         sctx.open_mobile.set(false);
                                     }

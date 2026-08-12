@@ -6,8 +6,10 @@ use leptos_meta::Title;
 use leptos_router::hooks::use_navigate;
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
-use app_modules::astronomia::siti_osservativi::models::SitoOsservativoCreate;
+use crate::modules::base::traits::CrudApi as _;
+use crate::modules::siti_osservativi::api::SitiOsservativiApi;
 use crate::stores::auth_store::use_auth;
+use app_modules::astronomia::siti_osservativi::models::SitoOsservativoCreate;
 
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::data_table::{ColumnDef, DataTable, DataTableSource};
@@ -72,7 +74,6 @@ pub fn SitiList() -> impl IntoView {
     let auth = use_auth();
     let toast = use_toast_ctx();
     let navigate = use_navigate();
-    let client = auth.api_client.clone();
 
     let siti: RwSignal<Vec<app_modules::astronomia::siti_osservativi::models::SitoOsservativo>> =
         RwSignal::new(Vec::new());
@@ -84,10 +85,12 @@ pub fn SitiList() -> impl IntoView {
     let new_lng = RwSignal::new(0.0);
     let new_alt = RwSignal::new(0.0);
 
+    let siti_osservativi_api = Arc::new(SitiOsservativiApi::new(auth.get_api_client()));
+
     {
-        let client = client.clone();
+        let siti_osservativi_api = Arc::clone(&siti_osservativi_api);
         spawn_local(async move {
-            match crate::modules::siti_osservativi::api::list_siti(&client).await {
+            match siti_osservativi_api.list().await {
                 Ok(list) => siti.set(list),
                 Err(e) => toast_error(&toast, &e.to_string()),
             }
@@ -96,7 +99,6 @@ pub fn SitiList() -> impl IntoView {
     }
 
     let on_create = Callback::new({
-        let client = client.clone();
         let toast = toast;
         let siti = siti;
         let create_open = create_open;
@@ -110,10 +112,10 @@ pub fn SitiList() -> impl IntoView {
             };
             let t = toast;
             spawn_local({
-                let client = client.clone();
                 let siti = siti;
+                let siti_osservativi_api = Arc::clone(&siti_osservativi_api);
                 async move {
-                    match crate::modules::siti_osservativi::api::create_sito(&client, &body).await {
+                    match siti_osservativi_api.create(&body).await {
                         Ok(s) => {
                             siti.update(|list| list.push(s));
                             new_nome.set(String::new());
@@ -142,10 +144,14 @@ pub fn SitiList() -> impl IntoView {
                 },
             ),
             sort_key: Some(Arc::new(
-                |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| s.nome.clone(),
+                |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
+                    s.nome.clone()
+                },
             )),
             search_key: Some(Arc::new(
-                |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| s.nome.clone(),
+                |s: &app_modules::astronomia::siti_osservativi::models::SitoOsservativo| {
+                    s.nome.clone()
+                },
             )),
         },
         ColumnDef {

@@ -6,8 +6,10 @@ use leptos_router::hooks::use_navigate;
 use std::sync::Arc;
 
 use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
-use app_modules::base::groups::models::{Group, GroupCreate};
+use crate::modules::base::traits::CrudApi;
+use crate::modules::groups::api::GroupsApi;
 use crate::stores::auth_store::use_auth;
+use app_modules::base::groups::models::{Group, GroupCreate};
 
 use valerios_ui_toolkit::badge::Badge;
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
@@ -57,7 +59,7 @@ pub fn GroupsList() -> impl IntoView {
     let auth = use_auth();
     let toast = use_toast_ctx();
     let navigate = use_navigate();
-    let client = auth.api_client.clone();
+    let groups_api: Arc<GroupsApi> = Arc::new(GroupsApi::new(auth.get_api_client()));
 
     let groups: RwSignal<Vec<Group>> = RwSignal::new(Vec::new());
     let loading = RwSignal::new(true);
@@ -67,9 +69,9 @@ pub fn GroupsList() -> impl IntoView {
     let new_description = RwSignal::new(String::new());
 
     {
-        let client = client.clone();
+        let groups_api = Arc::clone(&groups_api);
         spawn_local(async move {
-            match crate::modules::groups::api::list_groups(&client).await {
+            match groups_api.list().await {
                 Ok(list) => groups.set(list),
                 Err(e) => toast_error(&toast, &e.to_string()),
             }
@@ -78,7 +80,6 @@ pub fn GroupsList() -> impl IntoView {
     }
 
     let on_create = Callback::new({
-        let client = client.clone();
         let toast = toast;
         let groups = groups;
         let create_open = create_open;
@@ -90,10 +91,10 @@ pub fn GroupsList() -> impl IntoView {
             };
             let t = toast;
             let g = groups;
+            let groups_api = Arc::clone(&groups_api);
             spawn_local({
-                let client = client.clone();
                 async move {
-                    match crate::modules::groups::api::create_group(&client, &body).await {
+                    match groups_api.create(&body).await {
                         Ok(grp) => {
                             g.update(|list| list.push(grp));
                             new_name.set(String::new());

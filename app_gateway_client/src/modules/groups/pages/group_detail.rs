@@ -5,9 +5,11 @@ use leptos::task::spawn_local;
 use leptos_meta::Title;
 use leptos_router::hooks::{use_navigate, use_params_map};
 
-use crate::modules::base::toast_utils::{use_toast_ctx, toast_error, toast_success};
-use app_modules::base::groups::models::{GroupPermission, GroupUpdate};
+use crate::modules::base::toast_utils::{toast_error, toast_success, use_toast_ctx};
+use crate::modules::base::traits::CrudApi;
+use crate::modules::groups::api::GroupsApi;
 use crate::stores::auth_store::use_auth;
+use app_modules::base::groups::models::{GroupPermission, GroupUpdate};
 use valerios_ui_toolkit::button::{Button, ButtonVariant};
 use valerios_ui_toolkit::confirm_delete::ConfirmDeleteDialog;
 use valerios_ui_toolkit::icon::Icon;
@@ -17,7 +19,8 @@ pub fn GroupDetail() -> impl IntoView {
     let auth = use_auth();
     let navigate = use_navigate();
     let toast = use_toast_ctx();
-    let client = auth.api_client.clone();
+    let groups_api: Arc<GroupsApi> = Arc::new(GroupsApi::new(auth.get_api_client()));
+
     let params = use_params_map();
     let get_id = move || params.get().get("id").map(|s| s.to_string());
 
@@ -29,16 +32,15 @@ pub fn GroupDetail() -> impl IntoView {
 
     let delete_open = RwSignal::new(false);
 
-    let is_default = Signal::derive(move || {
-        group.get().as_ref().map(|g| g.default).unwrap_or(false)
-    });
+    let is_default =
+        Signal::derive(move || group.get().as_ref().map(|g| g.default).unwrap_or(false));
 
     {
-        let client = client.clone();
+        let groups_api = groups_api.clone();
         let id = get_id();
         spawn_local(async move {
             if let Some(ref id_val) = id {
-                match crate::modules::groups::api::get_group(&client, id_val).await {
+                match groups_api.get(&id_val).await {
                     Ok(g) => {
                         name.set(g.name.clone().unwrap_or_default());
                         description.set(g.description.clone().unwrap_or_default());
@@ -52,19 +54,20 @@ pub fn GroupDetail() -> impl IntoView {
     }
 
     let on_delete = {
-        let client = client.clone();
         let toast = toast.clone();
         let navigate = navigate.clone();
         let get_id = get_id.clone();
+        let groups_api = Arc::clone(&groups_api);
+
         Callback::new(move |_| {
             let id = get_id();
             let navigate = navigate.clone();
             let toast = toast.clone();
+            let groups_api = Arc::clone(&groups_api);
             spawn_local({
-                let client = client.clone();
                 async move {
                     if let Some(ref id_val) = id {
-                        match crate::modules::groups::api::delete_group(&client, id_val).await {
+                        match groups_api.delete(&id_val).await {
                             Ok(()) => {
                                 toast_success(&toast, "Gruppo eliminato");
                                 let _ = navigate("/settings/groups", Default::default());
@@ -141,7 +144,7 @@ pub fn GroupDetail() -> impl IntoView {
                                 {move || {
                                     let perms = permissions.get();
                                     let locked = is_default.get();
-                                    perms.into_iter().map(|mut p| {
+                                    perms.into_iter().map(|p| {
                                         let p_name = p.name.clone();
                                         view! {
                                             <tr class="border-b border-border hover:bg-muted/30 transition-colors">
@@ -186,7 +189,6 @@ pub fn GroupDetail() -> impl IntoView {
 
                 <div class="flex items-center justify-between">
                     <button on:click={
-                        let client = client.clone();
                         move |_| {
                             let id = get_id();
                             let body = GroupUpdate {
@@ -194,11 +196,11 @@ pub fn GroupDetail() -> impl IntoView {
                                 permissions: permissions.get(),
                             };
                             let toast = toast.clone();
+                            let groups_api : Arc<GroupsApi> = Arc::clone(&groups_api);
                             spawn_local({
-                                let client = client.clone();
                                 async move {
                                     if let Some(ref id_val) = id {
-                                        match crate::modules::groups::api::update_group(&client, id_val, &body).await {
+                                        match groups_api.update(&id_val, &body).await {
                                             Ok(g) => { group.set(Some(g)); toast_success(&toast, "Gruppo aggiornato"); }
                                             Err(e) => toast_error(&toast, &e.to_string()),
                                         }
