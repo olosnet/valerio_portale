@@ -26,11 +26,11 @@
 /// ```
 use std::collections::HashSet;
 
+use cornetti::core::models::CornettiResult;
 use cornetti::core::pagination::{
     FilterNode, FilterOperator, FilterValue, GroupOperator, LoadOptions, RawPaginationInput,
     SortDescriptor, SortDirection,
 };
-use cornetti::core::models::CornettiResult;
 use cornetti::errors::bad_request;
 use serde::Deserialize;
 use serde_json::Value;
@@ -127,16 +127,21 @@ impl DataTableQuery {
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
-                    if fields.is_empty() { None } else { Some(fields) }
+                    if fields.is_empty() {
+                        None
+                    } else {
+                        Some(fields)
+                    }
                 });
                 (exprs, Some(s.clone()))
             }
             _ => (None, None),
         };
 
-        let filter_json = self.filters.as_ref().and_then(|f| {
-            serde_json::from_str(f).ok()
-        });
+        let filter_json = self
+            .filters
+            .as_ref()
+            .and_then(|f| serde_json::from_str(f).ok());
 
         RawPaginationInput {
             skip,
@@ -260,10 +265,7 @@ pub struct ValerioUiPaginationAdapter {
 
 impl ValerioUiPaginationAdapter {
     /// Crea un nuovo adapter.
-    pub fn new(
-        available_attributes: HashSet<String>,
-        custom_attributes: HashSet<String>,
-    ) -> Self {
+    pub fn new(available_attributes: HashSet<String>, custom_attributes: HashSet<String>) -> Self {
         Self {
             available_attributes,
             custom_attributes,
@@ -316,7 +318,10 @@ impl ValerioUiPaginationAdapter {
 
     // ─── Sort ────────────────────────────────────────────────────
 
-    fn parse_sort(&self, raw: &RawPaginationInput) -> CornettiResult<(Vec<SortDescriptor>, Vec<SortDescriptor>)> {
+    fn parse_sort(
+        &self,
+        raw: &RawPaginationInput,
+    ) -> CornettiResult<(Vec<SortDescriptor>, Vec<SortDescriptor>)> {
         let mut sort = Vec::new();
         let mut custom_order_exprs = Vec::new();
 
@@ -324,10 +329,8 @@ impl ValerioUiPaginationAdapter {
             for s in sort_list {
                 let parts: Vec<&str> = s.split(',').collect();
                 if parts.len() != 2 {
-                    return Err(bad_request::validation_error().with_internal_detail(format!(
-                        "Formato ordinamento non valido: {}",
-                        s
-                    )));
+                    return Err(bad_request::validation_error()
+                        .with_internal_detail(format!("Formato ordinamento non valido: {}", s)));
                 }
                 let field = parts[0].trim().to_string();
                 let direction = match parts[1].trim() {
@@ -340,10 +343,12 @@ impl ValerioUiPaginationAdapter {
                 } else if self.custom_attributes.contains(&field) {
                     custom_order_exprs.push(SortDescriptor { field, direction });
                 } else {
-                    return Err(bad_request::validation_error().with_internal_detail(format!(
-                        "Campo di ordinamento non consentito: {}",
-                        field
-                    )));
+                    return Err(
+                        bad_request::validation_error().with_internal_detail(format!(
+                            "Campo di ordinamento non consentito: {}",
+                            field
+                        )),
+                    );
                 }
             }
         }
@@ -405,10 +410,8 @@ impl ValerioUiPaginationAdapter {
             if self.custom_attributes.contains(&leaf.field) {
                 return Ok(None);
             }
-            return Err(bad_request::validation_error().with_internal_detail(format!(
-                "Campo filtro non consentito: {}",
-                leaf.field
-            )));
+            return Err(bad_request::validation_error()
+                .with_internal_detail(format!("Campo filtro non consentito: {}", leaf.field)));
         }
 
         let operator = parse_filter_op(&leaf.op).ok_or_else(|| {
@@ -446,10 +449,7 @@ impl ValerioUiPaginationAdapter {
                 .iter()
                 .filter(|f| self.available_attributes.contains(f.as_str()))
                 .collect(),
-            _ => self
-                .available_attributes
-                .iter()
-                .collect(),
+            _ => self.available_attributes.iter().collect(),
         };
 
         if fields.is_empty() {
@@ -488,7 +488,6 @@ impl ValerioUiPaginationAdapter {
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ValerioUiPaginationResponse<T: serde::Serialize> {
     pub data: Vec<T>,
-    #[serde(rename = "totalCount")]
     pub total_count: i64,
 }
 
@@ -503,9 +502,7 @@ impl<T: serde::Serialize> From<cornetti::core::pagination::PaginationResult<T>>
     }
 }
 
-impl<T: serde::Serialize> From<ValerioUiPaginationResponse<T>>
-    for actix_web::HttpResponse
-{
+impl<T: serde::Serialize> From<ValerioUiPaginationResponse<T>> for actix_web::HttpResponse {
     fn from(response: ValerioUiPaginationResponse<T>) -> Self {
         actix_web::HttpResponse::Ok().json(response)
     }
@@ -523,7 +520,14 @@ mod tests {
     fn make_adapter() -> ValerioUiPaginationAdapter {
         ValerioUiPaginationAdapter::new(
             [
-                "name", "age", "email", "active", "id", "created_date", "score", "status",
+                "name",
+                "age",
+                "email",
+                "active",
+                "id",
+                "created_date",
+                "score",
+                "status",
             ]
             .iter()
             .map(|s| s.to_string())
@@ -540,7 +544,11 @@ mod tests {
 
     #[test]
     fn to_raw_basic() {
-        let q = DataTableQuery { page: 0, page_size: 10, ..Default::default() };
+        let q = DataTableQuery {
+            page: 0,
+            page_size: 10,
+            ..Default::default()
+        };
         let r = q.to_raw_input();
         assert_eq!(r.skip, 0);
         assert_eq!(r.take, 10);
@@ -548,7 +556,11 @@ mod tests {
 
     #[test]
     fn to_raw_page_2_size_20() {
-        let q = DataTableQuery { page: 2, page_size: 20, ..Default::default() };
+        let q = DataTableQuery {
+            page: 2,
+            page_size: 20,
+            ..Default::default()
+        };
         let r = q.to_raw_input();
         assert_eq!(r.skip, 40);
         assert_eq!(r.take, 20);
@@ -557,7 +569,8 @@ mod tests {
     #[test]
     fn to_raw_sort_asc() {
         let q = DataTableQuery {
-            sort_field: Some("name".into()), sort_dir: Some("asc".into()),
+            sort_field: Some("name".into()),
+            sort_dir: Some("asc".into()),
             ..Default::default()
         };
         let r = q.to_raw_input();
@@ -567,7 +580,8 @@ mod tests {
     #[test]
     fn to_raw_sort_desc() {
         let q = DataTableQuery {
-            sort_field: Some("age".into()), sort_dir: Some("desc".into()),
+            sort_field: Some("age".into()),
+            sort_dir: Some("desc".into()),
             ..Default::default()
         };
         let r = q.to_raw_input();
@@ -576,14 +590,19 @@ mod tests {
 
     #[test]
     fn to_raw_sort_none() {
-        let q = DataTableQuery { ..Default::default() };
+        let q = DataTableQuery {
+            ..Default::default()
+        };
         let r = q.to_raw_input();
         assert!(r.sort_input.is_none());
     }
 
     #[test]
     fn to_raw_search_present() {
-        let q = DataTableQuery { search: Some("mario".into()), ..Default::default() };
+        let q = DataTableQuery {
+            search: Some("mario".into()),
+            ..Default::default()
+        };
         let r = q.to_raw_input();
         assert_eq!(r.search_value, Some("mario".into()));
         assert!(r.search_expr.is_none());
@@ -592,7 +611,10 @@ mod tests {
 
     #[test]
     fn to_raw_search_empty() {
-        let q = DataTableQuery { search: Some("".into()), ..Default::default() };
+        let q = DataTableQuery {
+            search: Some("".into()),
+            ..Default::default()
+        };
         let r = q.to_raw_input();
         assert!(r.search_value.is_none());
     }
@@ -635,7 +657,12 @@ mod tests {
     #[test]
     fn validate_basic() {
         let adapter = make_adapter();
-        let q = DataTableQuery { page: 0, page_size: 10, require_total_count: true, ..Default::default() };
+        let q = DataTableQuery {
+            page: 0,
+            page_size: 10,
+            require_total_count: true,
+            ..Default::default()
+        };
         let opts = adapter.validate(&raw(&q)).unwrap();
         assert_eq!(opts.skip, 0);
         assert_eq!(opts.take, 10);
@@ -650,7 +677,11 @@ mod tests {
     #[test]
     fn validate_sort_asc() {
         let adapter = make_adapter();
-        let q = DataTableQuery { sort_field: Some("name".into()), sort_dir: Some("asc".into()), ..Default::default() };
+        let q = DataTableQuery {
+            sort_field: Some("name".into()),
+            sort_dir: Some("asc".into()),
+            ..Default::default()
+        };
         let opts = adapter.validate(&raw(&q)).unwrap();
         assert_eq!(opts.sort.len(), 1);
         assert_eq!(opts.sort[0].field, "name");
@@ -660,7 +691,11 @@ mod tests {
     #[test]
     fn validate_sort_desc() {
         let adapter = make_adapter();
-        let q = DataTableQuery { sort_field: Some("age".into()), sort_dir: Some("desc".into()), ..Default::default() };
+        let q = DataTableQuery {
+            sort_field: Some("age".into()),
+            sort_dir: Some("desc".into()),
+            ..Default::default()
+        };
         let opts = adapter.validate(&raw(&q)).unwrap();
         assert_eq!(opts.sort[0].direction, SortDirection::Desc);
     }
@@ -668,7 +703,11 @@ mod tests {
     #[test]
     fn validate_sort_unknown_field_error() {
         let adapter = make_adapter();
-        let q = DataTableQuery { sort_field: Some("unknown".into()), sort_dir: Some("asc".into()), ..Default::default() };
+        let q = DataTableQuery {
+            sort_field: Some("unknown".into()),
+            sort_dir: Some("asc".into()),
+            ..Default::default()
+        };
         let err = adapter.validate(&raw(&q)).unwrap_err();
         assert_eq!(err.status, HttpStatus::BadRequest);
     }
@@ -678,7 +717,10 @@ mod tests {
     #[test]
     fn validate_search_populates_all_attributes() {
         let adapter = make_adapter();
-        let q = DataTableQuery { search: Some("Mario".into()), ..Default::default() };
+        let q = DataTableQuery {
+            search: Some("Mario".into()),
+            ..Default::default()
+        };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let sf = opts.search_filter.unwrap();
         match sf {
@@ -686,7 +728,11 @@ mod tests {
                 assert_eq!(operator, GroupOperator::Or);
                 for child in &children {
                     match child {
-                        FilterNode::Leaf { field, operator, value } => {
+                        FilterNode::Leaf {
+                            field,
+                            operator,
+                            value,
+                        } => {
                             assert!(adapter.available_attributes.contains(field));
                             assert_eq!(*operator, FilterOperator::Contains);
                             assert_eq!(*value, FilterValue::String("Mario".into()));
@@ -702,14 +748,19 @@ mod tests {
     #[test]
     fn validate_search_empty() {
         let adapter = make_adapter();
-        let q = DataTableQuery { search: Some("".into()), ..Default::default() };
+        let q = DataTableQuery {
+            search: Some("".into()),
+            ..Default::default()
+        };
         assert!(adapter.validate(&raw(&q)).unwrap().search_filter.is_none());
     }
 
     #[test]
     fn validate_search_none() {
         let adapter = make_adapter();
-        let q = DataTableQuery { ..Default::default() };
+        let q = DataTableQuery {
+            ..Default::default()
+        };
         assert!(adapter.validate(&raw(&q)).unwrap().search_filter.is_none());
     }
 
@@ -724,7 +775,11 @@ mod tests {
         let opts = adapter.validate(&raw(&q)).unwrap();
         let sf = opts.search_filter.unwrap();
         match sf {
-            FilterNode::Leaf { field, operator, value } => {
+            FilterNode::Leaf {
+                field,
+                operator,
+                value,
+            } => {
                 assert_eq!(field, "name");
                 assert_eq!(operator, FilterOperator::Contains);
                 assert_eq!(value, FilterValue::String("mario".into()));
@@ -745,7 +800,11 @@ mod tests {
         let opts = adapter.validate(&raw(&q)).unwrap();
         let sf = opts.search_filter.unwrap();
         match sf {
-            FilterNode::Leaf { field, operator, value } => {
+            FilterNode::Leaf {
+                field,
+                operator,
+                value,
+            } => {
                 assert_eq!(field, "name");
                 assert_eq!(operator, FilterOperator::Eq);
                 // "Mario" non è parsabile come numero/bool → rimane String
@@ -767,7 +826,11 @@ mod tests {
         let opts = adapter.validate(&raw(&q)).unwrap();
         let sf = opts.search_filter.unwrap();
         match sf {
-            FilterNode::Leaf { field, operator, value } => {
+            FilterNode::Leaf {
+                field,
+                operator,
+                value,
+            } => {
                 assert_eq!(field, "age");
                 assert_eq!(operator, FilterOperator::Gt);
                 // "42" è parsabile come i64 → FilterValue::Integer
@@ -789,7 +852,9 @@ mod tests {
         let opts = adapter.validate(&raw(&q)).unwrap();
         let sf = opts.search_filter.unwrap();
         match sf {
-            FilterNode::Leaf { operator, value, .. } => {
+            FilterNode::Leaf {
+                operator, value, ..
+            } => {
                 assert_eq!(operator, FilterOperator::Contains);
                 // Contains deve restare String (per $regex)
                 assert_eq!(value, FilterValue::String("42".into()));
@@ -809,11 +874,14 @@ mod tests {
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let f = opts.filter.unwrap();
-        assert_eq!(f, FilterNode::Leaf {
-            field: "name".into(),
-            operator: FilterOperator::Eq,
-            value: FilterValue::String("Mario".into()),
-        });
+        assert_eq!(
+            f,
+            FilterNode::Leaf {
+                field: "name".into(),
+                operator: FilterOperator::Eq,
+                value: FilterValue::String("Mario".into()),
+            }
+        );
     }
 
     #[test]
@@ -825,11 +893,14 @@ mod tests {
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let f = opts.filter.unwrap();
-        assert_eq!(f, FilterNode::Leaf {
-            field: "age".into(),
-            operator: FilterOperator::Gt,
-            value: FilterValue::Integer(18),
-        });
+        assert_eq!(
+            f,
+            FilterNode::Leaf {
+                field: "age".into(),
+                operator: FilterOperator::Gt,
+                value: FilterValue::Integer(18),
+            }
+        );
     }
 
     #[test]
@@ -841,11 +912,14 @@ mod tests {
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let f = opts.filter.unwrap();
-        assert_eq!(f, FilterNode::Leaf {
-            field: "score".into(),
-            operator: FilterOperator::Gte,
-            value: FilterValue::Float(95.5),
-        });
+        assert_eq!(
+            f,
+            FilterNode::Leaf {
+                field: "score".into(),
+                operator: FilterOperator::Gte,
+                value: FilterValue::Float(95.5),
+            }
+        );
     }
 
     #[test]
@@ -857,11 +931,14 @@ mod tests {
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let f = opts.filter.unwrap();
-        assert_eq!(f, FilterNode::Leaf {
-            field: "active".into(),
-            operator: FilterOperator::Eq,
-            value: FilterValue::Boolean(true),
-        });
+        assert_eq!(
+            f,
+            FilterNode::Leaf {
+                field: "active".into(),
+                operator: FilterOperator::Eq,
+                value: FilterValue::Boolean(true),
+            }
+        );
     }
 
     #[test]
@@ -873,11 +950,14 @@ mod tests {
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
         let f = opts.filter.unwrap();
-        assert_eq!(f, FilterNode::Leaf {
-            field: "email".into(),
-            operator: FilterOperator::Eq,
-            value: FilterValue::Null,
-        });
+        assert_eq!(
+            f,
+            FilterNode::Leaf {
+                field: "email".into(),
+                operator: FilterOperator::Eq,
+                value: FilterValue::Null,
+            }
+        );
     }
 
     #[test]
@@ -930,11 +1010,14 @@ mod tests {
         let opts = adapter.validate(&raw(&q)).unwrap();
         match opts.filter.unwrap() {
             FilterNode::Not(inner) => {
-                assert_eq!(*inner, FilterNode::Leaf {
-                    field: "name".into(),
-                    operator: FilterOperator::Eq,
-                    value: FilterValue::String("Mario".into()),
-                });
+                assert_eq!(
+                    *inner,
+                    FilterNode::Leaf {
+                        field: "name".into(),
+                        operator: FilterOperator::Eq,
+                        value: FilterValue::String("Mario".into()),
+                    }
+                );
             }
             other => panic!("expected Not, got {:?}", other),
         }
@@ -986,7 +1069,7 @@ mod tests {
             ..Default::default()
         };
         let opts = adapter.validate(&raw(&q)).unwrap();
-        assert!(opts.filter.is_some());       // age > 18
+        assert!(opts.filter.is_some()); // age > 18
         assert!(opts.search_filter.is_some()); // name contains Mario
     }
 
@@ -1025,8 +1108,14 @@ mod tests {
     #[test]
     fn parse_op_contains() {
         assert_eq!(parse_filter_op("contains"), Some(FilterOperator::Contains));
-        assert_eq!(parse_filter_op("notcontains"), Some(FilterOperator::NotContains));
-        assert_eq!(parse_filter_op("startswith"), Some(FilterOperator::StartsWith));
+        assert_eq!(
+            parse_filter_op("notcontains"),
+            Some(FilterOperator::NotContains)
+        );
+        assert_eq!(
+            parse_filter_op("startswith"),
+            Some(FilterOperator::StartsWith)
+        );
         assert_eq!(parse_filter_op("endswith"), Some(FilterOperator::EndsWith));
     }
 
@@ -1039,7 +1128,10 @@ mod tests {
 
     #[test]
     fn response_from_pagination_result() {
-        let pr = cornetti::core::pagination::PaginationResult { data: vec![1, 2, 3], total_count: 42 };
+        let pr = cornetti::core::pagination::PaginationResult {
+            data: vec![1, 2, 3],
+            total_count: 42,
+        };
         let resp: ValerioUiPaginationResponse<i32> = pr.into();
         assert_eq!(resp.data, vec![1, 2, 3]);
         assert_eq!(resp.total_count, 42);
@@ -1047,7 +1139,10 @@ mod tests {
 
     #[test]
     fn response_serialize_total_count() {
-        let resp = ValerioUiPaginationResponse { data: vec!["a"], total_count: 10 };
+        let resp = ValerioUiPaginationResponse {
+            data: vec!["a"],
+            total_count: 10,
+        };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["totalCount"], 10);
     }
